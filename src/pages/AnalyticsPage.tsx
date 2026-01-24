@@ -56,8 +56,8 @@ const AnalyticsPage = () => {
   }, [user, loadAnalytics]);
 
   const calculateAnalytics = (attempts: any[]) => {
-    const subjectStats: SubjectStats = {};
-    const topicStats: TopicStats = {};
+    const subjectStats: Record<string, any> = {};
+    const topicStats: Record<string, any> = {};
 
     // STEP 1: First pass - collect basic stats
     attempts.forEach(attempt => {

@@ -64,6 +64,9 @@ const DashboardRouter = () => {
     return <LoadingScreen message="Loading dashboard..." />;
   }
 
+  return <EnhancedDashboard />;
+};
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>

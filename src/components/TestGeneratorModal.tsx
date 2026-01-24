@@ -38,17 +38,6 @@ const TestGeneratorModal: React.FC<TestGeneratorModalProps> = ({
 
   const { generateTest, getAvailableSubjects, getAvailableChapters, getQuestionCount, loading } = useTestGenerator();
 
-  useEffect(() => {
-    if (open) {
-      loadSubjects();
-      loadChapters();
-    }
-  }, [open, loadSubjects, loadChapters]);
-
-  useEffect(() => {
-    updateQuestionCount();
-  }, [updateQuestionCount]);
-
   const loadSubjects = useCallback(async () => {
     const subjectList = await getAvailableSubjects();
     setSubjects(subjectList as string[]);
@@ -68,6 +57,17 @@ const TestGeneratorModal: React.FC<TestGeneratorModalProps> = ({
     );
     setAvailableQuestions(count);
   }, [formData.subject, formData.chapter, getQuestionCount]);
+
+  useEffect(() => {
+    if (open) {
+      loadSubjects();
+      loadChapters();
+    }
+  }, [open, loadSubjects, loadChapters]);
+
+  useEffect(() => {
+    updateQuestionCount();
+  }, [updateQuestionCount]);
 
   const handleTestTypeChange = (value: string) => {
     const testType = value as typeof formData.testType;
