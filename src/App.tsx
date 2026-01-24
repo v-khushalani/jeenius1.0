@@ -64,12 +64,6 @@ const DashboardRouter = () => {
     return <LoadingScreen message="Loading dashboard..." />;
   }
 
-  // Import CrazyDashboard
-  const CrazyDashboard = lazy(() => import('@/components/CrazyDashboard'));
-  
-  return userRole === 'admin' ? null : <Suspense fallback={<LoadingScreen />}><CrazyDashboard /></Suspense>;
-};
-
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
