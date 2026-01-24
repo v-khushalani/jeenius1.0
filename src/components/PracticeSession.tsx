@@ -28,13 +28,6 @@ const PracticeSession = () => {
   const [weakAreas, setWeakAreas] = useState([]);
   const [loadingWeakness, setLoadingWeakness] = useState(false);
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      loadQuestions();
-      fetchWeakAreas(); // ✅ Fetch real weakness data
-    }
-  }, [isAuthenticated, loadQuestions, fetchWeakAreas]);
-
   const loadQuestions = useCallback(async () => {
     const questionsData = await getRandomQuestions(null, null, null, 10);
 
@@ -76,6 +69,14 @@ const PracticeSession = () => {
       setLoadingWeakness(false);
     }
   }, []);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadQuestions();
+      fetchWeakAreas();
+    }
+  }, [isAuthenticated, loadQuestions, fetchWeakAreas]);
+
 
 
   const handleAnswerSelect = async (optionKey) => {

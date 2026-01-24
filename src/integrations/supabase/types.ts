@@ -203,6 +203,13 @@ export type Database = {
             foreignKeyName: "conversion_prompts_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "leaderboard_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversion_prompts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -318,6 +325,13 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "daily_progress_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "leaderboard_safe"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "daily_progress_user_id_fkey"
             columns: ["user_id"]
@@ -519,6 +533,42 @@ export type Database = {
         }
         Relationships: []
       }
+      passages: {
+        Row: {
+          chapter: string | null
+          content: string
+          created_at: string | null
+          id: string
+          image_url: string | null
+          subject: string
+          title: string
+          topic: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          chapter?: string | null
+          content: string
+          created_at?: string | null
+          id?: string
+          image_url?: string | null
+          subject: string
+          title: string
+          topic?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          chapter?: string | null
+          content?: string
+          created_at?: string | null
+          id?: string
+          image_url?: string | null
+          subject?: string
+          title?: string
+          topic?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount: number
@@ -669,6 +719,7 @@ export type Database = {
           phone: string | null
           premium_until: string | null
           rank_position: number | null
+          role: Database["public"]["Enums"]["app_role"] | null
           state: string | null
           streak_freeze_available: boolean | null
           study_planner_enabled: boolean | null
@@ -716,6 +767,7 @@ export type Database = {
           phone?: string | null
           premium_until?: string | null
           rank_position?: number | null
+          role?: Database["public"]["Enums"]["app_role"] | null
           state?: string | null
           streak_freeze_available?: boolean | null
           study_planner_enabled?: boolean | null
@@ -763,6 +815,7 @@ export type Database = {
           phone?: string | null
           premium_until?: string | null
           rank_position?: number | null
+          role?: Database["public"]["Enums"]["app_role"] | null
           state?: string | null
           streak_freeze_available?: boolean | null
           study_planner_enabled?: boolean | null
@@ -845,27 +898,97 @@ export type Database = {
             foreignKeyName: "question_attempts_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "leaderboard_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "question_attempts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      question_reports: {
+        Row: {
+          admin_notes: string | null
+          created_at: string
+          description: string | null
+          id: string
+          question_id: string
+          report_type: string
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          question_id: string
+          report_type: string
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          question_id?: string
+          report_type?: string
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "question_reports_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "question_reports_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions_safe"
             referencedColumns: ["id"]
           },
         ]
       }
       questions: {
         Row: {
+          assertion_text: string | null
           chapter: string
           chapter_id: string | null
+          column_a: Json | null
+          column_b: Json | null
+          column_matches: Json | null
           correct_option: string
+          correct_options: string[] | null
           created_at: string | null
           difficulty: string
           exam: string
           explanation: string | null
           id: string
+          image_url: string | null
+          integer_answer: number | null
           option_a: string
           option_b: string
           option_c: string
           option_d: string
+          passage_id: string | null
           question: string
           question_type: string
+          reasoning_text: string | null
           subject: string
           subtopic: string | null
           topic: string
@@ -873,20 +996,29 @@ export type Database = {
           year: number | null
         }
         Insert: {
+          assertion_text?: string | null
           chapter: string
           chapter_id?: string | null
+          column_a?: Json | null
+          column_b?: Json | null
+          column_matches?: Json | null
           correct_option: string
+          correct_options?: string[] | null
           created_at?: string | null
           difficulty: string
           exam?: string
           explanation?: string | null
           id?: string
+          image_url?: string | null
+          integer_answer?: number | null
           option_a: string
           option_b: string
           option_c: string
           option_d: string
+          passage_id?: string | null
           question: string
           question_type?: string
+          reasoning_text?: string | null
           subject: string
           subtopic?: string | null
           topic: string
@@ -894,20 +1026,29 @@ export type Database = {
           year?: number | null
         }
         Update: {
+          assertion_text?: string | null
           chapter?: string
           chapter_id?: string | null
+          column_a?: Json | null
+          column_b?: Json | null
+          column_matches?: Json | null
           correct_option?: string
+          correct_options?: string[] | null
           created_at?: string | null
           difficulty?: string
           exam?: string
           explanation?: string | null
           id?: string
+          image_url?: string | null
+          integer_answer?: number | null
           option_a?: string
           option_b?: string
           option_c?: string
           option_d?: string
+          passage_id?: string | null
           question?: string
           question_type?: string
+          reasoning_text?: string | null
           subject?: string
           subtopic?: string | null
           topic?: string
@@ -915,6 +1056,13 @@ export type Database = {
           year?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_questions_passage"
+            columns: ["passage_id"]
+            isOneToOne: false
+            referencedRelation: "passages"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "questions_chapter_id_fkey"
             columns: ["chapter_id"]
@@ -1311,6 +1459,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "test_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "leaderboard_safe"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "test_sessions_user_id_fkey"
             columns: ["user_id"]
@@ -1940,6 +2095,36 @@ export type Database = {
       }
     }
     Views: {
+      leaderboard_safe: {
+        Row: {
+          avatar_url: string | null
+          current_streak: number | null
+          full_name: string | null
+          id: string | null
+          level: string | null
+          rank_position: number | null
+          total_points: number | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          current_streak?: number | null
+          full_name?: string | null
+          id?: string | null
+          level?: string | null
+          rank_position?: number | null
+          total_points?: number | null
+        }
+        Update: {
+          avatar_url?: string | null
+          current_streak?: number | null
+          full_name?: string | null
+          id?: string | null
+          level?: string | null
+          rank_position?: number | null
+          total_points?: number | null
+        }
+        Relationships: []
+      }
       questions_safe: {
         Row: {
           chapter: string | null
@@ -2014,15 +2199,34 @@ export type Database = {
       increment_ai_usage: { Args: { p_user_id: string }; Returns: undefined }
       is_admin: { Args: never; Returns: boolean }
       is_user_premium: { Args: { p_user_id: string }; Returns: boolean }
-      validate_question_answer: {
-        Args: { _question_id: string; _user_answer: string }
-        Returns: {
-          attempt_id: string
-          correct_option: string
-          explanation: string
-          is_correct: boolean
-        }[]
-      }
+      validate_question_answer:
+        | {
+            Args: { _question_id: string; _user_answer: string }
+            Returns: {
+              attempt_id: string
+              correct_option: string
+              explanation: string
+              is_correct: boolean
+            }[]
+          }
+        | {
+            Args: {
+              _integer_answer?: number
+              _match_answers?: Json
+              _question_id: string
+              _user_answer: string
+              _user_answers?: string[]
+            }
+            Returns: {
+              attempt_id: string
+              correct_integer: number
+              correct_matches: Json
+              correct_option: string
+              correct_options: string[]
+              explanation: string
+              is_correct: boolean
+            }[]
+          }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"

@@ -110,7 +110,10 @@ export class PointsService {
 
     for (const milestone of milestones) {
       if (newStreak === milestone.streak) {
-        const badges: string[] = Array.isArray(profile.badges) ? profile.badges : [];
+        const rawBadges = profile.badges;
+        const badges: string[] = Array.isArray(rawBadges) 
+          ? rawBadges.filter((b): b is string => typeof b === 'string')
+          : [];
         const badgeEarned = !badges.includes(milestone.badge);
         
         if (badgeEarned) {
