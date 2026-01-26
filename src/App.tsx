@@ -248,6 +248,14 @@ function App() {
                     </AdminRoute>
                   }
                 />
+                <Route
+                  path="/admin/auto-assign"
+                  element={
+                    <AdminRoute>
+                      <AdminDashboard />
+                    </AdminRoute>
+                  }
+                />
                 
                 <Route path="/pricing" element={<PricingPage />} />
 
