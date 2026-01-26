@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { logger } from "@/utils/logger";
+import { autoAssignTopic, bulkAutoAssign } from "@/services/topicAssignmentService";
 
 interface ExtractionStatus {
   isExtracting: boolean;
@@ -179,6 +180,37 @@ export function usePDFExtraction() {
     }
   }, []);
 
+  const autoAssignTopics = useCallback(async (questionIds: string[]) => {
+    try {
+      toast.info("Starting auto-assignment...");
+      const result = await bulkAutoAssign(questionIds);
+      
+      toast.success(
+        `Processed ${result.processed} questions: ${result.autoAssigned} auto-assigned, ${result.suggested} suggested, ${result.failed} failed`
+      );
+      
+      return result;
+    } catch (error) {
+      logger.error("Error in bulk auto-assign:", error);
+      toast.error("Failed to auto-assign topics");
+      return null;
+    }
+  }, []);
+
+  const autoAssignSingleQuestion = useCallback(async (
+    questionText: string,
+    subject: string,
+    chapterHint?: string
+  ) => {
+    try {
+      const result = await autoAssignTopic(questionText, subject, chapterHint);
+      return result;
+    } catch (error) {
+      logger.error("Error auto-assigning question:", error);
+      return null;
+    }
+  }, []);
+
   return {
     status,
     queuedQuestions,
@@ -187,6 +219,8 @@ export function usePDFExtraction() {
     approveQuestion,
     rejectQuestion,
     deleteFromQueue,
-    clearRejected
+    clearRejected,
+    autoAssignTopics,
+    autoAssignSingleQuestion
   };
 }

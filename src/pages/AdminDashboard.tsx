@@ -19,7 +19,8 @@ import {
   Upload,
   ClipboardCheck,
   Menu,
-  X
+  X,
+  Brain
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { AdminAnalytics } from '@/components/admin/AdminAnalytics';
@@ -32,6 +33,7 @@ import { NotificationManager } from '@/components/admin/NotificationManager';
 import { UserReports } from '@/components/admin/UserReports';
 import { PDFQuestionExtractor } from '@/components/admin/PDFQuestionExtractor';
 import { ExtractionReviewQueue } from '@/components/admin/ExtractionReviewQueue';
+import { AutoTopicAssignment } from '@/components/admin/AutoTopicAssignment';
 import { cn } from '@/lib/utils';
 import { logger } from '@/utils/logger';
 
@@ -70,6 +72,8 @@ const AdminDashboard = () => {
       return <PDFQuestionExtractor />;
     } else if (location.pathname === '/admin/review-queue') {
       return <ExtractionReviewQueue />;
+    } else if (location.pathname === '/admin/auto-assign') {
+      return <AutoTopicAssignment />;
     } else {
       return <QuickStatsOverview />;
     }
@@ -88,6 +92,7 @@ const AdminDashboard = () => {
       '/admin/questions': { title: 'Questions', subtitle: 'Question Bank Management' },
       '/admin/pdf-extract': { title: 'PDF Extractor', subtitle: 'Extract Questions from PDFs' },
       '/admin/review-queue': { title: 'Review Queue', subtitle: 'Review Extracted Questions' },
+      '/admin/auto-assign': { title: 'Auto-Assignment', subtitle: 'NLP-Based Topic Assignment' },
     };
     return routes[location.pathname as keyof typeof routes] || routes['/admin'];
   };
@@ -98,6 +103,7 @@ const AdminDashboard = () => {
     { path: '/admin/questions', label: 'Questions', icon: HelpCircle, color: 'text-green-600' },
     { path: '/admin/pdf-extract', label: 'PDF Extractor', icon: Upload, color: 'text-emerald-600' },
     { path: '/admin/review-queue', label: 'Review Queue', icon: ClipboardCheck, color: 'text-teal-600' },
+    { path: '/admin/auto-assign', label: 'Auto-Assignment', icon: Brain, color: 'text-rose-600' },
     { path: '/admin/content', label: 'Chapters', icon: BookOpen, color: 'text-orange-600' },
     { path: '/admin/topics', label: 'Topics', icon: Sparkles, color: 'text-violet-600' },
     { path: '/admin/analytics', label: 'Analytics', icon: TrendingUp, color: 'text-cyan-600' },

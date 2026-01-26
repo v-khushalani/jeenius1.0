@@ -43,6 +43,10 @@ interface ExtractedQuestion {
   };
   status: string;
   created_at: string;
+  auto_assigned_chapter_id?: string;
+  auto_assigned_topic_id?: string;
+  confidence_score?: number;
+  assignment_method?: 'auto' | 'suggested' | 'manual';
 }
 
 interface Chapter {
