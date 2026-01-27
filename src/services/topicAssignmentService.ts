@@ -24,18 +24,13 @@ export interface AssignmentResult {
   };
 }
 
-export interface TopicKeyword {
-  id: string;
+export interface TopicKeywordMapping {
   chapter_id: string;
   topic_id: string | null;
   keywords: string[];
-  chapter?: {
-    chapter_name: string;
-    subject: string;
-  };
-  topic?: {
-    topic_name: string;
-  };
+  chapter_name: string;
+  subject: string;
+  topic_name?: string;
 }
 
 /**
@@ -166,49 +161,61 @@ export function calculateWeightedSimilarity(
 }
 
 /**
- * Fetch all topic keywords from database
+ * Build keyword mappings from chapters and topics tables
  */
-export async function fetchTopicKeywords(subject?: string): Promise<TopicKeyword[]> {
+export async function fetchTopicKeywords(subject?: string): Promise<TopicKeywordMapping[]> {
   try {
-    let query = supabase
-      .from('topic_keywords')
-      .select(`
-        id,
-        chapter_id,
-        topic_id,
-        keywords,
-        chapters:chapter_id (
-          id,
-          chapter_name,
-          subject
-        ),
-        topics:topic_id (
-          id,
-          topic_name
-        )
-      `);
-
+    // Get chapters with their topics
+    let chaptersQuery = supabase
+      .from('chapters')
+      .select('id, chapter_name, subject');
+    
     if (subject) {
-      query = query.eq('chapters.subject', subject);
+      chaptersQuery = chaptersQuery.eq('subject', subject);
     }
 
-    const { data, error } = await query;
+    const { data: chapters, error: chaptersError } = await chaptersQuery;
+    
+    if (chaptersError) throw chaptersError;
 
-    if (error) throw error;
+    // Get topics
+    const { data: topics, error: topicsError } = await supabase
+      .from('topics')
+      .select('id, topic_name, chapter_id');
+    
+    if (topicsError) throw topicsError;
 
-    return (data || []).map(item => ({
-      id: item.id,
-      chapter_id: item.chapter_id,
-      topic_id: item.topic_id,
-      keywords: item.keywords,
-      chapter: item.chapters ? {
-        chapter_name: item.chapters.chapter_name,
-        subject: item.chapters.subject
-      } : undefined,
-      topic: item.topics ? {
-        topic_name: item.topics.topic_name
-      } : undefined
-    }));
+    const mappings: TopicKeywordMapping[] = [];
+
+    // Create keyword mappings from chapter and topic names
+    for (const chapter of chapters || []) {
+      const chapterKeywords = extractKeywords(chapter.chapter_name);
+      
+      // Add chapter-level mapping
+      mappings.push({
+        chapter_id: chapter.id,
+        topic_id: null,
+        keywords: chapterKeywords,
+        chapter_name: chapter.chapter_name,
+        subject: chapter.subject
+      });
+
+      // Add topic-level mappings
+      const chapterTopics = (topics || []).filter(t => t.chapter_id === chapter.id);
+      for (const topic of chapterTopics) {
+        const topicKeywords = [...chapterKeywords, ...extractKeywords(topic.topic_name)];
+        mappings.push({
+          chapter_id: chapter.id,
+          topic_id: topic.id,
+          keywords: [...new Set(topicKeywords)],
+          chapter_name: chapter.chapter_name,
+          subject: chapter.subject,
+          topic_name: topic.topic_name
+        });
+      }
+    }
+
+    return mappings;
   } catch (error) {
     logger.error('Error fetching topic keywords:', error);
     return [];
@@ -274,12 +281,12 @@ export async function autoAssignTopic(
 
       // Boost score if chapter hint matches
       let boostedScore = score;
-      if (chapterHint && topicKeyword.chapter?.chapter_name) {
-        const chapterMatch = topicKeyword.chapter.chapter_name
+      if (chapterHint && topicKeyword.chapter_name) {
+        const chapterMatch = topicKeyword.chapter_name
           .toLowerCase()
           .includes(chapterHint.toLowerCase()) ||
           chapterHint.toLowerCase()
-            .includes(topicKeyword.chapter.chapter_name.toLowerCase());
+            .includes(topicKeyword.chapter_name.toLowerCase());
         
         if (chapterMatch) {
           boostedScore = score * 1.3; // 30% boost
@@ -310,8 +317,8 @@ export async function autoAssignTopic(
     }
 
     logger.info('Best match:', {
-      chapter: bestMatch.chapter?.chapter_name,
-      topic: bestMatch.topic?.topic_name,
+      chapter: bestMatch.chapter_name,
+      topic: bestMatch.topic_name,
       score: bestMatch.score
     });
 
@@ -324,13 +331,13 @@ export async function autoAssignTopic(
       confidence: Math.round(bestMatch.score * 100) / 100,
       method,
       keywords: questionKeywords,
-      matchedChapter: bestMatch.chapter ? {
+      matchedChapter: {
         id: bestMatch.chapter_id,
-        name: bestMatch.chapter.chapter_name
-      } : undefined,
-      matchedTopic: bestMatch.topic ? {
+        name: bestMatch.chapter_name
+      },
+      matchedTopic: bestMatch.topic_id && bestMatch.topic_name ? {
         id: bestMatch.topic_id,
-        name: bestMatch.topic.topic_name
+        name: bestMatch.topic_name
       } : undefined
     };
   } catch (error) {
@@ -373,7 +380,7 @@ export async function bulkAutoAssign(questionIds: string[]): Promise<{
         continue;
       }
 
-      const parsed = question.parsed_question as any;
+      const parsed = question.parsed_question as Record<string, any>;
       
       // Auto-assign
       const result = await autoAssignTopic(
@@ -382,14 +389,19 @@ export async function bulkAutoAssign(questionIds: string[]): Promise<{
         parsed.chapter
       );
 
-      // Update queue with assignment
+      // Update the parsed_question with assignment info
+      const updatedParsed = {
+        ...parsed,
+        auto_assigned_chapter_id: result.chapterId,
+        auto_assigned_topic_id: result.topicId,
+        confidence_score: result.confidence,
+        assignment_method: result.method
+      };
+
       await supabase
         .from('extracted_questions_queue')
         .update({
-          auto_assigned_chapter_id: result.chapterId,
-          auto_assigned_topic_id: result.topicId,
-          confidence_score: result.confidence,
-          assignment_method: result.method
+          parsed_question: updatedParsed
         })
         .eq('id', questionId);
 
@@ -416,33 +428,6 @@ export async function bulkAutoAssign(questionIds: string[]): Promise<{
 }
 
 /**
- * Add or update keywords for a topic/chapter
- */
-export async function updateTopicKeywords(
-  chapterId: string,
-  topicId: string | null,
-  keywords: string[]
-): Promise<boolean> {
-  try {
-    const { error } = await supabase
-      .from('topic_keywords')
-      .upsert({
-        chapter_id: chapterId,
-        topic_id: topicId,
-        keywords
-      }, {
-        onConflict: 'chapter_id,topic_id'
-      });
-
-    if (error) throw error;
-    return true;
-  } catch (error) {
-    logger.error('Error updating topic keywords:', error);
-    return false;
-  }
-}
-
-/**
  * Get statistics for auto-assignment performance
  */
 export async function getAssignmentStats(): Promise<{
@@ -455,23 +440,42 @@ export async function getAssignmentStats(): Promise<{
   try {
     const { data, error } = await supabase
       .from('extracted_questions_queue')
-      .select('assignment_method, confidence_score');
+      .select('parsed_question');
 
     if (error) throw error;
 
     const stats = {
       total: data?.length || 0,
-      autoAssigned: data?.filter(q => q.assignment_method === 'auto').length || 0,
-      suggested: data?.filter(q => q.assignment_method === 'suggested').length || 0,
-      manual: data?.filter(q => !q.assignment_method || q.assignment_method === 'manual').length || 0,
+      autoAssigned: 0,
+      suggested: 0,
+      manual: 0,
       avgConfidence: 0
     };
 
-    if (data && data.length > 0) {
-      const totalConfidence = data.reduce((sum, q) => 
-        sum + (q.confidence_score || 0), 0
-      );
-      stats.avgConfidence = Math.round(totalConfidence / data.length * 100) / 100;
+    let totalConfidence = 0;
+    let confidenceCount = 0;
+
+    for (const item of data || []) {
+      const parsed = item.parsed_question as Record<string, any>;
+      const method = parsed?.assignment_method;
+      const confidence = parsed?.confidence_score;
+
+      if (method === 'auto') {
+        stats.autoAssigned++;
+      } else if (method === 'suggested') {
+        stats.suggested++;
+      } else {
+        stats.manual++;
+      }
+
+      if (typeof confidence === 'number') {
+        totalConfidence += confidence;
+        confidenceCount++;
+      }
+    }
+
+    if (confidenceCount > 0) {
+      stats.avgConfidence = Math.round(totalConfidence / confidenceCount * 100) / 100;
     }
 
     return stats;
