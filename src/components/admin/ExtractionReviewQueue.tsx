@@ -1,5 +1,4 @@
-// Extraction Review Queue Component
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,43 +9,47 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { 
-  CheckCircle2, XCircle, Edit2, Loader2, 
-  ChevronLeft, ChevronRight, RefreshCw,
-  FileText, BookOpen, AlertTriangle, Copy,
-  SkipForward, Replace
+  CheckCircle2, XCircle, Edit2, Loader2, ChevronLeft, ChevronRight, 
+  RefreshCw, FileText, BookOpen, AlertTriangle, Copy, SkipForward, 
+  Replace, Sparkles, Filter, Database, Brain
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { MathDisplay } from "./MathDisplay";
 import { logger } from "@/utils/logger";
+import { bulkAutoAssign, clearCurriculumCache } from "@/services/topicAssignmentService";
+import { quickTextSimilarity } from "@/services/nlp";
 
 interface ExtractedQuestion {
   id: string;
   source_file: string;
   page_number: number;
   parsed_question: {
-    question_number: string;
+    question_number?: string;
     question: string;
     option_a: string;
     option_b: string;
     option_c: string;
     option_d: string;
     correct_option: string;
-    explanation: string;
+    explanation?: string;
     subject: string;
-    chapter: string;
-    topic: string;
-    difficulty: string;
-    exam: string;
-    has_image?: boolean;
+    chapter?: string;
+    topic?: string;
+    difficulty?: string;
+    exam?: string;
+    auto_assigned_chapter_id?: string;
+    auto_assigned_topic_id?: string;
+    auto_assigned_chapter_name?: string;
+    auto_assigned_topic_name?: string;
+    confidence_score?: number;
+    assignment_method?: 'auto' | 'suggested' | 'manual';
+    matched_keywords?: string[];
   };
   status: string;
   created_at: string;
-  auto_assigned_chapter_id?: string;
-  auto_assigned_topic_id?: string;
-  confidence_score?: number;
-  assignment_method?: 'auto' | 'suggested' | 'manual';
 }
 
 interface Chapter {
@@ -61,52 +64,66 @@ interface Topic {
   chapter_id: string;
 }
 
-interface DuplicateResult {
-  isDuplicate: boolean;
-  similarity: number;
-  existingQuestion?: {
-    id: string;
-    question: string;
-    subject: string;
-    chapter: string;
-  };
-}
-
-// Normalize text for comparison (remove extra spaces, lowercase, remove special chars)
+// Normalize text for duplicate detection
 const normalizeText = (text: string): string => {
-  return text
-    .toLowerCase()
-    .replace(/\s+/g, ' ')
-    .replace(/[^\w\s]/g, '')
-    .trim();
-};
-
-// Calculate similarity between two strings (Jaccard similarity on words)
-const calculateSimilarity = (text1: string, text2: string): number => {
-  const words1 = new Set(normalizeText(text1).split(' '));
-  const words2 = new Set(normalizeText(text2).split(' '));
-  
-  const intersection = new Set([...words1].filter(x => words2.has(x)));
-  const union = new Set([...words1, ...words2]);
-  
-  return intersection.size / union.size;
+  return text.toLowerCase().replace(/\s+/g, ' ').replace(/[^\w\s]/g, '').trim();
 };
 
 export function ExtractionReviewQueue() {
-  const [questions, setQuestions] = useState<ExtractedQuestion[]>([]);
+  const [allQuestions, setAllQuestions] = useState<ExtractedQuestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [editMode, setEditMode] = useState(false);
   const [editedQuestion, setEditedQuestion] = useState<ExtractedQuestion | null>(null);
   const [saving, setSaving] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("pending");
+  const [bookFilter, setBookFilter] = useState<string>("all");
+  const [subjectFilter, setSubjectFilter] = useState<string>("all");
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [topics, setTopics] = useState<Topic[]>([]);
-  const [stats, setStats] = useState({ pending: 0, approved: 0, rejected: 0 });
-  const [duplicateCheck, setDuplicateCheck] = useState<DuplicateResult | null>(null);
+  const [stats, setStats] = useState({ pending: 0, approved: 0, rejected: 0, total: 0 });
+  const [duplicateInfo, setDuplicateInfo] = useState<{ isDuplicate: boolean; similarity: number; existingId?: string } | null>(null);
   const [checkingDuplicate, setCheckingDuplicate] = useState(false);
   const [bulkProcessing, setBulkProcessing] = useState(false);
-  const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0, skipped: 0, approved: 0, overwritten: 0 });
+  const [nlpProcessing, setNlpProcessing] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0, approved: 0, skipped: 0 });
+
+  // Get unique source files (books) for filtering
+  const sourceFiles = useMemo(() => {
+    const files = new Set(allQuestions.map(q => q.source_file));
+    return Array.from(files).sort();
+  }, [allQuestions]);
+
+  // Get unique subjects for filtering
+  const subjects = useMemo(() => {
+    const subjs = new Set(allQuestions.map(q => q.parsed_question.subject).filter(Boolean));
+    return Array.from(subjs).sort();
+  }, [allQuestions]);
+
+  // Filtered questions based on book and subject
+  const filteredQuestions = useMemo(() => {
+    return allQuestions.filter(q => {
+      if (bookFilter !== "all" && q.source_file !== bookFilter) return false;
+      if (subjectFilter !== "all" && q.parsed_question.subject !== subjectFilter) return false;
+      return true;
+    });
+  }, [allQuestions, bookFilter, subjectFilter]);
+
+  const currentQuestion = filteredQuestions[currentIndex];
+
+  // Reset index when filters change
+  useEffect(() => {
+    setCurrentIndex(0);
+  }, [bookFilter, subjectFilter]);
+
+  // Check for duplicates when current question changes
+  useEffect(() => {
+    if (currentQuestion && statusFilter === "pending") {
+      checkForDuplicate(currentQuestion.parsed_question.question);
+    } else {
+      setDuplicateInfo(null);
+    }
+  }, [currentIndex, filteredQuestions, statusFilter]);
 
   useEffect(() => {
     fetchQuestions();
@@ -114,55 +131,38 @@ export function ExtractionReviewQueue() {
     fetchStats();
   }, [statusFilter]);
 
-  // Check for duplicates when current question changes
-  useEffect(() => {
-    if (currentQuestion && statusFilter === "pending") {
-      checkForDuplicate(currentQuestion.parsed_question.question);
-    } else {
-      setDuplicateCheck(null);
-    }
-  }, [currentIndex, questions, statusFilter]);
-
   const checkForDuplicate = async (questionText: string) => {
     if (!questionText || questionText.length < 20) {
-      setDuplicateCheck(null);
+      setDuplicateInfo(null);
       return;
     }
 
     setCheckingDuplicate(true);
     try {
-      // Get first 50 chars normalized for initial filter
-      const normalizedQuestion = normalizeText(questionText);
-      const searchWords = normalizedQuestion.split(' ').slice(0, 5).join(' ');
+      const searchWords = normalizeText(questionText).split(' ').slice(0, 5).join(' ');
       
-      // Search for similar questions in the database
-      const { data: existingQuestions, error } = await supabase
+      const { data: existingQuestions } = await supabase
         .from("questions")
-        .select("id, question, subject, chapter")
+        .select("id, question")
         .ilike("question", `%${searchWords.slice(0, 30)}%`)
-        .limit(20);
+        .limit(10);
 
-      if (error) throw error;
-
-      // Check similarity with each result
-      let bestMatch: DuplicateResult = { isDuplicate: false, similarity: 0 };
+      let bestMatch = { isDuplicate: false, similarity: 0, existingId: undefined as string | undefined };
       
       for (const existing of existingQuestions || []) {
-        const similarity = calculateSimilarity(questionText, existing.question);
-        
+        const similarity = quickTextSimilarity(questionText, existing.question);
         if (similarity > bestMatch.similarity) {
           bestMatch = {
-            isDuplicate: similarity >= 0.85, // 85% similarity threshold
+            isDuplicate: similarity >= 85,
             similarity,
-            existingQuestion: similarity >= 0.6 ? existing : undefined
+            existingId: similarity >= 60 ? existing.id : undefined
           };
         }
       }
 
-      setDuplicateCheck(bestMatch);
+      setDuplicateInfo(bestMatch);
     } catch (error) {
-      logger.error("Error checking duplicate:", error);
-      setDuplicateCheck(null);
+      logger.error("Duplicate check error:", error);
     } finally {
       setCheckingDuplicate(false);
     }
@@ -176,15 +176,16 @@ export function ExtractionReviewQueue() {
         .select("*")
         .eq("status", statusFilter)
         .order("created_at", { ascending: false })
-        .limit(500);
+        .limit(1000);
 
       if (error) throw error;
-      // Cast the data to our expected type
+      
       const typedData = (data || []).map(item => ({
         ...item,
         parsed_question: item.parsed_question as ExtractedQuestion['parsed_question']
       }));
-      setQuestions(typedData);
+      
+      setAllQuestions(typedData);
       setCurrentIndex(0);
     } catch (error) {
       logger.error("Error fetching questions:", error);
@@ -205,7 +206,8 @@ export function ExtractionReviewQueue() {
       setStats({
         pending: pending.count || 0,
         approved: approved.count || 0,
-        rejected: rejected.count || 0
+        rejected: rejected.count || 0,
+        total: (pending.count || 0) + (approved.count || 0) + (rejected.count || 0)
       });
     } catch (error) {
       logger.error("Error fetching stats:", error);
@@ -215,6 +217,7 @@ export function ExtractionReviewQueue() {
   const fetchChapters = async () => {
     const { data } = await supabase.from("chapters").select("id, chapter_name, subject");
     setChapters(data || []);
+    clearCurriculumCache(); // Refresh NLP cache
   };
 
   const fetchTopics = async (chapterId: string) => {
@@ -222,162 +225,100 @@ export function ExtractionReviewQueue() {
     setTopics(data || []);
   };
 
-  // Find best matching chapter from existing chapters - more lenient matching
-  const findMatchingChapter = (subject: string, chapterName: string): Chapter | undefined => {
-    if (!subject || !chapterName || chapters.length === 0) {
-      logger.info("findMatchingChapter: Missing data", { subject, chapterName, chaptersCount: chapters.length });
-      return undefined;
+  // Run NLP auto-assignment on filtered questions
+  const handleNLPAutoAssign = async () => {
+    if (filteredQuestions.length === 0) {
+      toast.error("No questions to process");
+      return;
     }
 
-    const normalizedSubject = subject.toLowerCase().trim();
-    const normalizedChapter = chapterName.toLowerCase().trim();
-
-    // First try exact match
-    let match = chapters.find(c => 
-      c.subject.toLowerCase().trim() === normalizedSubject && 
-      c.chapter_name.toLowerCase().trim() === normalizedChapter
-    );
-    
-    if (match) {
-      logger.info("findMatchingChapter: Exact match found", match.chapter_name);
-      return match;
+    setNlpProcessing(true);
+    try {
+      toast.info(`Running NLP on ${filteredQuestions.length} questions...`);
+      
+      const result = await bulkAutoAssign(filteredQuestions.map(q => q.id));
+      
+      toast.success(
+        `NLP Complete: ${result.autoAssigned} auto-assigned, ${result.suggested} suggested, ${result.failed} failed`
+      );
+      
+      await fetchQuestions();
+    } catch (error) {
+      logger.error("NLP error:", error);
+      toast.error("NLP processing failed");
+    } finally {
+      setNlpProcessing(false);
     }
-
-    // Try partial match - chapter name contains or is contained
-    match = chapters.find(c => 
-      c.subject.toLowerCase().trim() === normalizedSubject && 
-      (c.chapter_name.toLowerCase().includes(normalizedChapter) || 
-       normalizedChapter.includes(c.chapter_name.toLowerCase()))
-    );
-    
-    if (match) {
-      logger.info("findMatchingChapter: Partial match found", match.chapter_name);
-      return match;
-    }
-
-    // Try word-based matching - at least 2 words match
-    const chapterWords = normalizedChapter.split(/\s+/).filter(w => w.length > 2);
-    match = chapters.find(c => {
-      if (c.subject.toLowerCase().trim() !== normalizedSubject) return false;
-      const existingWords = c.chapter_name.toLowerCase().split(/\s+/).filter(w => w.length > 2);
-      const matchingWords = chapterWords.filter(w => existingWords.some(ew => ew.includes(w) || w.includes(ew)));
-      return matchingWords.length >= 2 || (matchingWords.length >= 1 && chapterWords.length <= 2);
-    });
-
-    if (match) {
-      logger.info("findMatchingChapter: Word match found", match.chapter_name);
-      return match;
-    }
-
-    // Fallback: return first chapter of the subject
-    const subjectChapters = chapters.filter(c => c.subject.toLowerCase().trim() === normalizedSubject);
-    if (subjectChapters.length > 0) {
-      logger.info("findMatchingChapter: Using fallback chapter", subjectChapters[0].chapter_name);
-      return subjectChapters[0];
-    }
-
-    logger.info("findMatchingChapter: No match found for", { subject, chapterName });
-    return undefined;
   };
 
-  const currentQuestion = questions[currentIndex];
+  // Push approved question to database
+  const handleApprove = async (forceApprove = false, overwrite = false) => {
+    if (!currentQuestion) return;
+    
+    if (!forceApprove && duplicateInfo?.isDuplicate) {
+      toast.error("Duplicate detected! Use force approve or skip.");
+      return;
+    }
 
-  const handleApprove = async (forceApprove: boolean = false, overwrite: boolean = false) => {
-    if (!currentQuestion) {
-      logger.info("handleApprove: No current question");
-      toast.error("No question selected");
-      return;
-    }
-    
-    logger.info("handleApprove called", { forceApprove, overwrite, questionId: currentQuestion.id });
-    
-    // Block if duplicate detected (unless force approve)
-    if (!forceApprove && duplicateCheck?.isDuplicate) {
-      toast.error("Duplicate question detected! Use 'Approve Anyway' to override.");
-      return;
-    }
-    
     setSaving(true);
-    
     try {
       const q = editedQuestion?.parsed_question || currentQuestion.parsed_question;
-      logger.info("Processing question", { preview: q.question?.slice(0, 50) });
-      
+
       // Validate required fields
       if (!q.question || !q.option_a || !q.correct_option || !q.subject) {
-        toast.error("Missing required fields (question, options, subject)");
+        toast.error("Missing required fields");
         setSaving(false);
         return;
       }
-      
-      // Find matching chapter from existing chapters
-      const matchingChapter = findMatchingChapter(q.subject, q.chapter || "General");
-      
-      // Prepare chapter data - use match or fallback to extracted values
-      const chapterName = matchingChapter?.chapter_name || q.chapter || "General";
-      const chapterId = matchingChapter?.id || null;
-      
-      logger.info("Using chapter", { chapterName, chapterId, hasMatch: !!matchingChapter });
 
-      // If overwriting duplicate, delete the existing question first
-      if (overwrite && duplicateCheck?.existingQuestion?.id) {
-        logger.info("Deleting existing duplicate", { duplicateId: duplicateCheck.existingQuestion.id });
-        const { error: deleteError } = await supabase.from("questions").delete().eq("id", duplicateCheck.existingQuestion.id);
-        if (deleteError) {
-          logger.error("Delete error:", deleteError);
-        }
+      // Get chapter/topic from NLP assignment or manual selection
+      const chapterId = q.auto_assigned_chapter_id || null;
+      const topicId = q.auto_assigned_topic_id || null;
+      const chapterName = q.auto_assigned_chapter_name || q.chapter || "General";
+      const topicName = q.auto_assigned_topic_name || q.topic || chapterName;
+
+      // Overwrite existing if requested
+      if (overwrite && duplicateInfo?.existingId) {
+        await supabase.from("questions").delete().eq("id", duplicateInfo.existingId);
       }
-      
+
       // Insert into questions table
-      logger.info("Inserting question with data", { subject: q.subject, chapter: chapterName, topic: q.topic });
       const { error: insertError } = await supabase.from("questions").insert({
         question: q.question,
         option_a: q.option_a,
         option_b: q.option_b || "",
         option_c: q.option_c || "",
         option_d: q.option_d || "",
-        correct_option: q.correct_option,
+        correct_option: q.correct_option.toUpperCase(),
         explanation: q.explanation || "",
         subject: q.subject,
         chapter: chapterName,
-        topic: q.topic || chapterName,
+        chapter_id: chapterId,
+        topic: topicName,
+        topic_id: topicId,
         difficulty: q.difficulty || "Medium",
         exam: q.exam || "JEE",
-        question_type: "single_correct",
-        chapter_id: chapterId
+        question_type: "single_correct"
       });
 
-      if (insertError) {
-        logger.error("Insert error:", insertError);
-        throw insertError;
-      }
+      if (insertError) throw insertError;
 
-      logger.info("Question inserted successfully");
-
-      // Update status to approved
-      const { error: updateError } = await supabase
+      // Mark as approved
+      await supabase
         .from("extracted_questions_queue")
         .update({ status: "approved" })
         .eq("id", currentQuestion.id);
 
-      if (updateError) {
-        logger.error("Update status error:", updateError);
-        throw updateError;
-      }
-
-      logger.info("Question status updated to approved");
-      toast.success(overwrite ? "Question overwritten!" : "Question approved and added to database!");
+      toast.success("Question pushed to database!");
       
-      // Move to next question
-      setQuestions(prev => prev.filter(q => q.id !== currentQuestion.id));
+      setAllQuestions(prev => prev.filter(q => q.id !== currentQuestion.id));
       setEditMode(false);
       setEditedQuestion(null);
-      setDuplicateCheck(null);
+      setDuplicateInfo(null);
       fetchStats();
-      
     } catch (error: any) {
-      logger.error("Error approving:", error);
-      toast.error(`Failed to approve: ${error?.message || "Unknown error"}`);
+      logger.error("Approve error:", error);
+      toast.error(`Failed: ${error?.message || "Unknown error"}`);
     } finally {
       setSaving(false);
     }
@@ -388,121 +329,105 @@ export function ExtractionReviewQueue() {
     setSaving(true);
     
     try {
-      const { error } = await supabase
+      await supabase
         .from("extracted_questions_queue")
         .update({ status: "rejected" })
         .eq("id", currentQuestion.id);
 
-      if (error) throw error;
-
       toast.info("Question rejected");
-      setQuestions(prev => prev.filter(q => q.id !== currentQuestion.id));
+      setAllQuestions(prev => prev.filter(q => q.id !== currentQuestion.id));
       setEditMode(false);
       setEditedQuestion(null);
       fetchStats();
-      
     } catch (error) {
-      logger.error("Error rejecting:", error);
-      toast.error("Failed to reject question");
+      logger.error("Reject error:", error);
+      toast.error("Failed to reject");
     } finally {
       setSaving(false);
     }
   };
 
-  // Check if a question is duplicate
-  const checkDuplicateForQuestion = async (questionText: string): Promise<{ isDuplicate: boolean; existingId?: string }> => {
-    if (!questionText || questionText.length < 20) {
-      return { isDuplicate: false };
-    }
-
-    try {
-      const normalizedQuestion = normalizeText(questionText);
-      const searchWords = normalizedQuestion.split(' ').slice(0, 5).join(' ');
-      
-      const { data: existingQuestions } = await supabase
-        .from("questions")
-        .select("id, question")
-        .ilike("question", `%${searchWords.slice(0, 30)}%`)
-        .limit(10);
-
-      for (const existing of existingQuestions || []) {
-        const similarity = calculateSimilarity(questionText, existing.question);
-        if (similarity >= 0.85) {
-          return { isDuplicate: true, existingId: existing.id };
-        }
-      }
-
-      return { isDuplicate: false };
-    } catch (error) {
-      logger.error("Error checking duplicate:", error);
-      return { isDuplicate: false };
-    }
-  };
-
-  // Bulk approve ALL (ignores duplicates, approves everything with valid chapters)
-  const handleBulkApproveAll = async () => {
-    if (questions.length === 0) {
+  // Bulk approve all filtered questions
+  const handleBulkApprove = async (skipDuplicates = true) => {
+    if (filteredQuestions.length === 0) {
       toast.error("No questions to approve");
       return;
     }
-    
-    logger.info("Starting bulk approve all", { total: questions.length });
+
     setBulkProcessing(true);
-    setBulkProgress({ current: 0, total: questions.length, skipped: 0, approved: 0, overwritten: 0 });
-    
+    setBulkProgress({ current: 0, total: filteredQuestions.length, approved: 0, skipped: 0 });
+
     try {
       let approved = 0;
       let skipped = 0;
-      
-      for (let i = 0; i < questions.length; i++) {
-        const question = questions[i];
+
+      for (let i = 0; i < filteredQuestions.length; i++) {
+        const question = filteredQuestions[i];
         const q = question.parsed_question;
         
         setBulkProgress(prev => ({ ...prev, current: i + 1 }));
-        
-        // Skip if missing required fields
+
+        // Skip invalid questions
         if (!q.question || !q.option_a || !q.correct_option || !q.subject) {
-          logger.info("Skipping question - missing fields", { questionId: question.id });
           skipped++;
-          await supabase
-            .from("extracted_questions_queue")
-            .update({ status: "rejected", review_notes: "Skipped - Missing required fields" })
-            .eq("id", question.id);
           continue;
         }
 
-        // Find matching chapter - now with fallback
-        const matchingChapter = findMatchingChapter(q.subject, q.chapter || "General");
-        const chapterName = matchingChapter?.chapter_name || q.chapter || "General";
-        const chapterId = matchingChapter?.id || null;
+        // Check for duplicates if requested
+        if (skipDuplicates) {
+          const searchWords = normalizeText(q.question).split(' ').slice(0, 5).join(' ');
+          const { data: existing } = await supabase
+            .from("questions")
+            .select("id, question")
+            .ilike("question", `%${searchWords.slice(0, 30)}%`)
+            .limit(5);
 
-        // Insert question (no duplicate check)
-        const { error: insertError } = await supabase.from("questions").insert({
+          const isDuplicate = (existing || []).some(e => 
+            quickTextSimilarity(q.question, e.question) >= 85
+          );
+
+          if (isDuplicate) {
+            await supabase
+              .from("extracted_questions_queue")
+              .update({ status: "rejected", review_notes: "Duplicate" })
+              .eq("id", question.id);
+            skipped++;
+            continue;
+          }
+        }
+
+        // Get curriculum assignment
+        const chapterId = q.auto_assigned_chapter_id || null;
+        const topicId = q.auto_assigned_topic_id || null;
+        const chapterName = q.auto_assigned_chapter_name || q.chapter || "General";
+        const topicName = q.auto_assigned_topic_name || q.topic || chapterName;
+
+        // Insert into database
+        const { error } = await supabase.from("questions").insert({
           question: q.question,
           option_a: q.option_a,
           option_b: q.option_b || "",
           option_c: q.option_c || "",
           option_d: q.option_d || "",
-          correct_option: q.correct_option,
+          correct_option: q.correct_option.toUpperCase(),
           explanation: q.explanation || "",
           subject: q.subject,
           chapter: chapterName,
-          topic: q.topic || chapterName,
+          chapter_id: chapterId,
+          topic: topicName,
+          topic_id: topicId,
           difficulty: q.difficulty || "Medium",
           exam: q.exam || "JEE",
-          question_type: "single_correct",
-          chapter_id: chapterId
+          question_type: "single_correct"
         });
 
-        if (!insertError) {
+        if (!error) {
           await supabase
             .from("extracted_questions_queue")
             .update({ status: "approved" })
             .eq("id", question.id);
           approved++;
-          logger.info("Approved question", { questionId: question.id });
         } else {
-          logger.error("Insert error for question", { questionId: question.id, error: insertError });
           skipped++;
         }
 
@@ -512,213 +437,29 @@ export function ExtractionReviewQueue() {
       toast.success(`Bulk complete: ${approved} approved, ${skipped} skipped`);
       await fetchQuestions();
       await fetchStats();
-      
-    } catch (error: any) {
-      logger.error("Bulk approve all error:", error);
-      toast.error(`Bulk approval failed: ${error?.message || "Unknown error"}`);
-    } finally {
-      setBulkProcessing(false);
-    }
-  };
-
-  // Bulk approve with skip duplicates
-  const handleBulkApproveSkipDuplicates = async () => {
-    if (questions.length === 0) {
-      toast.error("No questions to process");
-      return;
-    }
-    
-    logger.info("Starting bulk approve (skip duplicates)", { total: questions.length });
-    setBulkProcessing(true);
-    setBulkProgress({ current: 0, total: questions.length, skipped: 0, approved: 0, overwritten: 0 });
-    
-    try {
-      let approved = 0;
-      let skipped = 0;
-      
-      for (let i = 0; i < questions.length; i++) {
-        const question = questions[i];
-        const q = question.parsed_question;
-        
-        setBulkProgress(prev => ({ ...prev, current: i + 1 }));
-        
-        // Skip if missing required fields
-        if (!q.question || !q.option_a || !q.correct_option || !q.subject) {
-          logger.info("Skipping question - missing fields", { questionId: question.id });
-          skipped++;
-          continue;
-        }
-
-        // Find matching chapter - with fallback
-        const matchingChapter = findMatchingChapter(q.subject, q.chapter || "General");
-        const chapterName = matchingChapter?.chapter_name || q.chapter || "General";
-        const chapterId = matchingChapter?.id || null;
-
-        // Check for duplicate - SKIP if found
-        const duplicateResult = await checkDuplicateForQuestion(q.question);
-        if (duplicateResult.isDuplicate) {
-          logger.info("Skipping duplicate", { questionId: question.id });
-          await supabase
-            .from("extracted_questions_queue")
-            .update({ status: "rejected", review_notes: "Skipped - Duplicate" })
-            .eq("id", question.id);
-          skipped++;
-          continue;
-        }
-
-        // Insert question
-        const { error: insertError } = await supabase.from("questions").insert({
-          question: q.question,
-          option_a: q.option_a,
-          option_b: q.option_b || "",
-          option_c: q.option_c || "",
-          option_d: q.option_d || "",
-          correct_option: q.correct_option,
-          explanation: q.explanation || "",
-          subject: q.subject,
-          chapter: chapterName,
-          topic: q.topic || chapterName,
-          difficulty: q.difficulty || "Medium",
-          exam: q.exam || "JEE",
-          question_type: "single_correct",
-          chapter_id: chapterId
-        });
-
-        if (!insertError) {
-          await supabase
-            .from("extracted_questions_queue")
-            .update({ status: "approved" })
-            .eq("id", question.id);
-          approved++;
-          logger.info("Approved question", { questionId: question.id });
-        } else {
-          logger.error("Insert error during bulk approve skip duplicates", insertError);
-          skipped++;
-        }
-
-        setBulkProgress(prev => ({ ...prev, approved, skipped }));
-      }
-
-      toast.success(`Bulk complete: ${approved} approved, ${skipped} skipped (duplicates)`);
-      await fetchQuestions();
-      await fetchStats();
-      
-    } catch (error: any) {
-      logger.error("Bulk approve error:", error);
-      toast.error(`Bulk approval failed: ${error?.message || "Unknown error"}`);
-    } finally {
-      setBulkProcessing(false);
-    }
-  };
-
-  // Bulk approve with overwrite duplicates
-  const handleBulkApproveOverwriteDuplicates = async () => {
-    if (questions.length === 0) {
-      toast.error("No questions to process");
-      return;
-    }
-    
-    logger.info("Starting bulk approve (overwrite duplicates)", { total: questions.length });
-    setBulkProcessing(true);
-    setBulkProgress({ current: 0, total: questions.length, skipped: 0, approved: 0, overwritten: 0 });
-    
-    try {
-      let approved = 0;
-      let skipped = 0;
-      let overwritten = 0;
-      
-      for (let i = 0; i < questions.length; i++) {
-        const question = questions[i];
-        const q = question.parsed_question;
-        
-        setBulkProgress(prev => ({ ...prev, current: i + 1 }));
-        
-        // Skip if missing required fields
-        if (!q.question || !q.option_a || !q.correct_option || !q.subject) {
-          logger.info("Skipping question - missing fields", { questionId: question.id });
-          skipped++;
-          continue;
-        }
-
-        // Find matching chapter - with fallback
-        const matchingChapter = findMatchingChapter(q.subject, q.chapter || "General");
-        const chapterName = matchingChapter?.chapter_name || q.chapter || "General";
-        const chapterId = matchingChapter?.id || null;
-
-        // Check for duplicate - OVERWRITE if found
-        const duplicateResult = await checkDuplicateForQuestion(q.question);
-        if (duplicateResult.isDuplicate && duplicateResult.existingId) {
-          logger.info("Overwriting duplicate", { existingId: duplicateResult.existingId });
-          await supabase.from("questions").delete().eq("id", duplicateResult.existingId);
-          overwritten++;
-        }
-
-        // Insert question
-        const { error: insertError } = await supabase.from("questions").insert({
-          question: q.question,
-          option_a: q.option_a,
-          option_b: q.option_b || "",
-          option_c: q.option_c || "",
-          option_d: q.option_d || "",
-          correct_option: q.correct_option,
-          explanation: q.explanation || "",
-          subject: q.subject,
-          chapter: chapterName,
-          topic: q.topic || chapterName,
-          difficulty: q.difficulty || "Medium",
-          exam: q.exam || "JEE",
-          question_type: "single_correct",
-          chapter_id: chapterId
-        });
-
-        if (!insertError) {
-          await supabase
-            .from("extracted_questions_queue")
-            .update({ status: "approved" })
-            .eq("id", question.id);
-          approved++;
-          logger.info("Approved question", { questionId: question.id });
-        } else {
-          logger.error("Insert error during bulk approve overwrite", insertError);
-          skipped++;
-        }
-
-        setBulkProgress(prev => ({ ...prev, approved, skipped, overwritten }));
-      }
-
-      toast.success(`Bulk complete: ${approved} approved, ${overwritten} overwritten, ${skipped} skipped`);
-      await fetchQuestions();
-      await fetchStats();
-      
-    } catch (error: any) {
-      logger.error("Bulk approve error:", error);
-      toast.error(`Bulk approval failed: ${error?.message || "Unknown error"}`);
+    } catch (error) {
+      logger.error("Bulk error:", error);
+      toast.error("Bulk processing failed");
     } finally {
       setBulkProcessing(false);
     }
   };
 
   const handleEdit = () => {
+    if (!currentQuestion) return;
     setEditedQuestion({ ...currentQuestion });
     setEditMode(true);
-    // Load topics for current chapter
-    const matchingChapter = findMatchingChapter(
-      currentQuestion.parsed_question.subject, 
-      currentQuestion.parsed_question.chapter
-    );
-    if (matchingChapter) {
-      fetchTopics(matchingChapter.id);
-    }
+    
+    // Load topics for assigned chapter
+    const chapterId = currentQuestion.parsed_question.auto_assigned_chapter_id;
+    if (chapterId) fetchTopics(chapterId);
   };
 
   const updateEditedField = (field: string, value: string) => {
     if (!editedQuestion) return;
     setEditedQuestion({
       ...editedQuestion,
-      parsed_question: {
-        ...editedQuestion.parsed_question,
-        [field]: value
-      }
+      parsed_question: { ...editedQuestion.parsed_question, [field]: value }
     });
   };
 
@@ -733,11 +474,11 @@ export function ExtractionReviewQueue() {
   return (
     <div className="space-y-6">
       {/* Stats Cards */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="cursor-pointer hover:border-primary/50" onClick={() => setStatusFilter("pending")}>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold text-yellow-500">{stats.pending}</div>
-            <div className="text-sm text-muted-foreground">Pending Review</div>
+            <div className="text-sm text-muted-foreground">Pending</div>
           </CardContent>
         </Card>
         <Card className="cursor-pointer hover:border-primary/50" onClick={() => setStatusFilter("approved")}>
@@ -752,19 +493,122 @@ export function ExtractionReviewQueue() {
             <div className="text-sm text-muted-foreground">Rejected</div>
           </CardContent>
         </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-2xl font-bold">{stats.total}</div>
+            <div className="text-sm text-muted-foreground">Total</div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Bulk Progress */}
-      {bulkProcessing && (
-        <Alert>
-          <Loader2 className="h-4 w-4 animate-spin" />
-          <AlertDescription className="ml-2">
-            Processing {bulkProgress.current} of {bulkProgress.total}...
-            <span className="ml-2 text-green-500">{bulkProgress.approved} approved</span>
-            {bulkProgress.overwritten > 0 && <span className="ml-2 text-yellow-500">{bulkProgress.overwritten} overwritten</span>}
-            <span className="ml-2 text-muted-foreground">{bulkProgress.skipped} skipped</span>
-          </AlertDescription>
-        </Alert>
+      {/* Filters */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Filter className="h-4 w-4" />
+            Filters
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-4">
+            <div className="flex-1 min-w-[200px]">
+              <Label className="mb-2 block text-sm">Book/Source File</Label>
+              <Select value={bookFilter} onValueChange={setBookFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All books" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Books ({allQuestions.length})</SelectItem>
+                  {sourceFiles.map(file => (
+                    <SelectItem key={file} value={file}>
+                      {file.length > 40 ? file.slice(0, 40) + "..." : file}
+                      {" "}({allQuestions.filter(q => q.source_file === file).length})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex-1 min-w-[200px]">
+              <Label className="mb-2 block text-sm">Subject</Label>
+              <Select value={subjectFilter} onValueChange={setSubjectFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All subjects" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Subjects</SelectItem>
+                  {subjects.map(subj => (
+                    <SelectItem key={subj} value={subj}>{subj}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => { setBookFilter("all"); setSubjectFilter("all"); }}>
+                Clear Filters
+              </Button>
+            </div>
+          </div>
+          <p className="text-sm text-muted-foreground mt-3">
+            Showing {filteredQuestions.length} of {allQuestions.length} questions
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* NLP & Bulk Actions */}
+      {statusFilter === "pending" && filteredQuestions.length > 0 && (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="pt-6">
+            <div className="flex flex-wrap gap-3 items-center justify-between">
+              <div>
+                <h4 className="font-semibold flex items-center gap-2">
+                  <Brain className="h-4 w-4" />
+                  NLP Auto-Assignment
+                </h4>
+                <p className="text-sm text-muted-foreground">
+                  Run NLP to auto-assign chapters/topics, then bulk approve
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  onClick={handleNLPAutoAssign}
+                  disabled={nlpProcessing || bulkProcessing}
+                  className="gap-2"
+                >
+                  {nlpProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                  Run NLP ({filteredQuestions.length})
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => handleBulkApprove(true)}
+                  disabled={nlpProcessing || bulkProcessing}
+                  className="gap-2 border-green-500 text-green-600 hover:bg-green-500/10"
+                >
+                  <Database className="h-4 w-4" />
+                  Push All to DB (Skip Duplicates)
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => handleBulkApprove(false)}
+                  disabled={nlpProcessing || bulkProcessing}
+                  className="gap-2"
+                >
+                  <Database className="h-4 w-4" />
+                  Push All (Force)
+                </Button>
+              </div>
+            </div>
+            {bulkProcessing && (
+              <div className="mt-4 space-y-2">
+                <Progress value={(bulkProgress.current / bulkProgress.total) * 100} />
+                <p className="text-sm text-muted-foreground">
+                  Processing {bulkProgress.current}/{bulkProgress.total} - 
+                  <span className="text-green-500 ml-1">{bulkProgress.approved} approved</span>,
+                  <span className="text-yellow-500 ml-1">{bulkProgress.skipped} skipped</span>
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {/* Main Review Card */}
@@ -774,92 +618,34 @@ export function ExtractionReviewQueue() {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <BookOpen className="h-5 w-5" />
-                Review Queue - {statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)}
+                Review Queue - {statusFilter}
               </CardTitle>
               <CardDescription>
-                {questions.length} questions to review
+                {filteredQuestions.length} questions {bookFilter !== "all" && `from "${bookFilter}"`}
               </CardDescription>
             </div>
-            <div className="flex gap-2 flex-wrap">
-              <Button variant="outline" size="sm" onClick={fetchQuestions} disabled={bulkProcessing}>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Refresh
-              </Button>
-              {statusFilter === "pending" && questions.length > 0 && (
-                <>
-                  <Button 
-                    size="sm" 
-                    onClick={() => {
-                      logger.info("Approve All clicked");
-                      handleBulkApproveAll();
-                    }} 
-                    disabled={bulkProcessing}
-                    className="bg-green-600 hover:bg-green-700 text-white"
-                  >
-                    <CheckCircle2 className="h-4 w-4 mr-2" />
-                    Approve All ({questions.length})
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={() => {
-                      logger.info("Skip All Duplicates clicked");
-                      handleBulkApproveSkipDuplicates();
-                    }} 
-                    disabled={bulkProcessing}
-                    className="border-blue-500 text-blue-600 hover:bg-blue-500/10"
-                  >
-                    <SkipForward className="h-4 w-4 mr-2" />
-                    Skip Duplicates
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={() => {
-                      logger.info("Overwrite All Duplicates clicked");
-                      handleBulkApproveOverwriteDuplicates();
-                    }} 
-                    disabled={bulkProcessing}
-                    className="border-orange-500 text-orange-600 hover:bg-orange-500/10"
-                  >
-                    <Replace className="h-4 w-4 mr-2" />
-                    Overwrite Duplicates
-                  </Button>
-                </>
-              )}
-            </div>
+            <Button variant="outline" size="sm" onClick={fetchQuestions} disabled={bulkProcessing}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
           </div>
         </CardHeader>
         <CardContent>
-          {questions.length === 0 ? (
+          {filteredQuestions.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No {statusFilter} questions</p>
+              <p>No {statusFilter} questions {bookFilter !== "all" && `from this book`}</p>
             </div>
           ) : (
             <div className="space-y-6">
               {/* Navigation */}
               <div className="flex items-center justify-between">
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  disabled={currentIndex === 0}
-                  onClick={() => setCurrentIndex(prev => prev - 1)}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  Previous
+                <Button variant="outline" size="sm" disabled={currentIndex === 0} onClick={() => setCurrentIndex(prev => prev - 1)}>
+                  <ChevronLeft className="h-4 w-4" /> Previous
                 </Button>
-                <span className="text-sm text-muted-foreground">
-                  {currentIndex + 1} of {questions.length}
-                </span>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  disabled={currentIndex >= questions.length - 1}
-                  onClick={() => setCurrentIndex(prev => prev + 1)}
-                >
-                  Next
-                  <ChevronRight className="h-4 w-4" />
+                <span className="text-sm text-muted-foreground">{currentIndex + 1} of {filteredQuestions.length}</span>
+                <Button variant="outline" size="sm" disabled={currentIndex >= filteredQuestions.length - 1} onClick={() => setCurrentIndex(prev => prev + 1)}>
+                  Next <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
 
@@ -868,70 +654,64 @@ export function ExtractionReviewQueue() {
               {/* Question Display */}
               {currentQuestion && (
                 <div className="space-y-4">
-                  {/* Source Info */}
+                  {/* Source & Badges */}
                   <div className="flex flex-wrap gap-2">
-                    <Badge variant="outline">
-                      <FileText className="h-3 w-3 mr-1" />
-                      {currentQuestion.source_file}
-                    </Badge>
+                    <Badge variant="outline"><FileText className="h-3 w-3 mr-1" />{currentQuestion.source_file.slice(0, 30)}</Badge>
                     <Badge variant="outline">Page {currentQuestion.page_number}</Badge>
                     <Badge>{currentQuestion.parsed_question.subject || "Unknown"}</Badge>
                     <Badge variant="secondary">{currentQuestion.parsed_question.difficulty || "Medium"}</Badge>
-                    {checkingDuplicate && (
-                      <Badge variant="outline">
-                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                        Checking...
+                    
+                    {/* NLP Assignment Badge */}
+                    {currentQuestion.parsed_question.assignment_method && (
+                      <Badge 
+                        variant={currentQuestion.parsed_question.assignment_method === 'auto' ? 'default' : 'outline'}
+                        className={currentQuestion.parsed_question.assignment_method === 'auto' ? 'bg-green-600' : 'border-yellow-500 text-yellow-600'}
+                      >
+                        <Brain className="h-3 w-3 mr-1" />
+                        {currentQuestion.parsed_question.assignment_method === 'auto' ? 'Auto' : 'Suggested'} 
+                        ({Math.round(currentQuestion.parsed_question.confidence_score || 0)}%)
                       </Badge>
                     )}
-                    {duplicateCheck?.isDuplicate && (
-                      <Badge variant="destructive">
-                        <Copy className="h-3 w-3 mr-1" />
-                        Duplicate ({Math.round(duplicateCheck.similarity * 100)}% match)
-                      </Badge>
-                    )}
-                    {duplicateCheck && !duplicateCheck.isDuplicate && duplicateCheck.similarity >= 0.6 && (
-                      <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/30">
-                        <AlertTriangle className="h-3 w-3 mr-1" />
-                        Similar ({Math.round(duplicateCheck.similarity * 100)}%)
-                      </Badge>
+
+                    {checkingDuplicate && <Badge variant="outline"><Loader2 className="h-3 w-3 mr-1 animate-spin" />Checking...</Badge>}
+                    {duplicateInfo?.isDuplicate && (
+                      <Badge variant="destructive"><Copy className="h-3 w-3 mr-1" />Duplicate ({Math.round(duplicateInfo.similarity)}%)</Badge>
                     )}
                   </div>
 
-                  {/* Duplicate Warning Alert with Options */}
-                  {duplicateCheck?.existingQuestion && (
-                    <Alert variant={duplicateCheck.isDuplicate ? "destructive" : "default"} className="mt-3">
-                      <AlertTriangle className="h-4 w-4" />
-                      <AlertDescription className="ml-2">
-                        <strong>{duplicateCheck.isDuplicate ? "Duplicate Detected!" : "Similar Question Found"}</strong>
-                        <p className="text-sm mt-1 opacity-80">
-                          {duplicateCheck.existingQuestion.question.slice(0, 150)}...
-                        </p>
-                        <p className="text-xs mt-1 opacity-60">
-                          {duplicateCheck.existingQuestion.subject} → {duplicateCheck.existingQuestion.chapter}
-                        </p>
-                        {duplicateCheck.isDuplicate && (
-                          <div className="flex gap-2 mt-3">
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={handleReject}
-                              disabled={saving}
-                            >
-                              <SkipForward className="h-3 w-3 mr-1" />
-                              Skip (Keep Existing)
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => handleApprove(true, true)}
-                              disabled={saving}
-                              className="border-orange-500 text-orange-600 hover:bg-orange-500/10"
-                            >
-                              <Replace className="h-3 w-3 mr-1" />
-                              Overwrite Existing
-                            </Button>
+                  {/* NLP Assignment Info */}
+                  {currentQuestion.parsed_question.auto_assigned_chapter_name && (
+                    <Alert className="bg-primary/5 border-primary/30">
+                      <Brain className="h-4 w-4" />
+                      <AlertDescription>
+                        <span className="font-medium">NLP Assignment:</span>{" "}
+                        {currentQuestion.parsed_question.auto_assigned_chapter_name}
+                        {currentQuestion.parsed_question.auto_assigned_topic_name && (
+                          <> → {currentQuestion.parsed_question.auto_assigned_topic_name}</>
+                        )}
+                        {currentQuestion.parsed_question.matched_keywords && (
+                          <div className="text-xs mt-1 text-muted-foreground">
+                            Matched: {currentQuestion.parsed_question.matched_keywords.slice(0, 5).join(", ")}
                           </div>
                         )}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {/* Duplicate Warning */}
+                  {duplicateInfo?.isDuplicate && (
+                    <Alert variant="destructive">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertDescription>
+                        <strong>Duplicate Detected!</strong>
+                        <div className="flex gap-2 mt-2">
+                          <Button size="sm" variant="outline" onClick={handleReject} disabled={saving}>
+                            <SkipForward className="h-3 w-3 mr-1" /> Skip
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => handleApprove(true, true)} disabled={saving} className="border-orange-500 text-orange-600">
+                            <Replace className="h-3 w-3 mr-1" /> Overwrite
+                          </Button>
+                        </div>
                       </AlertDescription>
                     </Alert>
                   )}
@@ -941,154 +721,88 @@ export function ExtractionReviewQueue() {
                     <div className="space-y-4">
                       <div className="space-y-2">
                         <Label>Question</Label>
-                        <Textarea 
-                          value={editedQuestion.parsed_question.question}
-                          onChange={(e) => updateEditedField("question", e.target.value)}
-                          rows={4}
-                        />
+                        <Textarea value={editedQuestion.parsed_question.question} onChange={(e) => updateEditedField("question", e.target.value)} rows={4} />
                       </div>
 
                       <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>Option A</Label>
-                          <Input 
-                            value={editedQuestion.parsed_question.option_a}
-                            onChange={(e) => updateEditedField("option_a", e.target.value)}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Option B</Label>
-                          <Input 
-                            value={editedQuestion.parsed_question.option_b}
-                            onChange={(e) => updateEditedField("option_b", e.target.value)}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Option C</Label>
-                          <Input 
-                            value={editedQuestion.parsed_question.option_c}
-                            onChange={(e) => updateEditedField("option_c", e.target.value)}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Option D</Label>
-                          <Input 
-                            value={editedQuestion.parsed_question.option_d}
-                            onChange={(e) => updateEditedField("option_d", e.target.value)}
-                          />
-                        </div>
+                        {["a", "b", "c", "d"].map(opt => (
+                          <div key={opt} className="space-y-2">
+                            <Label>Option {opt.toUpperCase()}</Label>
+                            <Input 
+                              value={(editedQuestion.parsed_question as any)[`option_${opt}`]} 
+                              onChange={(e) => updateEditedField(`option_${opt}`, e.target.value)} 
+                            />
+                          </div>
+                        ))}
                       </div>
 
                       <div className="grid grid-cols-3 gap-4">
                         <div className="space-y-2">
                           <Label>Correct Answer</Label>
-                          <Select 
-                            value={editedQuestion.parsed_question.correct_option}
-                            onValueChange={(v) => updateEditedField("correct_option", v)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
+                          <Select value={editedQuestion.parsed_question.correct_option} onValueChange={(v) => updateEditedField("correct_option", v)}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="A">A</SelectItem>
-                              <SelectItem value="B">B</SelectItem>
-                              <SelectItem value="C">C</SelectItem>
-                              <SelectItem value="D">D</SelectItem>
+                              {["A", "B", "C", "D"].map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
                             </SelectContent>
                           </Select>
                         </div>
                         <div className="space-y-2">
                           <Label>Subject</Label>
-                          <Select 
-                            value={editedQuestion.parsed_question.subject}
-                            onValueChange={(v) => {
-                              updateEditedField("subject", v);
-                              updateEditedField("chapter", ""); // Reset chapter when subject changes
-                              setTopics([]);
-                            }}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
+                          <Select value={editedQuestion.parsed_question.subject} onValueChange={(v) => updateEditedField("subject", v)}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="Physics">Physics</SelectItem>
-                              <SelectItem value="Chemistry">Chemistry</SelectItem>
-                              <SelectItem value="Mathematics">Mathematics</SelectItem>
-                              <SelectItem value="Biology">Biology</SelectItem>
+                              {["Physics", "Chemistry", "Mathematics", "Biology"].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                             </SelectContent>
                           </Select>
                         </div>
                         <div className="space-y-2">
                           <Label>Difficulty</Label>
-                          <Select 
-                            value={editedQuestion.parsed_question.difficulty}
-                            onValueChange={(v) => updateEditedField("difficulty", v)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
+                          <Select value={editedQuestion.parsed_question.difficulty || "Medium"} onValueChange={(v) => updateEditedField("difficulty", v)}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="Easy">Easy</SelectItem>
-                              <SelectItem value="Medium">Medium</SelectItem>
-                              <SelectItem value="Hard">Hard</SelectItem>
+                              {["Easy", "Medium", "Hard"].map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
                             </SelectContent>
                           </Select>
                         </div>
                       </div>
 
                       <div className="space-y-2">
-                        <Label>Chapter (from existing only)</Label>
+                        <Label>Chapter (from curriculum)</Label>
                         <Select 
-                          value={editedQuestion.parsed_question.chapter}
+                          value={editedQuestion.parsed_question.auto_assigned_chapter_id || ""} 
                           onValueChange={(v) => {
-                            updateEditedField("chapter", v);
-                            // Find chapter and load its topics
-                            const selectedChapter = chapters.find(c => c.chapter_name === v);
-                            if (selectedChapter) {
-                              fetchTopics(selectedChapter.id);
-                            }
+                            const chapter = chapters.find(c => c.id === v);
+                            updateEditedField("auto_assigned_chapter_id", v);
+                            updateEditedField("auto_assigned_chapter_name", chapter?.chapter_name || "");
+                            if (v) fetchTopics(v);
                           }}
                         >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select chapter" />
-                          </SelectTrigger>
+                          <SelectTrigger><SelectValue placeholder="Select chapter" /></SelectTrigger>
                           <SelectContent>
                             <ScrollArea className="h-60">
-                              {chapters
-                                .filter(c => c.subject === editedQuestion.parsed_question.subject)
-                                .map(c => (
-                                  <SelectItem key={c.id} value={c.chapter_name}>
-                                    {c.chapter_name}
-                                  </SelectItem>
-                                ))
-                              }
+                              {chapters.filter(c => c.subject === editedQuestion.parsed_question.subject).map(c => (
+                                <SelectItem key={c.id} value={c.id}>{c.chapter_name}</SelectItem>
+                              ))}
                             </ScrollArea>
                           </SelectContent>
                         </Select>
-                        {chapters.filter(c => c.subject === editedQuestion.parsed_question.subject).length === 0 && (
-                          <p className="text-xs text-destructive">No chapters found for {editedQuestion.parsed_question.subject}. Add chapters first.</p>
-                        )}
                       </div>
 
                       <div className="space-y-2">
-                        <Label>Topic (from existing only)</Label>
+                        <Label>Topic (optional)</Label>
                         <Select 
-                          value={editedQuestion.parsed_question.topic}
-                          onValueChange={(v) => updateEditedField("topic", v)}
+                          value={editedQuestion.parsed_question.auto_assigned_topic_id || ""} 
+                          onValueChange={(v) => {
+                            const topic = topics.find(t => t.id === v);
+                            updateEditedField("auto_assigned_topic_id", v);
+                            updateEditedField("auto_assigned_topic_name", topic?.topic_name || "");
+                          }}
                         >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select topic or use chapter name" />
-                          </SelectTrigger>
+                          <SelectTrigger><SelectValue placeholder="Select topic" /></SelectTrigger>
                           <SelectContent>
                             <ScrollArea className="h-60">
-                              {/* Default: use chapter name as topic */}
-                              <SelectItem value={editedQuestion.parsed_question.chapter || "General"}>
-                                {editedQuestion.parsed_question.chapter || "General"} (Chapter)
-                              </SelectItem>
                               {topics.map(t => (
-                                <SelectItem key={t.id} value={t.topic_name}>
-                                  {t.topic_name}
-                                </SelectItem>
+                                <SelectItem key={t.id} value={t.id}>{t.topic_name}</SelectItem>
                               ))}
                             </ScrollArea>
                           </SelectContent>
@@ -1097,11 +811,7 @@ export function ExtractionReviewQueue() {
 
                       <div className="space-y-2">
                         <Label>Explanation</Label>
-                        <Textarea 
-                          value={editedQuestion.parsed_question.explanation}
-                          onChange={(e) => updateEditedField("explanation", e.target.value)}
-                          rows={2}
-                        />
+                        <Textarea value={editedQuestion.parsed_question.explanation || ""} onChange={(e) => updateEditedField("explanation", e.target.value)} rows={2} />
                       </div>
                     </div>
                   ) : (
@@ -1114,17 +824,12 @@ export function ExtractionReviewQueue() {
                       </div>
 
                       <div className="grid grid-cols-2 gap-3">
-                        {["A", "B", "C", "D"].map((opt) => {
+                        {["A", "B", "C", "D"].map(opt => {
                           const optionKey = `option_${opt.toLowerCase()}` as keyof typeof currentQuestion.parsed_question;
-                          const isCorrect = currentQuestion.parsed_question.correct_option === opt;
+                          const isCorrect = currentQuestion.parsed_question.correct_option?.toUpperCase() === opt;
                           const optionText = currentQuestion.parsed_question[optionKey] as string;
                           return (
-                            <div 
-                              key={opt}
-                              className={`p-3 rounded-lg border ${
-                                isCorrect ? "bg-green-500/10 border-green-500" : "bg-card"
-                              }`}
-                            >
+                            <div key={opt} className={`p-3 rounded-lg border ${isCorrect ? "bg-green-500/10 border-green-500" : "bg-card"}`}>
                               <span className="font-semibold mr-2">({opt})</span>
                               <MathDisplay text={optionText || ''} />
                               {isCorrect && <CheckCircle2 className="h-4 w-4 inline ml-2 text-green-500" />}
@@ -1136,15 +841,13 @@ export function ExtractionReviewQueue() {
                       {currentQuestion.parsed_question.explanation && (
                         <div className="p-3 bg-blue-500/10 rounded-lg">
                           <p className="text-sm font-medium mb-1">Explanation:</p>
-                          <div className="text-sm">
-                            <MathDisplay text={currentQuestion.parsed_question.explanation} />
-                          </div>
+                          <div className="text-sm"><MathDisplay text={currentQuestion.parsed_question.explanation} /></div>
                         </div>
                       )}
 
                       <div className="flex gap-2 flex-wrap">
-                        <Badge variant="outline">Chapter: {currentQuestion.parsed_question.chapter || "Not set"}</Badge>
-                        <Badge variant="outline">Topic: {currentQuestion.parsed_question.topic || "Not set"}</Badge>
+                        <Badge variant="outline">Chapter: {currentQuestion.parsed_question.auto_assigned_chapter_name || currentQuestion.parsed_question.chapter || "Not set"}</Badge>
+                        <Badge variant="outline">Topic: {currentQuestion.parsed_question.auto_assigned_topic_name || currentQuestion.parsed_question.topic || "Not set"}</Badge>
                       </div>
                     </div>
                   )}
@@ -1155,54 +858,21 @@ export function ExtractionReviewQueue() {
                   {statusFilter === "pending" && (
                     <div className="flex gap-2 justify-end flex-wrap">
                       {editMode ? (
-                        <Button variant="outline" onClick={() => { setEditMode(false); setEditedQuestion(null); }}>
-                          Cancel
-                        </Button>
+                        <Button variant="outline" onClick={() => { setEditMode(false); setEditedQuestion(null); }}>Cancel</Button>
                       ) : (
-                        <Button variant="outline" onClick={handleEdit}>
-                          <Edit2 className="h-4 w-4 mr-2" />
-                          Edit
-                        </Button>
+                        <Button variant="outline" onClick={handleEdit}><Edit2 className="h-4 w-4 mr-2" />Edit</Button>
                       )}
-                      <Button variant="destructive" onClick={handleReject} disabled={saving}>
-                        <XCircle className="h-4 w-4 mr-2" />
-                        Reject
+                      <Button variant="outline" onClick={handleReject} disabled={saving}>
+                        <XCircle className="h-4 w-4 mr-2" />Reject
                       </Button>
-                      {duplicateCheck?.isDuplicate ? (
-                        <>
-                          <Button 
-                            variant="outline" 
-                            onClick={() => {
-                              logger.info("Add Anyway clicked");
-                              handleApprove(true, false);
-                            }} 
-                            disabled={saving}
-                            className="border-yellow-500 text-yellow-600 hover:bg-yellow-500/10"
-                          >
-                            {saving ? (
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            ) : (
-                              <AlertTriangle className="h-4 w-4 mr-2" />
-                            )}
-                            Add Anyway
-                          </Button>
-                        </>
-                      ) : (
-                        <Button 
-                          onClick={() => {
-                            logger.info("Approve clicked");
-                            handleApprove(false);
-                          }} 
-                          disabled={saving}
-                        >
-                          {saving ? (
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          ) : (
-                            <CheckCircle2 className="h-4 w-4 mr-2" />
-                          )}
-                          Approve
-                        </Button>
-                      )}
+                      <Button 
+                        onClick={() => handleApprove(duplicateInfo?.isDuplicate)} 
+                        disabled={saving || (duplicateInfo?.isDuplicate && !editMode)}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
+                        Push to Database
+                      </Button>
                     </div>
                   )}
                 </div>
