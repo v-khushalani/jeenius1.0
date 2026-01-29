@@ -115,7 +115,34 @@ export function clearCurriculumCache(): void {
 }
 
 /**
+ * Validate that a chapter belongs to the specified subject
+ */
+export function validateChapterSubject(
+  chapterId: string,
+  subject: string,
+  chapters: CurriculumItem[]
+): boolean {
+  const chapter = chapters.find(c => c.id === chapterId);
+  if (!chapter) return false;
+  return chapter.subject.toLowerCase() === subject.toLowerCase();
+}
+
+/**
+ * Validate that a topic belongs to the specified chapter
+ */
+export function validateTopicChapter(
+  topicId: string,
+  chapterId: string,
+  topics: CurriculumItem[]
+): boolean {
+  const topic = topics.find(t => t.id === topicId);
+  if (!topic) return false;
+  return topic.parentId === chapterId;
+}
+
+/**
  * Match a question to the best chapter and topic
+ * STRICT MODE: Only assigns from database curriculum, validates subject-chapter-topic hierarchy
  */
 export async function matchQuestion(
   questionText: string,
@@ -138,27 +165,43 @@ export async function matchQuestion(
     return emptyResult;
   }
 
+  // Normalize subject name for matching
+  const normalizedSubject = subject.trim().toLowerCase();
+  const subjectMap: Record<string, string> = {
+    'physics': 'Physics',
+    'chemistry': 'Chemistry',
+    'mathematics': 'Mathematics',
+    'maths': 'Mathematics',
+    'math': 'Mathematics',
+    'biology': 'Biology',
+    'bio': 'Biology'
+  };
+  const canonicalSubject = subjectMap[normalizedSubject] || subject;
+
   try {
     // Extract keywords from question
-    const { keywords, weightedKeywords, domainHits } = extractKeywords(questionText, subject);
+    const { keywords, weightedKeywords, domainHits } = extractKeywords(questionText, canonicalSubject);
     
     if (keywords.length === 0) {
       return { ...emptyResult, extractedKeywords: [], domainHits };
     }
 
-    // Load curriculum
+    // Load curriculum from database
     const { chapters, topics, allKeywordSets } = await loadCurriculum();
     
-    // Filter by subject
+    // STRICT FILTER: Only chapters that EXACTLY match the subject from database
     const subjectChapters = chapters.filter(c => 
-      c.subject.toLowerCase() === subject.toLowerCase()
+      c.subject.toLowerCase() === canonicalSubject.toLowerCase()
     );
+    
+    // STRICT FILTER: Only topics whose parent chapter is in the filtered subject
+    const validChapterIds = new Set(subjectChapters.map(c => c.id));
     const subjectTopics = topics.filter(t => 
-      t.subject.toLowerCase() === subject.toLowerCase()
+      t.parentId && validChapterIds.has(t.parentId)
     );
 
     if (subjectChapters.length === 0) {
-      logger.warn('No chapters found for subject:', subject);
+      logger.warn('No chapters found for subject in database:', canonicalSubject);
       return { ...emptyResult, extractedKeywords: keywords, domainHits };
     }
 
@@ -233,25 +276,35 @@ export async function matchQuestion(
     chapterScores.sort((a, b) => b.finalScore - a.finalScore);
     const bestChapter = chapterScores[0];
 
-    // Decide: prefer topic if it's significantly better, otherwise use chapter
+    // STRICT VALIDATION: Only assign if we have valid database matches
     let result: MatchResult;
     
     if (bestTopic && bestTopic.finalScore >= 35) {
-      // Good topic match
-      const chapter = subjectChapters.find(c => c.id === bestTopic.item.parentId);
-      result = {
-        chapterId: bestTopic.item.parentId || null,
-        chapterName: chapter?.name || null,
-        topicId: bestTopic.item.id,
-        topicName: bestTopic.item.name,
-        confidence: Math.round(bestTopic.finalScore * 100) / 100,
-        method: bestTopic.finalScore >= 70 ? 'auto' : 'suggested',
-        matchedKeywords: bestTopic.similarity.matchedKeywords,
-        extractedKeywords: keywords,
-        domainHits
-      };
-    } else if (bestChapter && bestChapter.finalScore >= 30) {
-      // Fall back to chapter
+      // STRICT: Verify topic's parent chapter exists and matches subject
+      const parentChapter = subjectChapters.find(c => c.id === bestTopic.item.parentId);
+      
+      if (!parentChapter) {
+        // Topic doesn't have valid parent in this subject - fall back to chapter
+        logger.warn('Topic parent chapter not found in subject, falling back to chapter match');
+      } else {
+        // Valid topic match with verified hierarchy
+        result = {
+          chapterId: parentChapter.id,
+          chapterName: parentChapter.name,
+          topicId: bestTopic.item.id,
+          topicName: bestTopic.item.name,
+          confidence: Math.round(bestTopic.finalScore * 100) / 100,
+          method: bestTopic.finalScore >= 70 ? 'auto' : 'suggested',
+          matchedKeywords: bestTopic.similarity.matchedKeywords,
+          extractedKeywords: keywords,
+          domainHits
+        };
+        return result;
+      }
+    }
+    
+    if (bestChapter && bestChapter.finalScore >= 30) {
+      // STRICT: Chapter is already filtered by subject, just verify it exists
       result = {
         chapterId: bestChapter.item.id,
         chapterName: bestChapter.item.name,
@@ -264,7 +317,7 @@ export async function matchQuestion(
         domainHits
       };
     } else {
-      // No good match
+      // No good match - require manual assignment
       result = {
         ...emptyResult,
         confidence: Math.max(bestTopic?.finalScore || 0, bestChapter?.finalScore || 0),
