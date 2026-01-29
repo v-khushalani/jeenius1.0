@@ -347,28 +347,39 @@ export function ExtractionReviewQueue() {
     }
   };
 
-  // Bulk approve all filtered questions
-  const handleBulkApprove = async (skipDuplicates = true) => {
-    if (filteredQuestions.length === 0) {
-      toast.error("No questions to approve");
+  // Push questions by assignment method (auto, suggested, or all)
+  const handlePushByMethod = async (method: 'auto' | 'suggested' | 'all', skipDuplicates = true) => {
+    // Filter questions by method
+    const targetQuestions = method === 'all' 
+      ? filteredQuestions 
+      : filteredQuestions.filter(q => q.parsed_question.assignment_method === method);
+    
+    if (targetQuestions.length === 0) {
+      toast.error(`No ${method === 'all' ? '' : method + ' '}questions to push`);
       return;
     }
 
     setBulkProcessing(true);
-    setBulkProgress({ current: 0, total: filteredQuestions.length, approved: 0, skipped: 0 });
+    setBulkProgress({ current: 0, total: targetQuestions.length, approved: 0, skipped: 0 });
 
     try {
       let approved = 0;
       let skipped = 0;
 
-      for (let i = 0; i < filteredQuestions.length; i++) {
-        const question = filteredQuestions[i];
+      for (let i = 0; i < targetQuestions.length; i++) {
+        const question = targetQuestions[i];
         const q = question.parsed_question;
         
         setBulkProgress(prev => ({ ...prev, current: i + 1 }));
 
         // Skip invalid questions
         if (!q.question || !q.option_a || !q.correct_option || !q.subject) {
+          skipped++;
+          continue;
+        }
+
+        // For suggested, require chapter assignment
+        if (method === 'suggested' && !q.auto_assigned_chapter_id) {
           skipped++;
           continue;
         }
@@ -434,15 +445,23 @@ export function ExtractionReviewQueue() {
         setBulkProgress(prev => ({ ...prev, approved, skipped }));
       }
 
-      toast.success(`Bulk complete: ${approved} approved, ${skipped} skipped`);
+      toast.success(`${method === 'all' ? 'Bulk' : method.charAt(0).toUpperCase() + method.slice(1)} push complete: ${approved} approved, ${skipped} skipped`);
       await fetchQuestions();
       await fetchStats();
     } catch (error) {
-      logger.error("Bulk error:", error);
-      toast.error("Bulk processing failed");
+      logger.error("Push error:", error);
+      toast.error("Push processing failed");
     } finally {
       setBulkProcessing(false);
     }
+  };
+
+  // Get counts by assignment method
+  const getMethodCounts = () => {
+    const autoCount = filteredQuestions.filter(q => q.parsed_question.assignment_method === 'auto').length;
+    const suggestedCount = filteredQuestions.filter(q => q.parsed_question.assignment_method === 'suggested').length;
+    const manualCount = filteredQuestions.filter(q => !q.parsed_question.assignment_method || q.parsed_question.assignment_method === 'manual').length;
+    return { autoCount, suggestedCount, manualCount };
   };
 
   const handleEdit = () => {
@@ -555,20 +574,22 @@ export function ExtractionReviewQueue() {
       </Card>
 
       {/* NLP & Bulk Actions */}
-      {statusFilter === "pending" && filteredQuestions.length > 0 && (
-        <Card className="border-primary/30 bg-primary/5">
-          <CardContent className="pt-6">
-            <div className="flex flex-wrap gap-3 items-center justify-between">
-              <div>
-                <h4 className="font-semibold flex items-center gap-2">
-                  <Brain className="h-4 w-4" />
-                  NLP Auto-Assignment
-                </h4>
-                <p className="text-sm text-muted-foreground">
-                  Run NLP to auto-assign chapters/topics, then bulk approve
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
+      {statusFilter === "pending" && filteredQuestions.length > 0 && (() => {
+        const { autoCount, suggestedCount, manualCount } = getMethodCounts();
+        return (
+          <Card className="border-primary/30 bg-primary/5">
+            <CardContent className="pt-6 space-y-4">
+              {/* Step 1: Run NLP */}
+              <div className="flex flex-wrap gap-3 items-center justify-between">
+                <div>
+                  <h4 className="font-semibold flex items-center gap-2">
+                    <Brain className="h-4 w-4" />
+                    Step 1: Run NLP Auto-Assignment
+                  </h4>
+                  <p className="text-sm text-muted-foreground">
+                    Analyze questions and assign chapters/topics automatically
+                  </p>
+                </div>
                 <Button
                   onClick={handleNLPAutoAssign}
                   disabled={nlpProcessing || bulkProcessing}
@@ -577,39 +598,86 @@ export function ExtractionReviewQueue() {
                   {nlpProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
                   Run NLP ({filteredQuestions.length})
                 </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => handleBulkApprove(true)}
-                  disabled={nlpProcessing || bulkProcessing}
-                  className="gap-2 border-green-500 text-green-600 hover:bg-green-500/10"
-                >
-                  <Database className="h-4 w-4" />
-                  Push All to DB (Skip Duplicates)
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => handleBulkApprove(false)}
-                  disabled={nlpProcessing || bulkProcessing}
-                  className="gap-2"
-                >
-                  <Database className="h-4 w-4" />
-                  Push All (Force)
-                </Button>
               </div>
-            </div>
-            {bulkProcessing && (
-              <div className="mt-4 space-y-2">
-                <Progress value={(bulkProgress.current / bulkProgress.total) * 100} />
-                <p className="text-sm text-muted-foreground">
-                  Processing {bulkProgress.current}/{bulkProgress.total} - 
-                  <span className="text-green-500 ml-1">{bulkProgress.approved} approved</span>,
-                  <span className="text-yellow-500 ml-1">{bulkProgress.skipped} skipped</span>
-                </p>
+
+              <Separator />
+
+              {/* Step 2: Push to Database */}
+              <div>
+                <h4 className="font-semibold flex items-center gap-2 mb-2">
+                  <Database className="h-4 w-4" />
+                  Step 2: Push to Database
+                </h4>
+                
+                {/* Stats Row */}
+                <div className="flex flex-wrap gap-4 mb-3">
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-green-600">{autoCount}</Badge>
+                    <span className="text-sm">Auto-Assigned (≥70% confidence)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="border-yellow-500 text-yellow-600">{suggestedCount}</Badge>
+                    <span className="text-sm">Suggested (35-70% confidence)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary">{manualCount}</Badge>
+                    <span className="text-sm">Manual Review Required</span>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    onClick={() => handlePushByMethod('auto', true)}
+                    disabled={nlpProcessing || bulkProcessing || autoCount === 0}
+                    className="gap-2 bg-green-600 hover:bg-green-700"
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    Push Auto-Assigned ({autoCount})
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => handlePushByMethod('suggested', true)}
+                    disabled={nlpProcessing || bulkProcessing || suggestedCount === 0}
+                    className="gap-2 border-yellow-500 text-yellow-600 hover:bg-yellow-500/10"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    Push Suggested ({suggestedCount})
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => handlePushByMethod('all', true)}
+                    disabled={nlpProcessing || bulkProcessing}
+                    className="gap-2"
+                  >
+                    <Database className="h-4 w-4" />
+                    Push All (Skip Duplicates)
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => handlePushByMethod('all', false)}
+                    disabled={nlpProcessing || bulkProcessing}
+                    className="gap-2 text-muted-foreground"
+                  >
+                    Force Push All
+                  </Button>
+                </div>
               </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+
+              {bulkProcessing && (
+                <div className="mt-4 space-y-2">
+                  <Progress value={(bulkProgress.current / bulkProgress.total) * 100} />
+                  <p className="text-sm text-muted-foreground">
+                    Processing {bulkProgress.current}/{bulkProgress.total} - 
+                    <span className="text-green-500 ml-1">{bulkProgress.approved} approved</span>,
+                    <span className="text-yellow-500 ml-1">{bulkProgress.skipped} skipped</span>
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* Main Review Card */}
       <Card>
