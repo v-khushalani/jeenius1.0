@@ -19,6 +19,8 @@ export {
   loadCurriculum, 
   clearCurriculumCache, 
   matchQuestion, 
-  batchMatchQuestions 
+  batchMatchQuestions,
+  validateChapterSubject,
+  validateTopicChapter
 } from './curriculumMatcher';
 export type { CurriculumItem, MatchResult } from './curriculumMatcher';

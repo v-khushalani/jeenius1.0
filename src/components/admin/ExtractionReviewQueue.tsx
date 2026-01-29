@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import { 
   CheckCircle2, XCircle, Edit2, Loader2, ChevronLeft, ChevronRight, 
   RefreshCw, FileText, BookOpen, AlertTriangle, Copy, SkipForward, 
-  Replace, Sparkles, Filter, Database, Brain
+  Replace, Sparkles, Filter, Database, Brain, Undo2, ImageOff
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { MathDisplay } from "./MathDisplay";
@@ -344,6 +344,80 @@ export function ExtractionReviewQueue() {
       toast.error("Failed to reject");
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Move approved/rejected question back to pending (e.g., needs diagram)
+  const handleMoveToPending = async (reason?: string) => {
+    if (!currentQuestion) return;
+    setSaving(true);
+    
+    try {
+      const updatedParsed = {
+        ...currentQuestion.parsed_question,
+        pending_reason: reason || "Moved back to pending",
+        moved_to_pending_at: new Date().toISOString()
+      };
+
+      await supabase
+        .from("extracted_questions_queue")
+        .update({ 
+          status: "pending",
+          parsed_question: updatedParsed,
+          review_notes: reason || "Moved back for review"
+        })
+        .eq("id", currentQuestion.id);
+
+      toast.success("Question moved to pending");
+      setAllQuestions(prev => prev.filter(q => q.id !== currentQuestion.id));
+      setEditMode(false);
+      setEditedQuestion(null);
+      fetchStats();
+    } catch (error) {
+      logger.error("Move to pending error:", error);
+      toast.error("Failed to move to pending");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Bulk move questions back to pending
+  const handleBulkMoveToPending = async (questionIds: string[], reason: string) => {
+    if (questionIds.length === 0) {
+      toast.error("No questions selected");
+      return;
+    }
+
+    setBulkProcessing(true);
+    try {
+      for (const id of questionIds) {
+        const question = allQuestions.find(q => q.id === id);
+        if (!question) continue;
+
+        const updatedParsed = {
+          ...question.parsed_question,
+          pending_reason: reason,
+          moved_to_pending_at: new Date().toISOString()
+        };
+
+        await supabase
+          .from("extracted_questions_queue")
+          .update({ 
+            status: "pending",
+            parsed_question: updatedParsed,
+            review_notes: reason
+          })
+          .eq("id", id);
+      }
+
+      toast.success(`${questionIds.length} questions moved to pending`);
+      await fetchQuestions();
+      await fetchStats();
+    } catch (error) {
+      logger.error("Bulk move error:", error);
+      toast.error("Failed to move questions");
+    } finally {
+      setBulkProcessing(false);
     }
   };
 
@@ -941,6 +1015,43 @@ export function ExtractionReviewQueue() {
                         {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
                         Push to Database
                       </Button>
+                    </div>
+                  )}
+                  
+                  {/* Move to Pending for Approved/Rejected questions */}
+                  {(statusFilter === "approved" || statusFilter === "rejected") && (
+                    <div className="flex gap-2 justify-between flex-wrap items-center">
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          onClick={() => handleMoveToPending("Needs diagram/image")}
+                          disabled={saving}
+                          className="gap-2 border-orange-500 text-orange-600 hover:bg-orange-500/10"
+                        >
+                          <ImageOff className="h-4 w-4" />
+                          Needs Diagram
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          onClick={() => handleMoveToPending("Wrong topic assignment")}
+                          disabled={saving}
+                          className="gap-2"
+                        >
+                          <Undo2 className="h-4 w-4" />
+                          Wrong Topic
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          onClick={() => handleMoveToPending()}
+                          disabled={saving}
+                        >
+                          <Undo2 className="h-4 w-4 mr-1" />
+                          Move to Pending
+                        </Button>
+                      </div>
+                      <span className="text-sm text-muted-foreground">
+                        {statusFilter === "approved" ? "Question is in main database" : "Question was rejected"}
+                      </span>
                     </div>
                   )}
                 </div>
