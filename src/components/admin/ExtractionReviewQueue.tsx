@@ -10,11 +10,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { 
   CheckCircle2, XCircle, Edit2, Loader2, ChevronLeft, ChevronRight, 
   RefreshCw, FileText, BookOpen, AlertTriangle, Copy, SkipForward, 
-  Replace, Sparkles, Filter, Database, Brain, Undo2, ImageOff
+  Replace, Sparkles, Filter, Database, Brain, Undo2, ImageOff, Eye
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { MathDisplay } from "./MathDisplay";
@@ -87,6 +88,14 @@ export function ExtractionReviewQueue() {
   const [bulkProcessing, setBulkProcessing] = useState(false);
   const [nlpProcessing, setNlpProcessing] = useState(false);
   const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0, approved: 0, skipped: 0 });
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    method: 'auto' | 'suggested' | 'all';
+    questions: ExtractedQuestion[];
+    skipDuplicates: boolean;
+  } | null>(null);
+  const [previewQuestion, setPreviewQuestion] = useState<ExtractedQuestion | null>(null);
+  const [editingInPreview, setEditingInPreview] = useState(false);
 
   // Get unique source files (books) for filtering
   const sourceFiles = useMemo(() => {
@@ -421,9 +430,8 @@ export function ExtractionReviewQueue() {
     }
   };
 
-  // Push questions by assignment method (auto, suggested, or all)
-  const handlePushByMethod = async (method: 'auto' | 'suggested' | 'all', skipDuplicates = true) => {
-    // Filter questions by method
+  // Open confirmation dialog before pushing
+  const openConfirmDialog = (method: 'auto' | 'suggested' | 'all', skipDuplicates = true) => {
     const targetQuestions = method === 'all' 
       ? filteredQuestions 
       : filteredQuestions.filter(q => q.parsed_question.assignment_method === method);
@@ -433,15 +441,56 @@ export function ExtractionReviewQueue() {
       return;
     }
 
+    setConfirmDialog({
+      open: true,
+      method,
+      questions: targetQuestions,
+      skipDuplicates
+    });
+  };
+
+  // Update a question in the confirmation preview
+  const updateQuestionInPreview = (questionId: string, field: string, value: string) => {
+    if (!confirmDialog) return;
+    
+    const updatedQuestions = confirmDialog.questions.map(q => {
+      if (q.id === questionId) {
+        return {
+          ...q,
+          parsed_question: { ...q.parsed_question, [field]: value }
+        };
+      }
+      return q;
+    });
+    
+    setConfirmDialog({ ...confirmDialog, questions: updatedQuestions });
+    
+    // Also update previewQuestion if it's the same one
+    if (previewQuestion?.id === questionId) {
+      setPreviewQuestion({
+        ...previewQuestion,
+        parsed_question: { ...previewQuestion.parsed_question, [field]: value }
+      });
+    }
+  };
+
+  // Push questions by assignment method (auto, suggested, or all)
+  const handlePushByMethod = async (questionsToProcess: ExtractedQuestion[], skipDuplicates = true) => {
+    if (questionsToProcess.length === 0) {
+      toast.error("No questions to push");
+      return;
+    }
+
     setBulkProcessing(true);
-    setBulkProgress({ current: 0, total: targetQuestions.length, approved: 0, skipped: 0 });
+    setBulkProgress({ current: 0, total: questionsToProcess.length, approved: 0, skipped: 0 });
+    setConfirmDialog(null);
 
     try {
       let approved = 0;
       let skipped = 0;
 
-      for (let i = 0; i < targetQuestions.length; i++) {
-        const question = targetQuestions[i];
+      for (let i = 0; i < questionsToProcess.length; i++) {
+        const question = questionsToProcess[i];
         const q = question.parsed_question;
         
         setBulkProgress(prev => ({ ...prev, current: i + 1 }));
@@ -453,7 +502,7 @@ export function ExtractionReviewQueue() {
         }
 
         // For suggested, require chapter assignment
-        if (method === 'suggested' && !q.auto_assigned_chapter_id) {
+        if (q.assignment_method === 'suggested' && !q.auto_assigned_chapter_id) {
           skipped++;
           continue;
         }
@@ -519,7 +568,7 @@ export function ExtractionReviewQueue() {
         setBulkProgress(prev => ({ ...prev, approved, skipped }));
       }
 
-      toast.success(`${method === 'all' ? 'Bulk' : method.charAt(0).toUpperCase() + method.slice(1)} push complete: ${approved} approved, ${skipped} skipped`);
+      toast.success(`Push complete: ${approved} approved, ${skipped} skipped`);
       await fetchQuestions();
       await fetchStats();
     } catch (error) {
@@ -702,38 +751,30 @@ export function ExtractionReviewQueue() {
                 {/* Action Buttons */}
                 <div className="flex flex-wrap gap-2">
                   <Button
-                    onClick={() => handlePushByMethod('auto', true)}
+                    onClick={() => openConfirmDialog('auto', true)}
                     disabled={nlpProcessing || bulkProcessing || autoCount === 0}
                     className="gap-2 bg-green-600 hover:bg-green-700"
                   >
-                    <CheckCircle2 className="h-4 w-4" />
-                    Push Auto-Assigned ({autoCount})
+                    <Eye className="h-4 w-4" />
+                    Review & Push Auto ({autoCount})
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => handlePushByMethod('suggested', true)}
+                    onClick={() => openConfirmDialog('suggested', true)}
                     disabled={nlpProcessing || bulkProcessing || suggestedCount === 0}
                     className="gap-2 border-yellow-500 text-yellow-600 hover:bg-yellow-500/10"
                   >
-                    <Sparkles className="h-4 w-4" />
-                    Push Suggested ({suggestedCount})
+                    <Edit2 className="h-4 w-4" />
+                    Edit & Push Suggested ({suggestedCount})
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => handlePushByMethod('all', true)}
+                    onClick={() => openConfirmDialog('all', true)}
                     disabled={nlpProcessing || bulkProcessing}
                     className="gap-2"
                   >
                     <Database className="h-4 w-4" />
-                    Push All (Skip Duplicates)
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    onClick={() => handlePushByMethod('all', false)}
-                    disabled={nlpProcessing || bulkProcessing}
-                    className="gap-2 text-muted-foreground"
-                  >
-                    Force Push All
+                    Review All (Skip Duplicates)
                   </Button>
                 </div>
               </div>
@@ -1060,6 +1101,219 @@ export function ExtractionReviewQueue() {
           )}
         </CardContent>
       </Card>
+
+      {/* Confirmation Dialog with Preview & Edit */}
+      <Dialog open={confirmDialog?.open || false} onOpenChange={(open) => {
+        if (!open) {
+          setConfirmDialog(null);
+          setPreviewQuestion(null);
+          setEditingInPreview(false);
+        }
+      }}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {confirmDialog?.method === 'auto' && <><CheckCircle2 className="h-5 w-5 text-green-500" /> Review Auto-Assigned Questions</>}
+              {confirmDialog?.method === 'suggested' && <><Edit2 className="h-5 w-5 text-yellow-500" /> Edit & Push Suggested Questions</>}
+              {confirmDialog?.method === 'all' && <><Database className="h-5 w-5" /> Review All Questions</>}
+            </DialogTitle>
+            <DialogDescription>
+              {confirmDialog?.questions.length} questions ready. 
+              {confirmDialog?.method === 'suggested' && " Click on a question to edit before pushing."}
+              {confirmDialog?.method === 'auto' && " Review assignments before pushing to database."}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex-1 overflow-hidden flex gap-4">
+            {/* Questions List */}
+            <div className="w-1/2 flex flex-col">
+              <ScrollArea className="flex-1 border rounded-lg p-2">
+                <div className="space-y-2">
+                  {confirmDialog?.questions.map((q, idx) => (
+                    <div 
+                      key={q.id}
+                      onClick={() => {
+                        setPreviewQuestion(q);
+                        if (confirmDialog?.method === 'suggested') {
+                          fetchTopics(q.parsed_question.auto_assigned_chapter_id || '');
+                        }
+                      }}
+                      className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                        previewQuestion?.id === q.id 
+                          ? 'border-primary bg-primary/10' 
+                          : 'hover:bg-muted/50'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {idx + 1}. {q.parsed_question.question.slice(0, 60)}...
+                          </p>
+                          <div className="flex gap-1 mt-1 flex-wrap">
+                            <Badge variant="outline" className="text-xs">{q.parsed_question.subject}</Badge>
+                            {q.parsed_question.auto_assigned_chapter_name && (
+                              <Badge variant="secondary" className="text-xs truncate max-w-[150px]">
+                                {q.parsed_question.auto_assigned_chapter_name}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        <Badge 
+                          className={q.parsed_question.assignment_method === 'auto' 
+                            ? 'bg-green-600 shrink-0' 
+                            : 'bg-yellow-600 shrink-0'
+                          }
+                        >
+                          {Math.round(q.parsed_question.confidence_score || 0)}%
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
+
+            {/* Preview/Edit Panel */}
+            <div className="w-1/2 flex flex-col">
+              {previewQuestion ? (
+                <ScrollArea className="flex-1 border rounded-lg p-4">
+                  <div className="space-y-4">
+                    {/* Question */}
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Question</Label>
+                      {editingInPreview && confirmDialog?.method === 'suggested' ? (
+                        <Textarea 
+                          value={previewQuestion.parsed_question.question}
+                          onChange={(e) => updateQuestionInPreview(previewQuestion.id, 'question', e.target.value)}
+                          rows={3}
+                          className="mt-1"
+                        />
+                      ) : (
+                        <div className="p-2 bg-muted rounded text-sm mt-1">
+                          <MathDisplay text={previewQuestion.parsed_question.question} />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Options */}
+                    <div className="grid grid-cols-2 gap-2">
+                      {['A', 'B', 'C', 'D'].map(opt => {
+                        const key = `option_${opt.toLowerCase()}` as keyof typeof previewQuestion.parsed_question;
+                        const isCorrect = previewQuestion.parsed_question.correct_option?.toUpperCase() === opt;
+                        return (
+                          <div key={opt} className={`p-2 rounded border text-sm ${isCorrect ? 'bg-green-500/10 border-green-500' : ''}`}>
+                            <span className="font-medium">({opt})</span> {previewQuestion.parsed_question[key] as string}
+                            {isCorrect && <CheckCircle2 className="h-3 w-3 inline ml-1 text-green-500" />}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Chapter & Topic Assignment */}
+                    <div className="space-y-3 pt-2 border-t">
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Chapter Assignment</Label>
+                        {(editingInPreview || confirmDialog?.method === 'suggested') ? (
+                          <Select 
+                            value={previewQuestion.parsed_question.auto_assigned_chapter_id || ""} 
+                            onValueChange={(v) => {
+                              const chapter = chapters.find(c => c.id === v);
+                              updateQuestionInPreview(previewQuestion.id, 'auto_assigned_chapter_id', v);
+                              updateQuestionInPreview(previewQuestion.id, 'auto_assigned_chapter_name', chapter?.chapter_name || '');
+                              // Reset topic when chapter changes
+                              updateQuestionInPreview(previewQuestion.id, 'auto_assigned_topic_id', '');
+                              updateQuestionInPreview(previewQuestion.id, 'auto_assigned_topic_name', '');
+                              if (v) fetchTopics(v);
+                            }}
+                          >
+                            <SelectTrigger className="mt-1">
+                              <SelectValue placeholder="Select chapter" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <ScrollArea className="h-60">
+                                {chapters.filter(c => c.subject === previewQuestion.parsed_question.subject).map(c => (
+                                  <SelectItem key={c.id} value={c.id}>{c.chapter_name}</SelectItem>
+                                ))}
+                              </ScrollArea>
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <p className="text-sm font-medium mt-1">
+                            {previewQuestion.parsed_question.auto_assigned_chapter_name || 'Not assigned'}
+                          </p>
+                        )}
+                      </div>
+                      
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Topic Assignment</Label>
+                        {(editingInPreview || confirmDialog?.method === 'suggested') ? (
+                          <Select 
+                            value={previewQuestion.parsed_question.auto_assigned_topic_id || ""} 
+                            onValueChange={(v) => {
+                              const topic = topics.find(t => t.id === v);
+                              updateQuestionInPreview(previewQuestion.id, 'auto_assigned_topic_id', v);
+                              updateQuestionInPreview(previewQuestion.id, 'auto_assigned_topic_name', topic?.topic_name || '');
+                            }}
+                          >
+                            <SelectTrigger className="mt-1">
+                              <SelectValue placeholder="Select topic" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <ScrollArea className="h-60">
+                                {topics.map(t => (
+                                  <SelectItem key={t.id} value={t.id}>{t.topic_name}</SelectItem>
+                                ))}
+                              </ScrollArea>
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <p className="text-sm font-medium mt-1">
+                            {previewQuestion.parsed_question.auto_assigned_topic_name || 'Not assigned'}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Edit toggle for auto questions */}
+                    {confirmDialog?.method === 'auto' && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setEditingInPreview(!editingInPreview)}
+                        className="w-full"
+                      >
+                        <Edit2 className="h-3 w-3 mr-1" />
+                        {editingInPreview ? 'Done Editing' : 'Edit Assignment'}
+                      </Button>
+                    )}
+                  </div>
+                </ScrollArea>
+              ) : (
+                <div className="flex-1 border rounded-lg flex items-center justify-center text-muted-foreground">
+                  <div className="text-center">
+                    <Eye className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>Click a question to preview</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setConfirmDialog(null)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => confirmDialog && handlePushByMethod(confirmDialog.questions, confirmDialog.skipDuplicates)}
+              disabled={bulkProcessing}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              {bulkProcessing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
+              Confirm & Push {confirmDialog?.questions.length} Questions
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
