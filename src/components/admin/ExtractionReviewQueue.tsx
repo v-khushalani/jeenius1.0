@@ -286,6 +286,13 @@ export function ExtractionReviewQueue() {
       const chapterName = q.auto_assigned_chapter_name || q.chapter || "General";
       const topicName = q.auto_assigned_topic_name || q.topic || chapterName;
 
+      // STRICT VALIDATION: Both chapter_id and topic_id are required by database trigger
+      if (!chapterId || !topicId) {
+        toast.error("chapter_id and topic_id are required. Please assign chapter and topic first.");
+        setSaving(false);
+        return;
+      }
+
       // Overwrite existing if requested
       if (overwrite && duplicateInfo?.existingId) {
         await supabase.from("questions").delete().eq("id", duplicateInfo.existingId);
@@ -497,12 +504,20 @@ export function ExtractionReviewQueue() {
 
         // Skip invalid questions
         if (!q.question || !q.option_a || !q.correct_option || !q.subject) {
+          logger.warn(`Skipping question ${question.id}: Missing required fields`);
           skipped++;
           continue;
         }
 
-        // For suggested, require chapter assignment
-        if (q.assignment_method === 'suggested' && !q.auto_assigned_chapter_id) {
+        // Get curriculum assignment
+        const chapterId = q.auto_assigned_chapter_id || null;
+        const topicId = q.auto_assigned_topic_id || null;
+        const chapterName = q.auto_assigned_chapter_name || q.chapter || "General";
+        const topicName = q.auto_assigned_topic_name || q.topic || chapterName;
+
+        // STRICT VALIDATION: Both chapter_id and topic_id are required by database trigger
+        if (!chapterId || !topicId) {
+          logger.warn(`Skipping question ${question.id}: Missing chapter_id or topic_id`);
           skipped++;
           continue;
         }
@@ -530,12 +545,6 @@ export function ExtractionReviewQueue() {
           }
         }
 
-        // Get curriculum assignment
-        const chapterId = q.auto_assigned_chapter_id || null;
-        const topicId = q.auto_assigned_topic_id || null;
-        const chapterName = q.auto_assigned_chapter_name || q.chapter || "General";
-        const topicName = q.auto_assigned_topic_name || q.topic || chapterName;
-
         // Insert into database
         const { error } = await supabase.from("questions").insert({
           question: q.question,
@@ -562,6 +571,7 @@ export function ExtractionReviewQueue() {
             .eq("id", question.id);
           approved++;
         } else {
+          logger.error(`Insert error for question ${question.id}:`, error);
           skipped++;
         }
 
