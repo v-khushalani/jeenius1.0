@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,12 @@ interface ExtractionLog {
   message?: string;
 }
 
+interface Chapter {
+  id: string;
+  chapter_name: string;
+  subject: string;
+}
+
 export function PDFQuestionExtractor() {
   const [file, setFile] = useState<File | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
@@ -37,10 +43,45 @@ export function PDFQuestionExtractor() {
   
   // Pre-selection filters
   const [selectedSubject, setSelectedSubject] = useState<string>("");
-  const [selectedChapter, setSelectedChapter] = useState<string>("");
+  const [selectedChapterId, setSelectedChapterId] = useState<string>("");
+  const [selectedChapterName, setSelectedChapterName] = useState<string>("");
   const [selectedExam, setSelectedExam] = useState<string>("JEE");
   const [startPage, setStartPage] = useState<number>(1);
   const [endPage, setEndPage] = useState<number | null>(null);
+  
+  // Chapters from database
+  const [chapters, setChapters] = useState<Chapter[]>([]);
+  const [loadingChapters, setLoadingChapters] = useState(false);
+
+  // Fetch chapters when subject changes
+  useEffect(() => {
+    if (selectedSubject) {
+      fetchChaptersBySubject(selectedSubject);
+    } else {
+      setChapters([]);
+      setSelectedChapterId("");
+      setSelectedChapterName("");
+    }
+  }, [selectedSubject]);
+
+  const fetchChaptersBySubject = async (subject: string) => {
+    setLoadingChapters(true);
+    try {
+      const { data, error } = await supabase
+        .from("chapters")
+        .select("id, chapter_name, subject")
+        .eq("subject", subject)
+        .order("chapter_number");
+      
+      if (error) throw error;
+      setChapters(data || []);
+    } catch (error) {
+      logger.error("Error fetching chapters:", error);
+      toast.error("Failed to load chapters");
+    } finally {
+      setLoadingChapters(false);
+    }
+  };
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -120,7 +161,8 @@ export function PDFQuestionExtractor() {
               sourceFile: file.name,
               pageNumber: pageNum,
               subject: selectedSubject,
-              chapter: selectedChapter,
+              chapter: selectedChapterName,
+              chapterId: selectedChapterId,
               exam: selectedExam
             }
           });
@@ -253,12 +295,36 @@ export function PDFQuestionExtractor() {
             </div>
 
             <div className="space-y-2">
-              <Label>Chapter (Optional)</Label>
-              <Input 
-                placeholder="e.g., Kinematics"
-                value={selectedChapter}
-                onChange={(e) => setSelectedChapter(e.target.value)}
-              />
+              <Label>Chapter (from database)</Label>
+              <Select 
+                value={selectedChapterId || "auto"} 
+                onValueChange={(val) => {
+                  if (val === "auto") {
+                    setSelectedChapterId("");
+                    setSelectedChapterName("");
+                  } else {
+                    const chapter = chapters.find(c => c.id === val);
+                    setSelectedChapterId(val);
+                    setSelectedChapterName(chapter?.chapter_name || "");
+                  }
+                }}
+                disabled={!selectedSubject || loadingChapters}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={loadingChapters ? "Loading..." : "Auto-detect"} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="auto">Auto-detect</SelectItem>
+                  <ScrollArea className="h-60">
+                    {chapters.map(c => (
+                      <SelectItem key={c.id} value={c.id}>{c.chapter_name}</SelectItem>
+                    ))}
+                  </ScrollArea>
+                </SelectContent>
+              </Select>
+              {!selectedSubject && (
+                <p className="text-xs text-muted-foreground">Select a subject first to see chapters</p>
+              )}
             </div>
           </div>
 
