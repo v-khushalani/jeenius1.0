@@ -229,9 +229,11 @@ export function ExtractionReviewQueue() {
     clearCurriculumCache(); // Refresh NLP cache
   };
 
-  const fetchTopics = async (chapterId: string) => {
+  const fetchTopics = async (chapterId: string): Promise<Topic[]> => {
     const { data } = await supabase.from("topics").select("id, topic_name, chapter_id").eq("chapter_id", chapterId);
-    setTopics(data || []);
+    const topicsList = data || [];
+    setTopics(topicsList);
+    return topicsList;
   };
 
   // Run NLP auto-assignment on filtered questions
@@ -287,8 +289,13 @@ export function ExtractionReviewQueue() {
       const topicName = q.auto_assigned_topic_name || q.topic || chapterName;
 
       // STRICT VALIDATION: Both chapter_id and topic_id are required by database trigger
-      if (!chapterId || !topicId) {
-        toast.error("chapter_id and topic_id are required. Please assign chapter and topic first.");
+      if (!chapterId) {
+        toast.error("Chapter is required. Please select a chapter first using Edit.");
+        setSaving(false);
+        return;
+      }
+      if (!topicId) {
+        toast.error("Topic is required. Please select a topic after selecting the chapter.");
         setSaving(false);
         return;
       }
@@ -517,7 +524,7 @@ export function ExtractionReviewQueue() {
 
         // STRICT VALIDATION: Both chapter_id and topic_id are required by database trigger
         if (!chapterId || !topicId) {
-          logger.warn(`Skipping question ${question.id}: Missing chapter_id or topic_id`);
+          logger.warn(`Skipping question ${question.id}: Missing chapter_id (${chapterId}) or topic_id (${topicId})`);
           skipped++;
           continue;
         }
@@ -960,14 +967,20 @@ export function ExtractionReviewQueue() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label>Chapter (from curriculum)</Label>
+                        <Label>Chapter (from curriculum) <span className="text-red-500">*</span></Label>
                         <Select 
                           value={editedQuestion.parsed_question.auto_assigned_chapter_id || ""} 
-                          onValueChange={(v) => {
+                          onValueChange={async (v) => {
                             const chapter = chapters.find(c => c.id === v);
                             updateEditedField("auto_assigned_chapter_id", v);
                             updateEditedField("auto_assigned_chapter_name", chapter?.chapter_name || "");
-                            if (v) fetchTopics(v);
+                            if (v) {
+                              const topicsList = await fetchTopics(v);
+                              if (topicsList.length > 0) {
+                                updateEditedField("auto_assigned_topic_id", topicsList[0].id);
+                                updateEditedField("auto_assigned_topic_name", topicsList[0].topic_name);
+                              }
+                            }
                           }}
                         >
                           <SelectTrigger><SelectValue placeholder="Select chapter" /></SelectTrigger>
@@ -982,7 +995,7 @@ export function ExtractionReviewQueue() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label>Topic (optional)</Label>
+                        <Label>Topic <span className="text-red-500">*</span></Label>
                         <Select 
                           value={editedQuestion.parsed_question.auto_assigned_topic_id || ""} 
                           onValueChange={(v) => {
@@ -1128,9 +1141,15 @@ export function ExtractionReviewQueue() {
               {confirmDialog?.method === 'all' && <><Database className="h-5 w-5" /> Review All Questions</>}
             </DialogTitle>
             <DialogDescription>
-              {confirmDialog?.questions.length} questions ready. 
-              {confirmDialog?.method === 'suggested' && " Click on a question to edit before pushing."}
-              {confirmDialog?.method === 'auto' && " Review assignments before pushing to database."}
+              {confirmDialog?.questions.length} questions. 
+              <span className="text-green-600 font-medium ml-1">
+                {confirmDialog?.questions.filter(q => q.parsed_question.auto_assigned_chapter_id && q.parsed_question.auto_assigned_topic_id).length} valid
+              </span>,
+              <span className="text-red-600 font-medium ml-1">
+                {confirmDialog?.questions.filter(q => !q.parsed_question.auto_assigned_chapter_id || !q.parsed_question.auto_assigned_topic_id).length} missing chapter/topic (will be skipped)
+              </span>
+              {confirmDialog?.method === 'suggested' && ". Click on a question to edit before pushing."}
+              {confirmDialog?.method === 'auto' && ". Review assignments before pushing to database."}
             </DialogDescription>
           </DialogHeader>
           
@@ -1151,7 +1170,9 @@ export function ExtractionReviewQueue() {
                       className={`p-3 rounded-lg border cursor-pointer transition-colors ${
                         previewQuestion?.id === q.id 
                           ? 'border-primary bg-primary/10' 
-                          : 'hover:bg-muted/50'
+                          : (!q.parsed_question.auto_assigned_chapter_id || !q.parsed_question.auto_assigned_topic_id)
+                            ? 'border-red-300 bg-red-50 dark:bg-red-950/20 hover:bg-red-100'
+                            : 'hover:bg-muted/50'
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
@@ -1161,10 +1182,15 @@ export function ExtractionReviewQueue() {
                           </p>
                           <div className="flex gap-1 mt-1 flex-wrap">
                             <Badge variant="outline" className="text-xs">{q.parsed_question.subject}</Badge>
-                            {q.parsed_question.auto_assigned_chapter_name && (
+                            {q.parsed_question.auto_assigned_chapter_name ? (
                               <Badge variant="secondary" className="text-xs truncate max-w-[150px]">
                                 {q.parsed_question.auto_assigned_chapter_name}
                               </Badge>
+                            ) : (
+                              <Badge variant="destructive" className="text-xs">No Chapter</Badge>
+                            )}
+                            {!q.parsed_question.auto_assigned_topic_id && (
+                              <Badge variant="destructive" className="text-xs">No Topic</Badge>
                             )}
                           </div>
                         </div>
@@ -1226,14 +1252,25 @@ export function ExtractionReviewQueue() {
                         {(editingInPreview || confirmDialog?.method === 'suggested') ? (
                           <Select 
                             value={previewQuestion.parsed_question.auto_assigned_chapter_id || ""} 
-                            onValueChange={(v) => {
+                            onValueChange={async (v) => {
                               const chapter = chapters.find(c => c.id === v);
                               updateQuestionInPreview(previewQuestion.id, 'auto_assigned_chapter_id', v);
                               updateQuestionInPreview(previewQuestion.id, 'auto_assigned_chapter_name', chapter?.chapter_name || '');
-                              // Reset topic when chapter changes
-                              updateQuestionInPreview(previewQuestion.id, 'auto_assigned_topic_id', '');
-                              updateQuestionInPreview(previewQuestion.id, 'auto_assigned_topic_name', '');
-                              if (v) fetchTopics(v);
+                              // Reset topic when chapter changes and auto-select first topic
+                              if (v) {
+                                const topicsList = await fetchTopics(v);
+                                if (topicsList.length > 0) {
+                                  // Auto-select first topic for convenience
+                                  updateQuestionInPreview(previewQuestion.id, 'auto_assigned_topic_id', topicsList[0].id);
+                                  updateQuestionInPreview(previewQuestion.id, 'auto_assigned_topic_name', topicsList[0].topic_name);
+                                } else {
+                                  updateQuestionInPreview(previewQuestion.id, 'auto_assigned_topic_id', '');
+                                  updateQuestionInPreview(previewQuestion.id, 'auto_assigned_topic_name', '');
+                                }
+                              } else {
+                                updateQuestionInPreview(previewQuestion.id, 'auto_assigned_topic_id', '');
+                                updateQuestionInPreview(previewQuestion.id, 'auto_assigned_topic_name', '');
+                              }
                             }}
                           >
                             <SelectTrigger className="mt-1">
