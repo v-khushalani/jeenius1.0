@@ -283,19 +283,52 @@ export function ExtractionReviewQueue() {
       }
 
       // Get chapter/topic from NLP assignment or manual selection
-      const chapterId = q.auto_assigned_chapter_id || null;
-      const topicId = q.auto_assigned_topic_id || null;
+      let chapterId = q.auto_assigned_chapter_id || null;
+      let topicId = q.auto_assigned_topic_id || null;
       const chapterName = q.auto_assigned_chapter_name || q.chapter || "General";
       const topicName = q.auto_assigned_topic_name || q.topic || chapterName;
 
+      // AUTO-LOOKUP: If we have chapter name but no ID, find it from database
+      if (!chapterId && chapterName && chapterName !== "General") {
+        const matchedChapter = chapters.find(c => 
+          c.chapter_name.toLowerCase() === chapterName.toLowerCase() && 
+          c.subject.toLowerCase() === q.subject.toLowerCase()
+        );
+        if (matchedChapter) {
+          chapterId = matchedChapter.id;
+          logger.info(`Auto-mapped chapter "${chapterName}" to ID ${chapterId}`);
+        }
+      }
+
+      // AUTO-LOOKUP: If we have topic name but no ID, find it from database
+      if (!topicId && topicName && chapterId) {
+        // Fetch topics for this chapter if not already loaded
+        const { data: chapterTopics } = await supabase
+          .from("topics")
+          .select("id, topic_name")
+          .eq("chapter_id", chapterId);
+        
+        const matchedTopic = (chapterTopics || []).find(t => 
+          t.topic_name.toLowerCase() === topicName.toLowerCase()
+        );
+        if (matchedTopic) {
+          topicId = matchedTopic.id;
+          logger.info(`Auto-mapped topic "${topicName}" to ID ${topicId}`);
+        } else if (chapterTopics && chapterTopics.length > 0) {
+          // If exact match not found but topics exist, use first topic
+          topicId = chapterTopics[0].id;
+          logger.info(`Using first topic "${chapterTopics[0].topic_name}" for chapter`);
+        }
+      }
+
       // STRICT VALIDATION: Both chapter_id and topic_id are required by database trigger
       if (!chapterId) {
-        toast.error("Chapter is required. Please select a chapter first using Edit.");
+        toast.error(`Chapter "${chapterName}" not found in database. Please select a chapter manually using Edit.`);
         setSaving(false);
         return;
       }
       if (!topicId) {
-        toast.error("Topic is required. Please select a topic after selecting the chapter.");
+        toast.error(`Topic "${topicName}" not found in database. Please select a topic manually.`);
         setSaving(false);
         return;
       }
@@ -517,14 +550,43 @@ export function ExtractionReviewQueue() {
         }
 
         // Get curriculum assignment
-        const chapterId = q.auto_assigned_chapter_id || null;
-        const topicId = q.auto_assigned_topic_id || null;
+        let chapterId = q.auto_assigned_chapter_id || null;
+        let topicId = q.auto_assigned_topic_id || null;
         const chapterName = q.auto_assigned_chapter_name || q.chapter || "General";
         const topicName = q.auto_assigned_topic_name || q.topic || chapterName;
 
+        // AUTO-LOOKUP: If we have chapter name but no ID, find it from database
+        if (!chapterId && chapterName && chapterName !== "General") {
+          const matchedChapter = chapters.find(c => 
+            c.chapter_name.toLowerCase() === chapterName.toLowerCase() && 
+            c.subject.toLowerCase() === q.subject.toLowerCase()
+          );
+          if (matchedChapter) {
+            chapterId = matchedChapter.id;
+          }
+        }
+
+        // AUTO-LOOKUP: If we have topic name but no ID, find it from database
+        if (!topicId && topicName && chapterId) {
+          const { data: chapterTopics } = await supabase
+            .from("topics")
+            .select("id, topic_name")
+            .eq("chapter_id", chapterId);
+          
+          const matchedTopic = (chapterTopics || []).find(t => 
+            t.topic_name.toLowerCase() === topicName.toLowerCase()
+          );
+          if (matchedTopic) {
+            topicId = matchedTopic.id;
+          } else if (chapterTopics && chapterTopics.length > 0) {
+            // If exact match not found but topics exist, use first topic
+            topicId = chapterTopics[0].id;
+          }
+        }
+
         // STRICT VALIDATION: Both chapter_id and topic_id are required by database trigger
         if (!chapterId || !topicId) {
-          logger.warn(`Skipping question ${question.id}: Missing chapter_id (${chapterId}) or topic_id (${topicId})`);
+          logger.warn(`Skipping question ${question.id}: Missing chapter_id (${chapterId}) or topic_id (${topicId}) - Chapter: "${chapterName}", Topic: "${topicName}"`);
           skipped++;
           continue;
         }
