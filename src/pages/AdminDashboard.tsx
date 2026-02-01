@@ -14,6 +14,7 @@ import { UserReports } from '@/components/admin/UserReports';
 import { PDFQuestionExtractor } from '@/components/admin/PDFQuestionExtractor';
 import { ExtractionReviewQueue } from '@/components/admin/ExtractionReviewQueue';
 import { AutoTopicAssignment } from '@/components/admin/AutoTopicAssignment';
+import { cn } from '@/lib/utils';
 
 const AdminDashboard: React.FC = () => {
   const location = useLocation();
@@ -49,17 +50,22 @@ const AdminDashboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-muted/30">
       <AdminSidebar 
         isOpen={sidebarOpen} 
         onClose={() => setSidebarOpen(false)} 
       />
 
-      <div className="lg:ml-72 min-h-screen flex flex-col">
+      <div className={cn(
+        "min-h-screen flex flex-col transition-all duration-300",
+        "lg:ml-64" // Sidebar width on desktop
+      )}>
         <AdminHeader onMenuClick={() => setSidebarOpen(true)} />
 
-        <main className="flex-1 p-4 lg:p-6">
-          {getActiveContent()}
+        <main className="flex-1 p-4 lg:p-8">
+          <div className="max-w-7xl mx-auto">
+            {getActiveContent()}
+          </div>
         </main>
       </div>
     </div>
