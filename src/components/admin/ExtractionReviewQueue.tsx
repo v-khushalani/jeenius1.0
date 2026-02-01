@@ -82,7 +82,7 @@ export function ExtractionReviewQueue() {
   const [subjectFilter, setSubjectFilter] = useState<string>("all");
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [topics, setTopics] = useState<Topic[]>([]);
-  const [stats, setStats] = useState({ pending: 0, approved: 0, rejected: 0, total: 0 });
+  const [stats, setStats] = useState({ pending: 0, approved: 0, rejected: 0, total: 0, questionBank: 0 });
   const [duplicateInfo, setDuplicateInfo] = useState<{ isDuplicate: boolean; similarity: number; existingId?: string } | null>(null);
   const [checkingDuplicate, setCheckingDuplicate] = useState(false);
   const [bulkProcessing, setBulkProcessing] = useState(false);
@@ -206,17 +206,19 @@ export function ExtractionReviewQueue() {
 
   const fetchStats = async () => {
     try {
-      const [pending, approved, rejected] = await Promise.all([
+      const [pending, approved, rejected, questionBank] = await Promise.all([
         supabase.from("extracted_questions_queue").select("id", { count: "exact" }).eq("status", "pending"),
         supabase.from("extracted_questions_queue").select("id", { count: "exact" }).eq("status", "approved"),
         supabase.from("extracted_questions_queue").select("id", { count: "exact" }).eq("status", "rejected"),
+        supabase.from("questions").select("id", { count: "exact" }), // Actual questions in DB
       ]);
       
       setStats({
         pending: pending.count || 0,
         approved: approved.count || 0,
         rejected: rejected.count || 0,
-        total: (pending.count || 0) + (approved.count || 0) + (rejected.count || 0)
+        total: (pending.count || 0) + (approved.count || 0) + (rejected.count || 0),
+        questionBank: questionBank.count || 0
       });
     } catch (error) {
       logger.error("Error fetching stats:", error);
@@ -695,17 +697,17 @@ export function ExtractionReviewQueue() {
   return (
     <div className="space-y-6">
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <Card className="cursor-pointer hover:border-primary/50" onClick={() => setStatusFilter("pending")}>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold text-yellow-500">{stats.pending}</div>
-            <div className="text-sm text-muted-foreground">Pending</div>
+            <div className="text-sm text-muted-foreground">Pending Review</div>
           </CardContent>
         </Card>
         <Card className="cursor-pointer hover:border-primary/50" onClick={() => setStatusFilter("approved")}>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold text-green-500">{stats.approved}</div>
-            <div className="text-sm text-muted-foreground">Approved</div>
+            <div className="text-sm text-muted-foreground">Pushed (Queue)</div>
           </CardContent>
         </Card>
         <Card className="cursor-pointer hover:border-primary/50" onClick={() => setStatusFilter("rejected")}>
@@ -714,10 +716,19 @@ export function ExtractionReviewQueue() {
             <div className="text-sm text-muted-foreground">Rejected</div>
           </CardContent>
         </Card>
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="pt-6">
+            <div className="text-2xl font-bold text-primary flex items-center gap-2">
+              <Database className="h-5 w-5" />
+              {stats.questionBank}
+            </div>
+            <div className="text-sm text-muted-foreground">Question Bank (DB)</div>
+          </CardContent>
+        </Card>
         <Card>
           <CardContent className="pt-6">
             <div className="text-2xl font-bold">{stats.total}</div>
-            <div className="text-sm text-muted-foreground">Total</div>
+            <div className="text-sm text-muted-foreground">Queue Total</div>
           </CardContent>
         </Card>
       </div>
