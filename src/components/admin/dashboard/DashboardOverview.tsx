@@ -95,222 +95,202 @@ export const DashboardOverview: React.FC = () => {
   }
 
   return (
-    <div className="space-y-8">
-      {/* Hero Stats Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
-        <HeroStat
+    <div className="space-y-4">
+      {/* Key Metrics Grid - 2x2 on mobile, 4 on desktop */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+        <AdminStatCard
           label="Total Users"
           value={stats?.totalUsers || 0}
           icon={Users}
           trend={stats?.userGrowth || 0}
-          trendLabel="this week"
+          trendLabel="week"
           onClick={() => navigate('/admin/users')}
+          colorScheme="blue"
         />
-        <HeroStat
+        <AdminStatCard
           label="Active Today"
           value={stats?.activeToday || 0}
           icon={TrendingUp}
-          accent
+          colorScheme="emerald"
         />
-        <HeroStat
+        <AdminStatCard
           label="Question Bank"
           value={stats?.questionsBank || 0}
           icon={Database}
           onClick={() => navigate('/admin/questions')}
+          colorScheme="violet"
         />
-        <HeroStat
-          label="Premium"
+        <AdminStatCard
+          label="Premium Users"
           value={stats?.premiumUsers || 0}
           icon={Award}
-          suffix={`/ ${stats?.totalUsers || 0}`}
+          colorScheme="orange"
         />
       </div>
 
-      {/* Action Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Pending Review - Attention Card */}
-        <ActionCard
+      {/* Insights Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
+        <AdminInsightCard
           title="Pending Review"
           value={stats?.pendingReview || 0}
           icon={ClipboardCheck}
           description="Questions awaiting approval"
-          action="Review Now"
+          action="Review"
           onClick={() => navigate('/admin/review-queue')}
-          variant={stats?.pendingReview && stats.pendingReview > 0 ? 'warning' : 'default'}
+          colorScheme={stats?.pendingReview && stats.pendingReview > 0 ? "orange" : "slate"}
         />
 
-        {/* Total Attempts */}
-        <ActionCard
+        <AdminInsightCard
           title="Total Attempts"
           value={stats?.totalAttempts || 0}
           icon={FileQuestion}
-          description="Questions answered by users"
-          action="View Analytics"
+          description="Questions answered overall"
+          action="Analytics"
           onClick={() => navigate('/admin/analytics')}
+          colorScheme="blue"
         />
       </div>
 
-      {/* Quick Actions Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <QuickAction icon={BookOpen} label="Chapters" onClick={() => navigate('/admin/content')} />
-        <QuickAction icon={HelpCircle} label="Questions" onClick={() => navigate('/admin/questions')} />
-        <QuickAction icon={Sparkles} label="Auto-Assign" onClick={() => navigate('/admin/auto-assign')} />
-        <QuickAction icon={Users} label="Users" onClick={() => navigate('/admin/users')} />
+      {/* Quick Actions */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
+        <AdminQuickAction icon={BookOpen} label="Chapters" onClick={() => navigate('/admin/content')} />
+        <AdminQuickAction icon={HelpCircle} label="Questions" onClick={() => navigate('/admin/questions')} />
+        <AdminQuickAction icon={Sparkles} label="Auto-Assign" onClick={() => navigate('/admin/auto-assign')} />
+        <AdminQuickAction icon={Users} label="Users" onClick={() => navigate('/admin/users')} />
       </div>
     </div>
   );
 };
 
-// Hero Stat Component
-interface HeroStatProps {
+// Admin Stat Card - Apple Style
+interface AdminStatCardProps {
   label: string;
   value: number;
   icon: React.ElementType;
   trend?: number;
   trendLabel?: string;
-  suffix?: string;
-  accent?: boolean;
+  colorScheme: 'blue' | 'emerald' | 'violet' | 'orange' | 'slate';
   onClick?: () => void;
 }
 
-const HeroStat: React.FC<HeroStatProps> = ({ 
-  label, value, icon: Icon, trend, trendLabel, suffix, accent, onClick 
+const getColorScheme = (scheme: string) => {
+  const schemes = {
+    blue: { bg: 'bg-blue-50', border: 'border-blue-200', iconBg: 'bg-blue-100', text: 'text-blue-700', icon: 'text-blue-600' },
+    emerald: { bg: 'bg-emerald-50', border: 'border-emerald-200', iconBg: 'bg-emerald-100', text: 'text-emerald-700', icon: 'text-emerald-600' },
+    violet: { bg: 'bg-violet-50', border: 'border-violet-200', iconBg: 'bg-violet-100', text: 'text-violet-700', icon: 'text-violet-600' },
+    orange: { bg: 'bg-orange-50', border: 'border-orange-200', iconBg: 'bg-orange-100', text: 'text-orange-700', icon: 'text-orange-600' },
+    slate: { bg: 'bg-slate-50', border: 'border-slate-200', iconBg: 'bg-slate-100', text: 'text-slate-700', icon: 'text-slate-600' },
+  };
+  return schemes[scheme as keyof typeof schemes] || schemes.slate;
+};
+
+const AdminStatCard: React.FC<AdminStatCardProps> = ({ 
+  label, value, icon: Icon, trend, trendLabel, colorScheme, onClick 
 }) => {
+  const colors = getColorScheme(colorScheme);
+  
   return (
     <div 
       onClick={onClick}
       className={cn(
-        "relative overflow-hidden rounded-2xl p-6 transition-all duration-300 group",
-        accent 
-          ? "bg-primary text-primary-foreground" 
-          : "bg-card border border-border hover:border-primary/30",
-        onClick && "cursor-pointer hover:scale-[1.02]"
+        "rounded-lg sm:rounded-xl p-3 sm:p-4 shadow-sm hover:shadow transition-all border-l-4",
+        colors.bg,
+        colors.border,
+        onClick && "cursor-pointer"
       )}
     >
-      {/* Background Icon */}
-      <Icon className={cn(
-        "absolute -right-4 -bottom-4 w-24 h-24 transition-transform group-hover:scale-110",
-        accent ? "text-primary-foreground/10" : "text-muted/30"
-      )} />
-      
-      <div className="relative z-10">
-        <div className={cn(
-          "inline-flex items-center justify-center w-10 h-10 rounded-xl mb-4",
-          accent ? "bg-primary-foreground/20" : "bg-primary/10"
-        )}>
-          <Icon className={cn("w-5 h-5", accent ? "text-primary-foreground" : "text-primary")} />
+      <div className="flex items-start gap-2 mb-2">
+        <div className={cn("p-1.5 sm:p-2 rounded-lg flex-shrink-0", colors.iconBg)}>
+          <Icon className={cn("h-3 w-3 sm:h-4 sm:w-4", colors.icon)} />
         </div>
-        
-        <p className={cn(
-          "text-xs font-medium uppercase tracking-wider mb-1",
-          accent ? "text-primary-foreground/70" : "text-muted-foreground"
-        )}>
-          {label}
-        </p>
-        
-        <div className="flex items-baseline gap-2">
-          <span className="text-3xl lg:text-4xl font-black tracking-tight">
-            {value.toLocaleString()}
-          </span>
-          {suffix && (
-            <span className={cn(
-              "text-sm font-medium",
-              accent ? "text-primary-foreground/60" : "text-muted-foreground"
-            )}>
-              {suffix}
-            </span>
-          )}
-        </div>
-        
-        {trend !== undefined && (
-          <div className={cn(
-            "flex items-center gap-1 mt-2 text-xs font-medium",
-            trend >= 0 ? "text-emerald-500" : "text-red-500"
-          )}>
-            {trend >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-            <span>{Math.abs(trend)}%</span>
-            {trendLabel && <span className="text-muted-foreground ml-1">{trendLabel}</span>}
-          </div>
-        )}
       </div>
+      
+      <p className="text-[10px] sm:text-xs font-medium text-slate-600 mb-1.5">
+        {label}
+      </p>
+      
+      <div className="flex items-baseline gap-1.5 mb-1">
+        <h3 className={cn("text-lg sm:text-2xl lg:text-3xl font-bold", colors.text)}>
+          {value.toLocaleString()}
+        </h3>
+      </div>
+      
+      {trend !== undefined && (
+        <div className={cn(
+          "flex items-center gap-1 text-[9px] sm:text-xs font-medium",
+          trend >= 0 ? "text-emerald-600" : "text-slate-500"
+        )}>
+          {trend >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+          <span>{Math.abs(trend)}%</span>
+          {trendLabel && <span className="text-slate-500">{trendLabel}</span>}
+        </div>
+      )}
     </div>
   );
 };
 
-// Action Card Component
-interface ActionCardProps {
+// Admin Insight Card
+interface AdminInsightCardProps {
   title: string;
   value: number;
   icon: React.ElementType;
   description: string;
   action: string;
   onClick: () => void;
-  variant?: 'default' | 'warning' | 'success';
+  colorScheme: 'blue' | 'emerald' | 'violet' | 'orange' | 'slate';
 }
 
-const ActionCard: React.FC<ActionCardProps> = ({ 
-  title, value, icon: Icon, description, action, onClick, variant = 'default' 
+const AdminInsightCard: React.FC<AdminInsightCardProps> = ({ 
+  title, value, icon: Icon, description, action, onClick, colorScheme
 }) => {
-  const variantStyles = {
-    default: 'border-border hover:border-primary/30',
-    warning: 'border-amber-500/30 bg-amber-500/5 hover:border-amber-500/50',
-    success: 'border-emerald-500/30 bg-emerald-500/5 hover:border-emerald-500/50',
-  };
-
-  const iconStyles = {
-    default: 'bg-primary/10 text-primary',
-    warning: 'bg-amber-500/20 text-amber-600',
-    success: 'bg-emerald-500/20 text-emerald-600',
-  };
+  const colors = getColorScheme(colorScheme);
 
   return (
     <div 
       onClick={onClick}
       className={cn(
-        "relative rounded-2xl border p-6 transition-all duration-300 cursor-pointer group hover:scale-[1.01]",
-        variantStyles[variant]
+        "rounded-lg sm:rounded-xl p-4 sm:p-5 shadow-sm hover:shadow transition-all border-l-4 cursor-pointer",
+        colors.bg,
+        colors.border
       )}
     >
-      <div className="flex items-start justify-between mb-4">
-        <div className={cn(
-          "inline-flex items-center justify-center w-12 h-12 rounded-xl",
-          iconStyles[variant]
-        )}>
-          <Icon className="w-6 h-6" />
+      <div className="flex items-start justify-between mb-2 sm:mb-3">
+        <div className={cn("p-2 sm:p-2.5 rounded-lg flex-shrink-0", colors.iconBg)}>
+          <Icon className={cn("h-4 w-4 sm:h-5 sm:w-5", colors.icon)} />
         </div>
-        <span className="text-4xl font-black text-foreground">
+        <span className={cn("text-2xl sm:text-3xl lg:text-4xl font-bold", colors.text)}>
           {value.toLocaleString()}
         </span>
       </div>
       
-      <h3 className="text-lg font-bold text-foreground mb-1">{title}</h3>
-      <p className="text-sm text-muted-foreground mb-4">{description}</p>
+      <h3 className="text-sm sm:text-base font-bold text-slate-900 mb-0.5">{title}</h3>
+      <p className="text-xs sm:text-sm text-slate-600 mb-3">{description}</p>
       
-      <div className="flex items-center gap-2 text-sm font-medium text-primary group-hover:gap-3 transition-all">
-        <span>{action}</span>
+      <div className="flex items-center gap-1.5 text-xs sm:text-sm font-medium transition-all">
+        <span className={colors.text}>{action}</span>
         <ArrowUpRight className="w-4 h-4" />
       </div>
     </div>
   );
 };
 
-// Quick Action Component
-interface QuickActionProps {
+// Admin Quick Action
+interface AdminQuickActionProps {
   icon: React.ElementType;
   label: string;
   onClick: () => void;
 }
 
-const QuickAction: React.FC<QuickActionProps> = ({ icon: Icon, label, onClick }) => {
+const AdminQuickAction: React.FC<AdminQuickActionProps> = ({ icon: Icon, label, onClick }) => {
   return (
     <button 
       onClick={onClick}
-      className="flex flex-col items-center gap-3 p-6 rounded-2xl border border-border bg-card hover:bg-accent hover:border-primary/30 transition-all duration-200 group"
+      className="flex flex-col items-center gap-2 p-3 sm:p-4 rounded-lg sm:rounded-xl border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm hover:shadow group"
     >
-      <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-        <Icon className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-slate-100 flex items-center justify-center group-hover:bg-slate-200 transition-colors">
+        <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-slate-600 group-hover:scale-110 transition-transform" />
       </div>
-      <span className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
+      <span className="text-[10px] sm:text-xs font-medium text-slate-600 group-hover:text-slate-900 transition-colors text-center">
         {label}
       </span>
     </button>

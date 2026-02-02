@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Menu, ArrowLeft, Command } from 'lucide-react';
+import { Menu, ArrowLeft, Command, Eye, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface AdminHeaderProps {
   onMenuClick: () => void;
@@ -25,44 +26,57 @@ const routeTitles: Record<string, string> = {
 export const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { signOut } = useAuth();
   
   const pageTitle = routeTitles[location.pathname] || 'Admin';
 
+  const handleViewAsUser = () => {
+    // Open user study page in new tab to avoid admin redirect
+    window.open('/study-now', '_blank');
+  };
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/login');
+  };
+
   return (
-    <header className="h-16 bg-background/50 backdrop-blur-xl border-b border-border/50 flex items-center justify-between px-4 lg:px-8 sticky top-0 z-30">
-      <div className="flex items-center gap-4">
+    <header className="h-16 lg:h-20 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-10 sticky top-0 z-30">
+      <div className="flex items-center gap-4 flex-1">
         <button
           onClick={onMenuClick}
-          className="lg:hidden p-2 -ml-2 hover:bg-accent rounded-xl transition-colors"
+          className="lg:hidden p-2 -ml-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-600 hover:text-slate-900"
         >
           <Menu className="w-5 h-5" />
         </button>
         
-        <div className="flex items-center gap-3">
-          <h1 className="text-xl lg:text-2xl font-black text-foreground tracking-tight">
+        <div className="flex items-center gap-4">
+          <h1 className="text-lg lg:text-2xl font-bold text-slate-900 tracking-tight">
             {pageTitle}
           </h1>
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
-        {/* Command Palette Trigger */}
-        <button className="hidden md:flex items-center gap-2 px-4 py-2 bg-muted/50 hover:bg-muted rounded-xl text-sm text-muted-foreground transition-colors">
-          <Command className="w-4 h-4" />
-          <span>Search...</span>
-          <kbd className="ml-4 text-[10px] bg-background px-1.5 py-0.5 rounded border border-border font-mono">⌘K</kbd>
+      <div className="flex items-center gap-2 lg:gap-3">
+        {/* View as User Button */}
+        <button
+          type="button"
+          onClick={handleViewAsUser}
+          className="flex items-center gap-2 px-3 lg:px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg text-xs lg:text-sm font-medium transition-all duration-200 shadow-sm hover:shadow"
+        >
+          <Eye className="w-4 h-4" />
+          <span className="hidden lg:inline">View as User</span>
         </button>
 
-        {/* Exit Button */}
-        <Button 
-          variant="ghost" 
-          size="sm"
-          onClick={() => navigate('/dashboard')}
-          className="gap-2 text-muted-foreground hover:text-foreground"
+        {/* Logout Button */}
+        <button 
+          type="button"
+          onClick={handleLogout}
+          className="flex items-center gap-2 px-3 lg:px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-xs lg:text-sm font-medium transition-all duration-200 shadow-sm hover:shadow"
         >
-          <ArrowLeft className="w-4 h-4" />
-          <span className="hidden sm:inline">Exit</span>
-        </Button>
+          <LogOut className="w-4 h-4" />
+          <span className="hidden lg:inline">Logout</span>
+        </button>
       </div>
     </header>
   );

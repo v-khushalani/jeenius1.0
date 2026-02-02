@@ -50,21 +50,29 @@ const AdminDashboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-muted/30">
+    <div className="min-h-screen bg-white">
+      {/* Apple-style background decoration */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#e6eeff] rounded-full -translate-y-1/2 translate-x-1/3 opacity-40" />
+        <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-[#e6eeff] rounded-full translate-y-1/2 -translate-x-1/3 opacity-30" />
+      </div>
+
       <AdminSidebar 
         isOpen={sidebarOpen} 
         onClose={() => setSidebarOpen(false)} 
       />
 
       <div className={cn(
-        "min-h-screen flex flex-col transition-all duration-300",
-        "lg:ml-64" // Sidebar width on desktop
+        "relative min-h-screen flex flex-col transition-all duration-300",
+        "lg:ml-72"
       )}>
         <AdminHeader onMenuClick={() => setSidebarOpen(true)} />
 
-        <main className="flex-1 p-4 lg:p-8">
-          <div className="max-w-7xl mx-auto">
-            {getActiveContent()}
+        <main className="flex-1 overflow-y-auto">
+          <div className="container mx-auto px-2 sm:px-4 lg:px-6 max-w-7xl py-3 sm:py-4 lg:py-6">
+            <div className="space-y-3 sm:space-y-4 lg:space-y-6">
+              {getActiveContent()}
+            </div>
           </div>
         </main>
       </div>
