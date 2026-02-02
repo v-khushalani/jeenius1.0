@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Upload, Plus, Edit, Trash2, Search, Download, Trash, AlertCircle } from 'lucide-react';
+import { Upload, Plus, Edit, Trash2, Search, Download, Trash, AlertCircle, RotateCcw } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { logger } from '@/utils/logger';
 
@@ -249,6 +249,66 @@ export const QuestionManager = () => {
     } catch (error) {
       logger.error('Error bulk deleting questions:', error);
       toast.error('Failed to delete questions');
+    }
+  };
+
+  const handleMoveToPending = async () => {
+    if (selectedQuestions.size === 0) {
+      toast.error('No questions selected');
+      return;
+    }
+
+    if (!confirm(`Move ${selectedQuestions.size} question(s) to pending review queue? They will be removed from the question bank.`)) return;
+
+    try {
+      // Get the selected questions data
+      const selectedQuestionsData = questions.filter(q => selectedQuestions.has(q.id));
+      
+      // Insert into extracted_questions_queue with status 'pending'
+      const queueItems = selectedQuestionsData.map(q => ({
+        source_file: 'Moved from Question Bank',
+        status: 'pending',
+        parsed_question: {
+          question: q.question,
+          option_a: q.option_a,
+          option_b: q.option_b,
+          option_c: q.option_c,
+          option_d: q.option_d,
+          correct_option: q.correct_option,
+          explanation: q.explanation,
+          subject: q.subject,
+          chapter: q.chapter,
+          topic: q.topic,
+          subtopic: q.subtopic,
+          difficulty: q.difficulty,
+          question_type: q.question_type,
+          year: q.year,
+          exam: q.exam,
+          chapter_id: q.chapter_id,
+          topic_id: q.topic_id
+        }
+      }));
+
+      const { error: insertError } = await supabase
+        .from('extracted_questions_queue')
+        .insert(queueItems);
+
+      if (insertError) throw insertError;
+
+      // Delete from questions table
+      const { error: deleteError } = await supabase
+        .from('questions')
+        .delete()
+        .in('id', Array.from(selectedQuestions));
+
+      if (deleteError) throw deleteError;
+
+      toast.success(`Moved ${selectedQuestions.size} question(s) to pending review`);
+      setSelectedQuestions(new Set());
+      fetchData();
+    } catch (error) {
+      logger.error('Error moving questions to pending:', error);
+      toast.error('Failed to move questions to pending');
     }
   };
 
@@ -756,10 +816,16 @@ export const QuestionManager = () => {
               </SelectContent>
             </Select>
             {selectedQuestions.size > 0 && (
-              <Button variant="destructive" onClick={handleBulkDelete}>
-                <Trash className="w-4 h-4 mr-2" />
-                Delete ({selectedQuestions.size})
-              </Button>
+              <>
+                <Button variant="outline" onClick={handleMoveToPending}>
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Move to Pending ({selectedQuestions.size})
+                </Button>
+                <Button variant="destructive" onClick={handleBulkDelete}>
+                  <Trash className="w-4 h-4 mr-2" />
+                  Delete ({selectedQuestions.size})
+                </Button>
+              </>
             )}
           </div>
         </CardContent>
