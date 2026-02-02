@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Users, BookOpen, TrendingUp, Award, HelpCircle, 
   ClipboardCheck, ArrowUpRight, ArrowDownRight, Sparkles,
-  Database, FileQuestion, CheckCircle2
+  Database, FileQuestion
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
@@ -17,7 +17,6 @@ interface DashboardStats {
   pendingReview: number;
   questionsBank: number;
   userGrowth: number;
-  approvedQueue: number;
 }
 
 export const DashboardOverview: React.FC = () => {
@@ -41,7 +40,6 @@ export const DashboardOverview: React.FC = () => {
         lastWeekResult,
         questionsResult,
         pendingReviewResult,
-        approvedQueueResult,
       ] = await Promise.all([
         supabase.from('profiles').select('id', { count: 'exact', head: true }),
         supabase.from('question_attempts')
@@ -56,9 +54,6 @@ export const DashboardOverview: React.FC = () => {
         supabase.from('extracted_questions_queue')
           .select('id', { count: 'exact', head: true })
           .eq('status', 'pending'),
-        supabase.from('extracted_questions_queue')
-          .select('id', { count: 'exact', head: true })
-          .eq('status', 'approved'),
       ]);
 
       const totalUsers = usersResult.count || 0;
@@ -80,7 +75,6 @@ export const DashboardOverview: React.FC = () => {
         pendingReview,
         questionsBank,
         userGrowth,
-        approvedQueue: approvedQueueResult.count || 0,
       });
     } catch (error) {
       logger.error('Error fetching dashboard stats:', error);
@@ -133,7 +127,7 @@ export const DashboardOverview: React.FC = () => {
       </div>
 
       {/* Action Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Pending Review - Attention Card */}
         <ActionCard
           title="Pending Review"
@@ -153,17 +147,6 @@ export const DashboardOverview: React.FC = () => {
           description="Questions answered by users"
           action="View Analytics"
           onClick={() => navigate('/admin/analytics')}
-        />
-
-        {/* Queue Processed */}
-        <ActionCard
-          title="Queue Processed"
-          value={stats?.approvedQueue || 0}
-          icon={CheckCircle2}
-          description="Successfully pushed to DB"
-          action="View Queue"
-          onClick={() => navigate('/admin/review-queue')}
-          variant="success"
         />
       </div>
 
