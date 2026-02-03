@@ -14,6 +14,7 @@ import { UserReports } from '@/components/admin/UserReports';
 import { PDFQuestionExtractor } from '@/components/admin/PDFQuestionExtractor';
 import { ExtractionReviewQueue } from '@/components/admin/ExtractionReviewQueue';
 import { AutoTopicAssignment } from '@/components/admin/AutoTopicAssignment';
+import { BatchManager } from '@/components/admin/BatchManager';
 import { cn } from '@/lib/utils';
 
 const AdminDashboard: React.FC = () => {
@@ -44,6 +45,8 @@ const AdminDashboard: React.FC = () => {
         return <ExtractionReviewQueue />;
       case '/admin/auto-assign':
         return <AutoTopicAssignment />;
+      case '/admin/batches':
+        return <BatchManager />;
       default:
         return <DashboardOverview />;
     }

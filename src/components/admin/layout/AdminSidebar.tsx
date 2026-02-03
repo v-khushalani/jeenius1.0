@@ -15,7 +15,8 @@ import {
   Calendar,
   Layers,
   X,
-  Zap
+  Zap,
+  Package
 } from 'lucide-react';
 
 interface AdminSidebarProps {
@@ -35,6 +36,7 @@ const navItems: NavItem[] = [
   { path: '/admin/analytics', label: 'Analytics', icon: TrendingUp },
   { path: '/admin/users', label: 'Users', icon: Users },
   { path: '/admin/reports', label: 'Reports', icon: FileText },
+  { path: '/admin/batches', label: 'Batches', icon: Package },
   { path: '/admin/content', label: 'Chapters', icon: BookOpen },
   { path: '/admin/topics', label: 'Topics', icon: Layers },
   { path: '/admin/questions', label: 'Questions', icon: HelpCircle },
