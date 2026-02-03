@@ -134,8 +134,92 @@ export type Database = {
         }
         Relationships: []
       }
+      batch_subjects: {
+        Row: {
+          batch_id: string
+          created_at: string | null
+          display_order: number | null
+          id: string
+          subject: string
+        }
+        Insert: {
+          batch_id: string
+          created_at?: string | null
+          display_order?: number | null
+          id?: string
+          subject: string
+        }
+        Update: {
+          batch_id?: string
+          created_at?: string | null
+          display_order?: number | null
+          id?: string
+          subject?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_subjects_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      batches: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          description: string | null
+          display_order: number | null
+          exam_type: string
+          grade: number
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          price: number
+          slug: string
+          updated_at: string | null
+          validity_days: number
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          exam_type: string
+          grade: number
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          price?: number
+          slug: string
+          updated_at?: string | null
+          validity_days?: number
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          description?: string | null
+          display_order?: number | null
+          exam_type?: string
+          grade?: number
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          price?: number
+          slug?: string
+          updated_at?: string | null
+          validity_days?: number
+        }
+        Relationships: []
+      }
       chapters: {
         Row: {
+          batch_id: string | null
           chapter_name: string
           chapter_number: number
           created_at: string | null
@@ -148,6 +232,7 @@ export type Database = {
           subject: string
         }
         Insert: {
+          batch_id?: string | null
           chapter_name: string
           chapter_number: number
           created_at?: string | null
@@ -160,6 +245,7 @@ export type Database = {
           subject: string
         }
         Update: {
+          batch_id?: string | null
           chapter_name?: string
           chapter_number?: number
           created_at?: string | null
@@ -171,7 +257,15 @@ export type Database = {
           is_premium?: boolean | null
           subject?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "chapters_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       conversion_prompts: {
         Row: {
@@ -1704,6 +1798,54 @@ export type Database = {
           },
         ]
       }
+      user_batch_subscriptions: {
+        Row: {
+          batch_id: string
+          created_at: string | null
+          expires_at: string
+          id: string
+          payment_id: string | null
+          purchased_at: string | null
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          batch_id: string
+          created_at?: string | null
+          expires_at: string
+          id?: string
+          payment_id?: string | null
+          purchased_at?: string | null
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          batch_id?: string
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          payment_id?: string | null
+          purchased_at?: string | null
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_batch_subscriptions_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_batch_subscriptions_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_challenge_progress: {
         Row: {
           challenge_id: string | null
@@ -2376,6 +2518,10 @@ export type Database = {
       check_and_award_badges: {
         Args: { p_user_id: string }
         Returns: undefined
+      }
+      has_batch_access: {
+        Args: { p_batch_id: string; p_user_id: string }
+        Returns: boolean
       }
       has_role: {
         Args: {
