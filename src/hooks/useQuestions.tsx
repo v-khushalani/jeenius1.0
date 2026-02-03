@@ -119,9 +119,19 @@ const getRandomQuestions = async (
     
     // For adaptive learning, only exclude questions attempted at THIS difficulty level
     if (isAuthenticated && user) {
+      // Get user's target exam from profile
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('target_exam')
+        .eq('id', user.id)
+        .single();
+      
+      const targetExam = profileData?.target_exam || 'JEE';
+
       let query = supabase
         .from('questions')
-        .select('*');
+        .select('*')
+        .eq('exam', targetExam);
 
       // Apply filters
       if (subject) {

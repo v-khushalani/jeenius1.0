@@ -144,12 +144,18 @@ const StudyNowPage = () => {
       // Define allowed subjects based on target exam
       // JEE: Physics, Chemistry, Mathematics (PCM)
       // NEET: Physics, Chemistry, Biology (PCB)
+      // Foundation: All subjects (covers Foundation-6 through Foundation-10)
       const allowedSubjects = {
         'JEE': ['Physics', 'Chemistry', 'Mathematics'],
         'JEE Main': ['Physics', 'Chemistry', 'Mathematics'],
         'JEE Advanced': ['Physics', 'Chemistry', 'Mathematics'],
         'NEET': ['Physics', 'Chemistry', 'Biology'],
-        'Foundation': ['Physics', 'Chemistry', 'Mathematics', 'Biology']
+        'Foundation': ['Physics', 'Chemistry', 'Mathematics', 'Biology', 'Science', 'English'],
+        'Foundation-6': ['Physics', 'Chemistry', 'Mathematics', 'Biology', 'Science', 'English'],
+        'Foundation-7': ['Physics', 'Chemistry', 'Mathematics', 'Biology', 'Science', 'English'],
+        'Foundation-8': ['Physics', 'Chemistry', 'Mathematics', 'Biology', 'Science', 'English'],
+        'Foundation-9': ['Physics', 'Chemistry', 'Mathematics', 'Biology', 'Science', 'English'],
+        'Foundation-10': ['Physics', 'Chemistry', 'Mathematics', 'Biology', 'Science', 'English']
       };
 
       const examSubjects = allowedSubjects[targetExam] || allowedSubjects['JEE'];

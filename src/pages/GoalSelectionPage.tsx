@@ -150,10 +150,19 @@ const GoalSelectionPage = () => {
   
       // Update profile with grade, exam, and subjects
       const gradeNumber = parseInt(selectedGrade, 10) || 11;
+      
+      // Map goal to specific course type
+      // For Foundation courses, use "Foundation-{grade}" (e.g., "Foundation-9")
+      // For JEE/NEET, use as-is
+      let targetExamValue = selectedGoal;
+      if (selectedGoal === 'Foundation') {
+        targetExamValue = `Foundation-${gradeNumber}`;
+      }
+      
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
-          target_exam: selectedGoal,
+          target_exam: targetExamValue,
           grade: gradeNumber,
           subjects: selectedSubjects,
           daily_goal: selectedSubjects.length * 10,
