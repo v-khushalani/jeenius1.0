@@ -217,7 +217,7 @@ serve(async (req) => {
     console.log(`📄 Processing page ${pageNumber} from ${sourceFile}`);
 
     // Enhanced extraction prompt for better accuracy
-    const extractionPrompt = `You are an expert JEE/NEET question extractor. Analyze this textbook/question paper page image EXTREMELY CAREFULLY and extract EVERY SINGLE question visible.
+    const extractionPrompt = `You are an expert question extractor for multiple courses: JEE, NEET, MHT-CET, and Foundation courses (6th-10th grade). Analyze this textbook/question paper page image EXTREMELY CAREFULLY and extract EVERY SINGLE question visible.
 
 CRITICAL INSTRUCTIONS:
 1. Extract EVERY question on this page - DO NOT MISS ANY. Count them carefully before responding.
@@ -254,22 +254,20 @@ EXAMPLES OF PERFECT FORMATTING:
 
 SUBJECT DETECTION:
 ${subject ? `Confirmed subject: ${subject}` : `Detect from content:
-- Physics: motion, force, energy, waves, electricity, magnetism, optics
-- Chemistry: elements, reactions, bonds, organic, inorganic, physical chemistry
-- Mathematics: algebra, calculus, geometry, trigonometry, statistics
-- Biology: cells, organisms, genetics, physiology, ecology`}
+- JEE/NEET (11-12 grade): Physics, Chemistry, Mathematics, Biology (for NEET)
+- Foundation courses (6-10 grade): Mathematics, Science (Physics+Chemistry), General Science, Biology, Mental Ability, English`}
 
 CHAPTER MAPPING - CRITICAL: Map ONLY to these existing chapters from database:
 ${subject ? `For ${subject}: ${dbChapters.filter(ch => ch.subject === subject).map(ch => ch.chapter_name).join(', ')}` : 
   `Available chapters: ${dbChapters.map(ch => `${ch.subject}: ${ch.chapter_name}`).join('; ')}`}
 
 ${chapter ? `Chapter hint: ${chapter}` : ""}
-${exam ? `Exam type: ${exam}` : "Exam: JEE/NEET"}
+${exam ? `Course type: ${exam}` : "Course: JEE/NEET/MHT-CET or Foundation-6/7/8/9/10"}
 
 DIFFICULTY DETERMINATION:
 - Easy: Direct formula application, definition-based, single-concept
 - Medium: 2-3 steps, combination of concepts, moderate calculation
-- Hard: Multi-step derivation, advanced concepts, JEE Advanced level
+- Hard: Multi-step derivation, advanced concepts, competitive exam level
 
 Return ONLY valid JSON in this EXACT format (no markdown, no explanation):
 {

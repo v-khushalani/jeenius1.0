@@ -265,15 +265,29 @@ export function PDFQuestionExtractor() {
           {/* Pre-selection Filters */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label>Exam Type</Label>
+              <Label>Course Type</Label>
               <Select value={selectedExam} onValueChange={setSelectedExam}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select exam" />
+                  <SelectValue placeholder="Select course" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="JEE">JEE</SelectItem>
-                  <SelectItem value="NEET">NEET</SelectItem>
-                  <SelectItem value="MHT-CET">MHT-CET</SelectItem>
+                  {/* Higher Education */}
+                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                    HIGHER EDUCATION
+                  </div>
+                  <SelectItem value="JEE">JEE Main & Advanced</SelectItem>
+                  <SelectItem value="NEET">NEET Medical</SelectItem>
+                  <SelectItem value="MHT-CET">MHT CET Engineering</SelectItem>
+                  
+                  {/* Foundation Courses */}
+                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                    FOUNDATION COURSES
+                  </div>
+                  <SelectItem value="Foundation-6">6th Foundation</SelectItem>
+                  <SelectItem value="Foundation-7">7th Foundation</SelectItem>
+                  <SelectItem value="Foundation-8">8th Foundation</SelectItem>
+                  <SelectItem value="Foundation-9">9th Foundation</SelectItem>
+                  <SelectItem value="Foundation-10">10th Foundation</SelectItem>
                 </SelectContent>
               </Select>
             </div>

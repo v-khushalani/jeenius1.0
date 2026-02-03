@@ -332,8 +332,12 @@ export const QuestionManager = () => {
 
   const downloadSampleCSV = () => {
     const headers = 'exam,subject,chapter,topic,subtopic,question,option_a,option_b,option_c,option_d,correct_option,explanation,difficulty,question_type,year';
-    const sampleRow = 'JEE,Physics,Mechanics,Newton Laws,First Law,What is inertia?,Property of matter,Force,Mass,Energy,A,Inertia is the property of matter to resist change in motion,Easy,single_correct,2024';
-    const content = `${headers}\n${sampleRow}`;
+    const sampleRows = [
+      'JEE,Physics,Mechanics,Newton Laws,First Law,What is inertia?,Property of matter,Force,Mass,Energy,A,Inertia is the property of matter to resist change in motion,Easy,single_correct,2024',
+      'Foundation-9,Mathematics,Algebra,Linear Equations,Solving,What is the solution to x+5=10?,x=5,x=15,x=3,x=2,A,Adding -5 to both sides,Easy,single_correct,2024',
+      'NEET,Biology,Cell Structure,Mitochondria,Function,What is the powerhouse of the cell?,Nucleus,Mitochondria,Ribosome,Chloroplast,B,Mitochondria produces ATP,Medium,single_correct,2024'
+    ];
+    const content = `${headers}\n${sampleRows.join('\n')}`;
     
     const blob = new Blob([content], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -344,7 +348,7 @@ export const QuestionManager = () => {
     a.click();
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
-    toast.success('Template downloaded - exam values: JEE, NEET, MHT-CET | difficulty: Easy, Medium, Hard');
+    toast.success('Template downloaded - Exam values: JEE, NEET, MHT-CET, Foundation-6/7/8/9/10 | Difficulty: Easy, Medium, Hard');
   };
 
   const parseCSV = (text: string): any[] => {
@@ -502,15 +506,26 @@ export const QuestionManager = () => {
 
         <div className="grid grid-cols-3 gap-4">
           <div>
-            <Label>Exam Type *</Label>
+            <Label>Course Type *</Label>
             <Select value={formData.exam} onValueChange={(v) => setFormData(prev => ({...prev, exam: v}))}>
               <SelectTrigger>
-                <SelectValue placeholder="Select exam" />
+                <SelectValue placeholder="Select course" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="JEE">JEE</SelectItem>
-                <SelectItem value="NEET">NEET</SelectItem>
-                <SelectItem value="MHT-CET">MHT-CET</SelectItem>
+                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                  HIGHER EDUCATION
+                </div>
+                <SelectItem value="JEE">JEE Main & Advanced</SelectItem>
+                <SelectItem value="NEET">NEET Medical</SelectItem>
+                <SelectItem value="MHT-CET">MHT CET Engineering</SelectItem>
+                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">
+                  FOUNDATION COURSES
+                </div>
+                <SelectItem value="Foundation-6">6th Foundation</SelectItem>
+                <SelectItem value="Foundation-7">7th Foundation</SelectItem>
+                <SelectItem value="Foundation-8">8th Foundation</SelectItem>
+                <SelectItem value="Foundation-9">9th Foundation</SelectItem>
+                <SelectItem value="Foundation-10">10th Foundation</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -805,14 +820,25 @@ export const QuestionManager = () => {
               </SelectContent>
             </Select>
             <Select value={filterExam} onValueChange={setFilterExam}>
-              <SelectTrigger className="w-[140px]">
-                <SelectValue placeholder="Exam" />
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Course" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Exams</SelectItem>
+                <SelectItem value="all">All Courses</SelectItem>
+                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                  HIGHER EDUCATION
+                </div>
                 <SelectItem value="JEE">JEE</SelectItem>
                 <SelectItem value="NEET">NEET</SelectItem>
                 <SelectItem value="MHT-CET">MHT-CET</SelectItem>
+                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">
+                  FOUNDATION
+                </div>
+                <SelectItem value="Foundation-6">Foundation-6</SelectItem>
+                <SelectItem value="Foundation-7">Foundation-7</SelectItem>
+                <SelectItem value="Foundation-8">Foundation-8</SelectItem>
+                <SelectItem value="Foundation-9">Foundation-9</SelectItem>
+                <SelectItem value="Foundation-10">Foundation-10</SelectItem>
               </SelectContent>
             </Select>
             {selectedQuestions.size > 0 && (
