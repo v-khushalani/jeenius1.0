@@ -274,9 +274,19 @@ export function ExtractionReviewQueue() {
     try {
       const q = editedQuestion?.parsed_question || currentQuestion.parsed_question;
 
-      // Validate required fields
-      if (!q.question || !q.option_a || !q.correct_option || !q.subject) {
-        toast.error("Missing required fields");
+      // Validate ALL required fields for questions table
+      const missingFields = [];
+      if (!q.question?.trim()) missingFields.push("Question");
+      if (!q.option_a?.trim()) missingFields.push("Option A");
+      if (!q.option_b?.trim()) missingFields.push("Option B");
+      if (!q.option_c?.trim()) missingFields.push("Option C");
+      if (!q.option_d?.trim()) missingFields.push("Option D");
+      if (!q.correct_option?.trim()) missingFields.push("Correct Answer");
+      if (!q.subject?.trim()) missingFields.push("Subject");
+      if (!q.difficulty?.trim()) missingFields.push("Difficulty");
+
+      if (missingFields.length > 0) {
+        toast.error(`Missing required fields: ${missingFields.join(", ")}`);
         setSaving(false);
         return;
       }
@@ -284,8 +294,8 @@ export function ExtractionReviewQueue() {
       // Get chapter/topic from NLP assignment or manual selection
       let chapterId = q.auto_assigned_chapter_id || null;
       let topicId = q.auto_assigned_topic_id || null;
-      const chapterName = q.auto_assigned_chapter_name || q.chapter || "General";
-      const topicName = q.auto_assigned_topic_name || q.topic || chapterName;
+      const chapterName = (q.auto_assigned_chapter_name || q.chapter || "").trim();
+      const topicName = (q.auto_assigned_topic_name || q.topic || chapterName || "").trim();
 
       // AUTO-LOOKUP: If we have chapter name but no ID, find it from database
       if (!chapterId && chapterName && chapterName !== "General") {
@@ -320,14 +330,28 @@ export function ExtractionReviewQueue() {
         }
       }
 
-      // STRICT VALIDATION: Both chapter_id and topic_id are required by database trigger
+      // STRICT VALIDATION: Both chapter_id and topic_id are required by database
       if (!chapterId) {
-        toast.error(`Chapter "${chapterName}" not found in database. Please select a chapter manually using Edit.`);
+        const missingChapter = !chapterName ? "No chapter name provided" : `Chapter "${chapterName}" not found in database`;
+        toast.error(`${missingChapter}. Please select a chapter manually using Edit.`);
         setSaving(false);
         return;
       }
       if (!topicId) {
-        toast.error(`Topic "${topicName}" not found in database. Please select a topic manually.`);
+        const missingTopic = !topicName ? "No topic name provided" : `Topic "${topicName}" not found in database`;
+        toast.error(`${missingTopic}. Please select a topic manually.`);
+        setSaving(false);
+        return;
+      }
+      
+      // Final validation: Ensure chapter and topic names are not empty
+      if (!chapterName?.trim()) {
+        toast.error("Chapter name is required. Please edit the question and select a chapter.");
+        setSaving(false);
+        return;
+      }
+      if (!topicName?.trim()) {
+        toast.error("Topic name is required. Please edit the question and select a topic.");
         setSaving(false);
         return;
       }
@@ -337,22 +361,22 @@ export function ExtractionReviewQueue() {
         await supabase.from("questions").delete().eq("id", duplicateInfo.existingId);
       }
 
-      // Insert into questions table
+      // Insert into questions table with all required fields
       const { error: insertError } = await supabase.from("questions").insert({
-        question: q.question,
-        option_a: q.option_a,
-        option_b: q.option_b || "",
-        option_c: q.option_c || "",
-        option_d: q.option_d || "",
-        correct_option: q.correct_option.toUpperCase(),
-        explanation: q.explanation || "",
-        subject: q.subject,
-        chapter: chapterName,
+        question: q.question.trim(),
+        option_a: q.option_a.trim(),
+        option_b: (q.option_b || "").trim(),
+        option_c: (q.option_c || "").trim(),
+        option_d: (q.option_d || "").trim(),
+        correct_option: q.correct_option.toUpperCase().trim(),
+        explanation: (q.explanation || "").trim(),
+        subject: q.subject.trim(),
+        chapter: chapterName.trim(),
         chapter_id: chapterId,
-        topic: topicName,
+        topic: topicName.trim(),
         topic_id: topicId,
-        difficulty: q.difficulty || "Medium",
-        exam: q.exam || "JEE",
+        difficulty: (q.difficulty || "Medium").trim(),
+        exam: (q.exam || "JEE").trim(),
         question_type: "single_correct"
       });
 
@@ -541,9 +565,19 @@ export function ExtractionReviewQueue() {
         
         setBulkProgress(prev => ({ ...prev, current: i + 1 }));
 
-        // Skip invalid questions
-        if (!q.question || !q.option_a || !q.correct_option || !q.subject) {
-          logger.warn(`Skipping question ${question.id}: Missing required fields`);
+        // Skip invalid questions - check ALL required fields
+        const missingFields = [];
+        if (!q.question?.trim()) missingFields.push("Question");
+        if (!q.option_a?.trim()) missingFields.push("Option A");
+        if (!q.option_b?.trim()) missingFields.push("Option B");
+        if (!q.option_c?.trim()) missingFields.push("Option C");
+        if (!q.option_d?.trim()) missingFields.push("Option D");
+        if (!q.correct_option?.trim()) missingFields.push("Correct Answer");
+        if (!q.subject?.trim()) missingFields.push("Subject");
+        if (!q.difficulty?.trim()) missingFields.push("Difficulty");
+
+        if (missingFields.length > 0) {
+          logger.warn(`Skipping question ${question.id}: Missing fields: ${missingFields.join(", ")}`);
           skipped++;
           continue;
         }
@@ -551,8 +585,8 @@ export function ExtractionReviewQueue() {
         // Get curriculum assignment
         let chapterId = q.auto_assigned_chapter_id || null;
         let topicId = q.auto_assigned_topic_id || null;
-        const chapterName = q.auto_assigned_chapter_name || q.chapter || "General";
-        const topicName = q.auto_assigned_topic_name || q.topic || chapterName;
+        const chapterName = (q.auto_assigned_chapter_name || q.chapter || "").trim();
+        const topicName = (q.auto_assigned_topic_name || q.topic || chapterName || "").trim();
 
         // AUTO-LOOKUP: If we have chapter name but no ID, find it from database
         if (!chapterId && chapterName && chapterName !== "General") {
@@ -583,9 +617,15 @@ export function ExtractionReviewQueue() {
           }
         }
 
-        // STRICT VALIDATION: Both chapter_id and topic_id are required by database trigger
+        // STRICT VALIDATION: Both chapter_id and topic_id are required, and chapter/topic names must be set
         if (!chapterId || !topicId) {
           logger.warn(`Skipping question ${question.id}: Missing chapter_id (${chapterId}) or topic_id (${topicId}) - Chapter: "${chapterName}", Topic: "${topicName}"`);
+          skipped++;
+          continue;
+        }
+        
+        if (!chapterName?.trim() || !topicName?.trim()) {
+          logger.warn(`Skipping question ${question.id}: Missing chapter or topic name`);
           skipped++;
           continue;
         }
@@ -613,22 +653,22 @@ export function ExtractionReviewQueue() {
           }
         }
 
-        // Insert into database
+        // Insert into database with all required fields properly trimmed
         const { error } = await supabase.from("questions").insert({
-          question: q.question,
-          option_a: q.option_a,
-          option_b: q.option_b || "",
-          option_c: q.option_c || "",
-          option_d: q.option_d || "",
-          correct_option: q.correct_option.toUpperCase(),
-          explanation: q.explanation || "",
-          subject: q.subject,
-          chapter: chapterName,
+          question: q.question.trim(),
+          option_a: q.option_a.trim(),
+          option_b: (q.option_b || "").trim(),
+          option_c: (q.option_c || "").trim(),
+          option_d: (q.option_d || "").trim(),
+          correct_option: q.correct_option.toUpperCase().trim(),
+          explanation: (q.explanation || "").trim(),
+          subject: q.subject.trim(),
+          chapter: chapterName.trim(),
           chapter_id: chapterId,
-          topic: topicName,
+          topic: topicName.trim(),
           topic_id: topicId,
-          difficulty: q.difficulty || "Medium",
-          exam: q.exam || "JEE",
+          difficulty: (q.difficulty || "Medium").trim(),
+          exam: (q.exam || "JEE").trim(),
           question_type: "single_correct"
         });
 

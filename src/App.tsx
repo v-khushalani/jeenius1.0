@@ -33,6 +33,7 @@ const AnalyticsPage = lazy(() => import("@/pages/AnalyticsPage"));
 const AdminDashboard = lazy(() => import("@/pages/AdminDashboard"));
 const SubscriptionPlans = lazy(() => import('@/pages/SubscriptionPlans'));
 const PricingPage = lazy(() => import('@/components/Pricing'));
+const BatchesPage = lazy(() => import('@/pages/BatchesPage'));
 
 // Components
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -108,6 +109,7 @@ function App() {
                 <Route path="/test-results" element={<TestResultsPage />} />
                 <Route path="/analytics" element={<AnalyticsPage />} />
                 <Route path="/subscription-plans" element={<SubscriptionPlans />} />
+                <Route path="/batches" element={<BatchesPage />} />
               
                 {/* AI Study Planner */}
                 <Route
@@ -256,14 +258,19 @@ function App() {
                     </AdminRoute>
                   }
                 />
+                <Route
+                  path="/admin/batches"
+                  element={
+                    <AdminRoute>
+                      <AdminDashboard />
+                    </AdminRoute>
+                  }
+                />
                 
-                <Route path="/pricing" element={<PricingPage />} />
-
-                {/* 404 */}
+                {/* 404 - Not Found */}
                 <Route path="*" element={<NotFound />} />
-              </Routes>
+                </Routes>
               </Suspense>
-              <FloatingAIButton />
             </ErrorBoundary>
           </TooltipProvider>
         </AuthProvider>
