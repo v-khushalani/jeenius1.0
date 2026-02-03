@@ -87,11 +87,7 @@ export const BatchManager: React.FC = () => {
         .order('display_order', { ascending: true });
 
       if (error) throw error;
-<<<<<<< HEAD
-      setBatches((data || []) as any);
-=======
       setBatches(data || []);
->>>>>>> d46a1cf3cf02ef41487dbbf3dbee73e47950c6de
     } catch (error: any) {
       toast.error('Failed to fetch batches: ' + error.message);
     } finally {
@@ -179,11 +175,7 @@ export const BatchManager: React.FC = () => {
             updated_at: new Date().toISOString()
           })
           .eq('id', editingBatch.id);
-<<<<<<< HEAD
-        
-=======
 
->>>>>>> d46a1cf3cf02ef41487dbbf3dbee73e47950c6de
         if (batchError) throw batchError;
 
         // Update subjects - delete old and insert new
@@ -377,15 +369,12 @@ export const BatchManager: React.FC = () => {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-<<<<<<< HEAD
               {batch.description && (
                 <p className="text-sm text-muted-foreground line-clamp-2">
                   {batch.description}
                 </p>
               )}
 
-=======
->>>>>>> d46a1cf3cf02ef41487dbbf3dbee73e47950c6de
               {/* Pricing */}
               <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                 <div className="flex items-center gap-2">
