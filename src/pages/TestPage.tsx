@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import PricingModal from '@/components/PricingModal';
 import { logger } from '@/utils/logger';
+import { parseGrade, isFoundationGrade, extractGradeFromExamType } from '@/utils/gradeParser';
 
 const TestPage = () => {
   const [loading, setLoading] = useState(false);
@@ -39,9 +40,13 @@ const TestPage = () => {
 
   useEffect(() => {
     if (profile) {
+      logger.info('TestPage: Profile changed, reloading subjects/chapters', {
+        target_exam: profile?.target_exam,
+        grade: profile?.grade
+      });
       fetchSubjectsAndChapters();
     }
-  }, [profile]);
+  }, [profile?.target_exam, profile?.grade]);
 
   const loadProfile = async () => {
     try {
@@ -64,7 +69,10 @@ const TestPage = () => {
     try {
       // Get user's target exam and grade for subject/chapter filtering
       const targetExam = profile?.target_exam || 'JEE';
-      const userGrade = profile?.grade || 12;
+      let userGrade = profile?.grade || 12;
+      
+      // Parse grade properly (handles strings like "9th", "9", numbers, etc.)
+      userGrade = parseGrade(userGrade);
       
       // Define allowed subjects based on target exam
       const allowedSubjects = {
@@ -89,12 +97,19 @@ const TestPage = () => {
         .order('chapter_number');
 
       // For Foundation students, filter chapters by their batch
-      if (targetExam.startsWith('Foundation-') && userGrade >= 6 && userGrade <= 10) {
+      if (targetExam && targetExam.startsWith('Foundation-') && isFoundationGrade(userGrade)) {
+        // Parse grade from target_exam if available (e.g., "Foundation-9" -> 9)
+        let gradeToUse = userGrade;
+        const gradeFromExam = extractGradeFromExamType(targetExam);
+        if (gradeFromExam >= 6 && gradeFromExam <= 10) {
+          gradeToUse = gradeFromExam;
+        }
+
         // Get the user's batch based on grade and exam type
         const { data: userBatch } = await supabase
           .from('batches')
           .select('id')
-          .eq('grade', userGrade)
+          .eq('grade', gradeToUse)
           .eq('exam_type', 'Foundation')
           .single();
 

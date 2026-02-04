@@ -25,6 +25,7 @@ import UserLimitsService from '@/services/userLimitsService';
 import PointsService from '@/services/pointsService';
 import { useStreakData } from '@/hooks/useStreakData';
 import { logger } from '@/utils/logger';
+import { parseGrade, isFoundationGrade, extractGradeFromExamType } from '@/utils/gradeParser';
 
 const StudyNowPage = () => {
   const navigate = useNavigate();
@@ -71,6 +72,17 @@ const StudyNowPage = () => {
   useEffect(() => {
     initializePage();
   }, []);
+
+  // Re-fetch subjects when profile (grade/target_exam) changes
+  useEffect(() => {
+    if (profile?.target_exam || profile?.grade) {
+      logger.info('Profile changed, reloading subjects', { 
+        target_exam: profile?.target_exam, 
+        grade: profile?.grade 
+      });
+      fetchSubjects();
+    }
+  }, [profile?.target_exam, profile?.grade]);
 
   const initializePage = async () => {
     try {
@@ -140,7 +152,10 @@ const StudyNowPage = () => {
         .single();
       
       const targetExam = profileData?.target_exam || 'JEE';
-      const userGrade = profileData?.grade || 12;
+      let userGrade = profileData?.grade || 12;
+      
+      // Parse grade properly (handles strings like "9th", "9", numbers, etc.)
+      userGrade = parseGrade(userGrade);
 
       // Define allowed subjects based on target exam
       const allowedSubjects = {
@@ -279,30 +294,53 @@ const StudyNowPage = () => {
 
       // Get user's target exam and grade from profile
       const targetExam = profile?.target_exam || 'JEE';
-      const userGrade = profile?.grade || 12;
+      let userGrade = profile?.grade || 12;
+      
+      // Parse grade properly (handles strings like "9th", "9", numbers, etc.)
+      userGrade = parseGrade(userGrade);
 
-      // Build chapter query - filter by batch if user is in a Foundation grade
+      logger.info('LoadChapters debug', { targetExam, userGrade, subject });
+
+      // Build chapter query
       let chaptersQuery = supabase
         .from('chapters')
         .select('id, chapter_name, chapter_number, description, difficulty_level, batch_id')
-        .eq('subject', subject)
-        .order('chapter_number', { ascending: true });
+        .eq('subject', subject);
 
-      // For Foundation students, filter chapters by their batch
-      if (targetExam.startsWith('Foundation-') && userGrade >= 6 && userGrade <= 10) {
+      // For Foundation students (grades 6-10), filter chapters by their batch
+      if (targetExam && targetExam.startsWith('Foundation-') && isFoundationGrade(userGrade)) {
+        // Parse grade from target_exam if available (e.g., "Foundation-9" -> 9)
+        let gradeToUse = userGrade;
+        const gradeFromExam = extractGradeFromExamType(targetExam);
+        if (gradeFromExam >= 6 && gradeFromExam <= 10) {
+          gradeToUse = gradeFromExam;
+        }
+
+        logger.info('Foundation student detected', { targetExam, gradeToUse });
+
         // Get the user's batch based on grade and exam type
-        const { data: userBatch } = await supabase
+        const { data: userBatch, error: batchError } = await supabase
           .from('batches')
-          .select('id')
-          .eq('grade', userGrade)
+          .select('id, name, slug')
+          .eq('grade', gradeToUse)
           .eq('exam_type', 'Foundation')
           .single();
 
+        logger.info('Batch lookup result', { userBatch, batchError });
+
         if (userBatch?.id) {
+          // Filter chapters to only those in the user's batch
           chaptersQuery = chaptersQuery.eq('batch_id', userBatch.id);
+          logger.info('Filtering chapters by batch_id', { batch_id: userBatch.id });
+        } else {
+          logger.warn('No batch found for grade', { gradeToUse });
         }
+      } else {
+        // For JEE/NEET students (grades 11-12), don't filter by batch
+        logger.info('Non-Foundation student, no batch filtering');
       }
 
+      chaptersQuery = chaptersQuery.order('chapter_number', { ascending: true });
       const { data: chaptersData, error: chaptersError } = await chaptersQuery;
 
       if (chaptersError) throw chaptersError;
@@ -374,6 +412,7 @@ const StudyNowPage = () => {
 
       // Get user's target exam from profile
       const targetExam = profile?.target_exam || 'JEE';
+      logger.info('LoadTopics debug', { targetExam, selectedSubject, chapter });
 
       const { data, error } = await supabase
         .from('questions')
@@ -442,6 +481,10 @@ const StudyNowPage = () => {
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
+      
+      // Get target exam - consistent with loadChapters logic
+      const targetExam = profile?.target_exam || 'JEE';
+      logger.info('StartPractice debug', { targetExam, selectedSubject, selectedChapter, topic });
       
       // ✅ CHECK DAILY LIMIT BEFORE STARTING PRACTICE
       if (!isPremium) {
