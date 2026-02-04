@@ -105,6 +105,11 @@ const Settings = () => {
         });
       } else {
         const nameParts = profileData.full_name?.split(' ') || ['', ''];
+        // Normalize target_exam for display - show "Foundation" in UI even if stored as "Foundation-9"
+        let displayExam = profileData.target_exam || 'JEE';
+        if (displayExam.startsWith('Foundation-')) {
+          displayExam = 'Foundation';
+        }
         setProfile({
           firstName: nameParts[0] || '',
           lastName: nameParts.slice(1).join(' ') || '',
@@ -116,7 +121,7 @@ const Settings = () => {
                  profileData.grade === 12 ? '12th' : 
                  profileData.grade >= 6 && profileData.grade <= 10 ? `${profileData.grade}th` :
                  '12th-pass',
-          target_exam: profileData.target_exam || 'JEE',
+          target_exam: displayExam,
           daily_goal: profileData.daily_goal || 15,
           daily_study_hours: profileData.daily_study_hours || 4
         });
@@ -160,6 +165,13 @@ const Settings = () => {
                           profile.grade === '12th-pass' ? 13 :
                           parseInt(profile.grade) || 12;
 
+      // For Foundation courses, use "Foundation-{grade}" (e.g., "Foundation-9")
+      // For JEE/NEET, use as-is
+      let targetExamValue = profile.target_exam;
+      if (profile.target_exam === 'Foundation' && gradeNumber >= 6 && gradeNumber <= 10) {
+        targetExamValue = `Foundation-${gradeNumber}`;
+      }
+
       const updateData = {
         full_name: `${profile.firstName.trim()} ${profile.lastName.trim()}`.trim(),
         email: profile.email.trim(),
@@ -167,7 +179,7 @@ const Settings = () => {
         city: profile.city?.trim() || null,
         state: profile.state?.trim() || null,
         grade: gradeNumber,
-        target_exam: profile.target_exam || 'JEE',
+        target_exam: targetExamValue,
         daily_goal: profile.daily_goal,
         daily_study_hours: profile.daily_study_hours,
         updated_at: new Date().toISOString()

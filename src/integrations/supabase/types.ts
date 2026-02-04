@@ -134,6 +134,59 @@ export type Database = {
         }
         Relationships: []
       }
+      batch_payments: {
+        Row: {
+          amount: number
+          batch_id: string
+          batch_validity_days: number | null
+          created_at: string | null
+          currency: string | null
+          id: string
+          razorpay_order_id: string
+          razorpay_payment_id: string | null
+          razorpay_signature: string | null
+          status: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          batch_id: string
+          batch_validity_days?: number | null
+          created_at?: string | null
+          currency?: string | null
+          id?: string
+          razorpay_order_id: string
+          razorpay_payment_id?: string | null
+          razorpay_signature?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          batch_id?: string
+          batch_validity_days?: number | null
+          created_at?: string | null
+          currency?: string | null
+          id?: string
+          razorpay_order_id?: string
+          razorpay_payment_id?: string | null
+          razorpay_signature?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_payments_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       batch_subjects: {
         Row: {
           batch_id: string
@@ -2234,194 +2287,6 @@ export type Database = {
           weakness_score?: number | null
         }
         Relationships: []
-      }
-      batches: {
-        Row: {
-          id: string
-          name: string
-          slug: string
-          description: string | null
-          grade: number
-          exam_type: string
-          price: number
-          validity_days: number
-          is_active: boolean
-          display_order: number | null
-          icon: string | null
-          color: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          name: string
-          slug: string
-          description?: string | null
-          grade: number
-          exam_type: string
-          price?: number
-          validity_days?: number
-          is_active?: boolean
-          display_order?: number | null
-          icon?: string | null
-          color?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          name?: string
-          slug?: string
-          description?: string | null
-          grade?: number
-          exam_type?: string
-          price?: number
-          validity_days?: number
-          is_active?: boolean
-          display_order?: number | null
-          icon?: string | null
-          color?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      batch_subjects: {
-        Row: {
-          id: string
-          batch_id: string
-          subject: string
-          display_order: number
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          batch_id: string
-          subject: string
-          display_order?: number
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          batch_id?: string
-          subject?: string
-          display_order?: number
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "batch_subjects_batch_id_fkey"
-            columns: ["batch_id"]
-            isOneToOne: false
-            referencedRelation: "batches"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
-      user_batch_subscriptions: {
-        Row: {
-          id: string
-          user_id: string
-          batch_id: string
-          status: string
-          purchased_at: string
-          expires_at: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          batch_id: string
-          status?: string
-          purchased_at?: string
-          expires_at?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          batch_id?: string
-          status?: string
-          purchased_at?: string
-          expires_at?: string | null
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_batch_subscriptions_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "user_batch_subscriptions_batch_id_fkey"
-            columns: ["batch_id"]
-            isOneToOne: false
-            referencedRelation: "batches"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
-      batch_payments: {
-        Row: {
-          id: string
-          user_id: string
-          batch_id: string
-          razorpay_order_id: string
-          razorpay_payment_id: string | null
-          razorpay_signature: string | null
-          amount: number
-          currency: string
-          status: string
-          batch_validity_days: number | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          batch_id: string
-          razorpay_order_id: string
-          razorpay_payment_id?: string | null
-          razorpay_signature?: string | null
-          amount: number
-          currency?: string
-          status?: string
-          batch_validity_days?: number | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          batch_id?: string
-          razorpay_order_id?: string
-          razorpay_payment_id?: string | null
-          razorpay_signature?: string | null
-          amount?: number
-          currency?: string
-          status?: string
-          batch_validity_days?: number | null
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "batch_payments_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "batch_payments_batch_id_fkey"
-            columns: ["batch_id"]
-            isOneToOne: false
-            referencedRelation: "batches"
-            referencedColumns: ["id"]
-          }
-        ]
       }
     }
     Views: {

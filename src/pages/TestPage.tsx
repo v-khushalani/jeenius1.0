@@ -62,13 +62,11 @@ const TestPage = () => {
 
   const fetchSubjectsAndChapters = async () => {
     try {
-      // Get user's target exam for subject filtering
+      // Get user's target exam and grade for subject/chapter filtering
       const targetExam = profile?.target_exam || 'JEE';
+      const userGrade = profile?.grade || 12;
       
       // Define allowed subjects based on target exam
-      // JEE: Physics, Chemistry, Mathematics (PCM)
-      // NEET: Physics, Chemistry, Biology (PCB)
-      // Foundation: All subjects (covers Foundation-6 through Foundation-10)
       const allowedSubjects = {
         'JEE': ['Physics', 'Chemistry', 'Mathematics'],
         'JEE Main': ['Physics', 'Chemistry', 'Mathematics'],
@@ -84,11 +82,28 @@ const TestPage = () => {
 
       const examSubjects = allowedSubjects[targetExam] || allowedSubjects['JEE'];
 
-      // Fetch chapters from chapters table (properly linked)
-      const { data: chaptersData, error: chaptersError } = await supabase
+      // Build chapter query - filter by batch if user is in a Foundation grade
+      let chaptersQuery = supabase
         .from('chapters')
-        .select('id, subject, chapter_name, chapter_number')
+        .select('id, subject, chapter_name, chapter_number, batch_id')
         .order('chapter_number');
+
+      // For Foundation students, filter chapters by their batch
+      if (targetExam.startsWith('Foundation-') && userGrade >= 6 && userGrade <= 10) {
+        // Get the user's batch based on grade and exam type
+        const { data: userBatch } = await supabase
+          .from('batches')
+          .select('id')
+          .eq('grade', userGrade)
+          .eq('exam_type', 'Foundation')
+          .single();
+
+        if (userBatch?.id) {
+          chaptersQuery = chaptersQuery.eq('batch_id', userBatch.id);
+        }
+      }
+
+      const { data: chaptersData, error: chaptersError } = await chaptersQuery;
       
       if (chaptersError) throw chaptersError;
 
