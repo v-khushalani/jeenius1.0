@@ -28,20 +28,22 @@ export interface SubjectConfig {
 }
 
 /**
- * Subject configuration based on target exam
- * Centralized place to define which subjects are allowed for each exam type
+ * Subject configuration based on target exam and grade
+ * CRITICAL: Foundation (grades 6-10) shows PCMB (Physics, Chemistry, Mathematics, Biology only)
+ * JEE (grades 11-12) shows PCM (Physics, Chemistry, Mathematics only)
+ * NEET (grades 11-12) shows PCB (Physics, Chemistry, Biology only)
  */
 export const SUBJECT_CONFIG: SubjectConfig = {
   'JEE': ['Physics', 'Chemistry', 'Mathematics'],
   'JEE Main': ['Physics', 'Chemistry', 'Mathematics'],
   'JEE Advanced': ['Physics', 'Chemistry', 'Mathematics'],
   'NEET': ['Physics', 'Chemistry', 'Biology'],
-  'Foundation': ['Physics', 'Chemistry', 'Mathematics', 'Biology', 'Science', 'English'],
-  'Foundation-6': ['Physics', 'Chemistry', 'Mathematics', 'Biology', 'Science', 'English'],
-  'Foundation-7': ['Physics', 'Chemistry', 'Mathematics', 'Biology', 'Science', 'English'],
-  'Foundation-8': ['Physics', 'Chemistry', 'Mathematics', 'Biology', 'Science', 'English'],
-  'Foundation-9': ['Physics', 'Chemistry', 'Mathematics', 'Biology', 'Science', 'English'],
-  'Foundation-10': ['Physics', 'Chemistry', 'Mathematics', 'Biology', 'Science', 'English'],
+  'Foundation': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
+  'Foundation-6': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
+  'Foundation-7': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
+  'Foundation-8': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
+  'Foundation-9': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
+  'Foundation-10': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
   'Scholarship': ['Mathematics', 'Science', 'Mental Ability', 'English'],
   'Homi Bhabha': ['Science', 'Mathematics'],
   'Olympiad': ['Physics', 'Chemistry', 'Mathematics', 'Biology']
@@ -218,7 +220,10 @@ export const getBatchDependencies = (profile: any): (string | number | undefined
 };
 
 /**
- * Determine exam type from grade and target exam
+ * Determine exam type from grade (CRITICAL LOGIC)
+ * Grade determines exam type automatically:
+ * - Grades 6-10: Foundation (PCMB)
+ * - Grades 11-12: JEE or NEET (based on target_exam selection)
  */
 export const getExamTypeForGrade = (
   grade: number,
@@ -226,15 +231,20 @@ export const getExamTypeForGrade = (
 ): string => {
   const parsedGrade = parseGrade(grade);
   
+  // Grades 6-10: Always Foundation
   if (isFoundationGrade(parsedGrade)) {
     return 'Foundation';
   }
   
-  if (targetExam?.includes('NEET')) {
-    return 'NEET';
+  // Grades 11-12: Determine from target_exam
+  if (parsedGrade >= 11 && parsedGrade <= 12) {
+    if (targetExam?.includes('NEET')) {
+      return 'NEET';
+    }
+    return 'JEE';
   }
   
-  return 'JEE';
+  return 'JEE'; // Default fallback
 };
 
 /**
