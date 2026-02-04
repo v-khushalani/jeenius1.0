@@ -39,7 +39,6 @@ interface Batch {
   grade: number;
   exam_type: string;
   price: number;
-  offer_price: number | null;
   validity_days: number;
   is_active: boolean;
   color: string | null;
@@ -67,7 +66,6 @@ export const BatchManager: React.FC = () => {
     grade: 6,
     exam_type: 'Foundation',
     price: 999,
-    offer_price: null as number | null,
     validity_days: 365,
     is_active: true,
     color: '#3B82F6',
@@ -110,7 +108,6 @@ export const BatchManager: React.FC = () => {
       grade: 6,
       exam_type: 'Foundation',
       price: 999,
-      offer_price: null,
       validity_days: 365,
       is_active: true,
       color: '#3B82F6',
@@ -128,7 +125,6 @@ export const BatchManager: React.FC = () => {
       grade: batch.grade,
       exam_type: batch.exam_type,
       price: batch.price,
-      offer_price: batch.offer_price || null,
       validity_days: batch.validity_days,
       is_active: batch.is_active,
       color: batch.color || '#3B82F6',
@@ -173,7 +169,6 @@ export const BatchManager: React.FC = () => {
             grade: formData.grade,
             exam_type: formData.exam_type,
             price: formData.price,
-            offer_price: formData.offer_price,
             validity_days: formData.validity_days,
             is_active: formData.is_active,
             color: formData.color,
@@ -215,7 +210,6 @@ export const BatchManager: React.FC = () => {
             grade: formData.grade,
             exam_type: formData.exam_type,
             price: formData.price,
-            offer_price: formData.offer_price,
             validity_days: formData.validity_days,
             is_active: formData.is_active,
             color: formData.color,
@@ -388,21 +382,7 @@ export const BatchManager: React.FC = () => {
                   <span className="text-sm text-muted-foreground">Price</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  {batch.offer_price ? (
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold line-through text-muted-foreground">
-                        ₹{batch.price}
-                      </span>
-                      <span className="text-base font-bold text-green-600">
-                        ₹{batch.offer_price}
-                      </span>
-                      <Badge className="bg-green-100 text-green-800 text-xs">
-                        {Math.round(((batch.price - batch.offer_price) / batch.price) * 100)}% OFF
-                      </Badge>
-                    </div>
-                  ) : (
-                    <span className="text-sm font-semibold">₹{batch.price}</span>
-                  )}
+                  <span className="text-sm font-semibold">₹{batch.price}</span>
                 </div>
               </div>
 
@@ -565,26 +545,14 @@ export const BatchManager: React.FC = () => {
             </div>
 
             {/* Pricing */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="price">Regular Price (₹)</Label>
-                <Input
-                  id="price"
-                  type="number"
-                  value={formData.price}
-                  onChange={(e) => setFormData(prev => ({ ...prev, price: parseInt(e.target.value) || 0 }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="offer_price">Offer Price (₹) <span className="text-xs text-muted-foreground">(optional)</span></Label>
-                <Input
-                  id="offer_price"
-                  type="number"
-                  value={formData.offer_price || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, offer_price: e.target.value ? parseInt(e.target.value) : null }))}
-                  placeholder="Leave empty if no discount"
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="price">Price (₹)</Label>
+              <Input
+                id="price"
+                type="number"
+                value={formData.price}
+                onChange={(e) => setFormData(prev => ({ ...prev, price: parseInt(e.target.value) || 0 }))}
+              />
             </div>
 
             <div className="space-y-2">
