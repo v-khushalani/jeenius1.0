@@ -33,6 +33,7 @@ interface Batch {
   grade: number;
   exam_type: string;
   price: number;
+  offer_price: number | null;
   validity_days: number;
   is_active: boolean;
   color: string | null;
@@ -69,6 +70,7 @@ export const BatchExplorer: React.FC = () => {
           grade,
           exam_type,
           price,
+          offer_price,
           validity_days,
           is_active,
           color,
@@ -279,13 +281,29 @@ export const BatchExplorer: React.FC = () => {
                 <div className="border-t pt-3 space-y-3">
                   {batch.price > 0 ? (
                     <>
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between gap-2">
                         <span className="text-sm font-medium text-muted-foreground">
                           Price
                         </span>
-                        <span className="text-2xl font-bold text-primary">
-                          ₹{priceInRupees}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          {batch.offer_price ? (
+                            <>
+                              <span className="text-sm line-through text-muted-foreground">
+                                ₹{formatPrice(batch.price)}
+                              </span>
+                              <span className="text-2xl font-bold text-green-600">
+                                ₹{formatPrice(batch.offer_price)}
+                              </span>
+                              <Badge className="bg-green-100 text-green-800 text-xs">
+                                {Math.round(((batch.price - batch.offer_price) / batch.price) * 100)}% OFF
+                              </Badge>
+                            </>
+                          ) : (
+                            <span className="text-2xl font-bold text-primary">
+                              ₹{priceInRupees}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <Button
                         onClick={() => handlePurchase(batch)}

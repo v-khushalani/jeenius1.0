@@ -386,3 +386,138 @@ export const formatRemainingMessage = (
   }
   return `${remaining} free ${type} remaining`;
 };
+
+/**
+ * BATCH SYSTEM - Get user's current active batch subscription
+ * Returns the batch they currently have access to
+ */
+export const getCurrentBatch = async (userId: string) => {
+  try {
+    const { data: subscription, error } = await supabase
+      .from('user_batch_subscriptions')
+      .select(`
+        id,
+        batch_id,
+        status,
+        expires_at,
+        batches (
+          id,
+          name,
+          grade,
+          exam_type,
+          price,
+          offer_price,
+          validity_days,
+          is_active,
+          batch_subjects (subject)
+        )
+      `)
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .gt('expires_at', new Date().toISOString())
+      .order('expires_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error || !subscription) {
+      return null;
+    }
+
+    return {
+      subscription_id: subscription.id,
+      batch_id: subscription.batch_id,
+      batch: subscription.batches,
+      expires_at: subscription.expires_at
+    };
+  } catch (error) {
+    logger.error('Error getting current batch:', error);
+    return null;
+  }
+};
+
+/**
+ * Check if user has access to a specific batch
+ * Verifies subscription is active and not expired
+ */
+export const hasBatchAccess = async (userId: string, batchId: string): Promise<boolean> => {
+  try {
+    const { data: subscription, error } = await supabase
+      .from('user_batch_subscriptions')
+      .select('id, expires_at')
+      .eq('user_id', userId)
+      .eq('batch_id', batchId)
+      .eq('status', 'active')
+      .single();
+
+    if (error || !subscription) {
+      return false;
+    }
+
+    // Check if subscription is not expired
+    return new Date(subscription.expires_at) > new Date();
+  } catch (error) {
+    logger.error('Error checking batch access:', error);
+    return false;
+  }
+};
+
+/**
+ * Get all of user's batch subscriptions
+ */
+export const getUserBatchSubscriptions = async (userId: string) => {
+  try {
+    const { data: subscriptions, error } = await supabase
+      .from('user_batch_subscriptions')
+      .select(`
+        id,
+        batch_id,
+        status,
+        expires_at,
+        purchased_at,
+        batches (
+          id,
+          name,
+          grade,
+          exam_type,
+          price,
+          offer_price,
+          validity_days,
+          is_active,
+          batch_subjects (subject)
+        )
+      `)
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .order('expires_at', { ascending: false });
+
+    if (error) {
+      return [];
+    }
+
+    return subscriptions || [];
+  } catch (error) {
+    logger.error('Error fetching batch subscriptions:', error);
+    return [];
+  }
+};
+
+/**
+ * Get subjects available in user's current batch
+ */
+export const getBatchSubjects = async (batchId: string): Promise<string[]> => {
+  try {
+    const { data: subjects, error } = await supabase
+      .from('batch_subjects')
+      .select('subject')
+      .eq('batch_id', batchId);
+
+    if (error || !subjects) {
+      return [];
+    }
+
+    return subjects.map(s => s.subject);
+  } catch (error) {
+    logger.error('Error fetching batch subjects:', error);
+    return [];
+  }
+};
