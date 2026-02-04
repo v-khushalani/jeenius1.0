@@ -26,6 +26,14 @@ import PointsService from '@/services/pointsService';
 import { useStreakData } from '@/hooks/useStreakData';
 import { logger } from '@/utils/logger';
 import { parseGrade, isFoundationGrade, extractGradeFromExamType } from '@/utils/gradeParser';
+import { 
+  getBatchForStudent, 
+  getBatchSubjectsFromDB, 
+  getFilteredSubjects, 
+  getAllowedSubjects, 
+  logBatchConfig,
+  getBatchDependencies 
+} from '@/utils/batchConfig';
 
 const StudyNowPage = () => {
   const navigate = useNavigate();
@@ -73,16 +81,17 @@ const StudyNowPage = () => {
     initializePage();
   }, []);
 
-  // Re-fetch subjects when profile (grade/target_exam) changes
+  // Re-fetch subjects when profile (grade/target_exam/batch_id) changes
   useEffect(() => {
-    if (profile?.target_exam || profile?.grade) {
+    if (profile?.target_exam || profile?.grade || profile?.batch_id) {
       logger.info('Profile changed, reloading subjects', { 
         target_exam: profile?.target_exam, 
-        grade: profile?.grade 
+        grade: profile?.grade,
+        batch_id: profile?.batch_id
       });
       fetchSubjects();
     }
-  }, [profile?.target_exam, profile?.grade]);
+  }, [profile?.target_exam, profile?.grade, profile?.batch_id]);
 
   const initializePage = async () => {
     try {
@@ -157,48 +166,45 @@ const StudyNowPage = () => {
       // Parse grade properly (handles strings like "9th", "9", numbers, etc.)
       userGrade = parseGrade(userGrade);
 
-      // Define allowed subjects based on target exam
-      const allowedSubjects = {
-        'JEE': ['Physics', 'Chemistry', 'Mathematics'],
-        'JEE Main': ['Physics', 'Chemistry', 'Mathematics'],
-        'JEE Advanced': ['Physics', 'Chemistry', 'Mathematics'],
-        'NEET': ['Physics', 'Chemistry', 'Biology'],
-        'Foundation': ['Physics', 'Chemistry', 'Mathematics', 'Biology', 'Science', 'English'],
-        'Foundation-6': ['Physics', 'Chemistry', 'Mathematics', 'Biology', 'Science', 'English'],
-        'Foundation-7': ['Physics', 'Chemistry', 'Mathematics', 'Biology', 'Science', 'English'],
-        'Foundation-8': ['Physics', 'Chemistry', 'Mathematics', 'Biology', 'Science', 'English'],
-        'Foundation-9': ['Physics', 'Chemistry', 'Mathematics', 'Biology', 'Science', 'English'],
-        'Foundation-10': ['Physics', 'Chemistry', 'Mathematics', 'Biology', 'Science', 'English']
-      };
+      // Get student's batch with its subjects from batch_subjects table
+      const batch = await getBatchForStudent(user.id, userGrade, targetExam);
+      
+      logBatchConfig('fetchSubjects', user.id, userGrade, targetExam, batch);
 
-      const examSubjects = allowedSubjects[targetExam] || allowedSubjects['JEE'];
+      // Get allowed subjects for this target exam
+      const examSubjects = getAllowedSubjects(targetExam);
+      
+      // Determine subjects to show
+      let subjectsToShow: string[] = [];
+      
+      if (batch && batch.subjects.length > 0) {
+        // Use intersection of allowed subjects (by target_exam) and batch subjects
+        subjectsToShow = getFilteredSubjects(targetExam, batch.subjects);
+        logger.info('Using batch subjects', {
+          targetExam,
+          batchSubjects: batch.subjects,
+          allowedSubjects: examSubjects,
+          filtered: subjectsToShow
+        });
+      } else {
+        // Fallback: Get subjects from chapters table
+        let chaptersQuery = supabase
+          .from('chapters')
+          .select('subject, batch_id');
 
-      // Build chapter query - filter by batch if user is in a Foundation grade
-      let chaptersQuery = supabase
-        .from('chapters')
-        .select('subject, batch_id');
-
-      // For Foundation students, filter chapters by their batch
-      if (targetExam.startsWith('Foundation-') && userGrade >= 6 && userGrade <= 10) {
-        const { data: userBatch } = await supabase
-          .from('batches')
-          .select('id')
-          .eq('grade', userGrade)
-          .eq('exam_type', 'Foundation')
-          .single();
-
-        if (userBatch?.id) {
-          chaptersQuery = chaptersQuery.eq('batch_id', userBatch.id);
+        // For Foundation students, filter chapters by their batch
+        if (batch && batch.id) {
+          chaptersQuery = chaptersQuery.eq('batch_id', batch.id);
         }
+
+        const { data: chaptersData, error: chaptersError } = await chaptersQuery;
+
+        if (chaptersError) throw chaptersError;
+
+        // Filter subjects based on target exam
+        subjectsToShow = [...new Set(chaptersData?.map(c => c.subject) || [])]
+          .filter(subject => examSubjects.includes(subject));
       }
-
-      const { data: chaptersData, error: chaptersError } = await chaptersQuery;
-
-      if (chaptersError) throw chaptersError;
-
-      // Filter subjects based on target exam
-      const uniqueSubjects = [...new Set(chaptersData?.map(c => c.subject) || [])]
-        .filter(subject => examSubjects.includes(subject));
 
       // Get questions for counting
       const { data: allQuestions } = await supabase
@@ -211,7 +217,7 @@ const StudyNowPage = () => {
         .select('*, questions!inner(subject)')
         .eq('user_id', user.id);
 
-      const subjectStats = uniqueSubjects.map((subject) => {
+      const subjectStats = subjectsToShow.map((subject) => {
         const subjectQuestions = allQuestions?.filter(q => q.subject === subject) || [];
         const totalQuestions = subjectQuestions.length;
 
