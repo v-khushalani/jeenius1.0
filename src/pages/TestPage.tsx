@@ -23,6 +23,11 @@ import {
   getAllowedSubjects, 
   logBatchConfig 
 } from '@/utils/batchConfig';
+import {
+  getTestSeriesQuestions,
+  mapBatchToExamField,
+  validateQuestionBelongsToBatch
+} from '@/utils/batchQueryBuilder';
 
 const TestPage = () => {
   const [loading, setLoading] = useState(false);

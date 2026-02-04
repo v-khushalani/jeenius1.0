@@ -1,13 +1,17 @@
 /**
- * BATCH CONFIGURATION UTILITY
+ * BATCH CONFIGURATION UTILITY - CLEAN ARCHITECTURE
  * 
- * Links together: Grade → Target_Exam → Batch → Subjects
+ * Links together: Grade → Batch → Subjects → Questions
  * 
- * Architecture:
- * - Grade (profile.grade): 6-10 or 11-12 determines exam type
- * - Target_Exam (profile.target_exam): "Foundation-9", "JEE", "NEET", etc. 
- * - Batch: Actual course (9th-foundation, jee-2026, etc.)
- * - Subjects: Specific subjects in that batch (Physics, Chemistry, etc.)
+ * ARCHITECTURE:
+ * - Grade 6-10: Foundation-X batches (PCMB subjects only, MCQ questions only)
+ * - Grade 7: Scholarship batch option (SMAT subjects)
+ * - Grade 11: JEE/NEET/CET batches (exam-specific subjects)
+ * - Grade 12: JEE/NEET/CET batches (exam-specific subjects, shared curriculum with 11th)
+ * 
+ * CRITICAL RULE:
+ * Each student belongs to EXACTLY ONE BATCH
+ * Each student solves questions ONLY from their batch's exam field
  */
 
 import { supabase } from '@/integrations/supabase/client';
@@ -21,32 +25,48 @@ export interface BatchInfo {
   grade: number;
   exam_type: string;
   subjects: string[];
+  description?: string;
 }
 
 export interface SubjectConfig {
-  [key: string]: string[]; // target_exam -> allowed subjects
+  [key: string]: string[]; // exam_type -> allowed subjects for UI
 }
 
 /**
- * Subject configuration based on target exam and grade
- * CRITICAL: Foundation (grades 6-10) shows PCMB (Physics, Chemistry, Mathematics, Biology only)
- * JEE (grades 11-12) shows PCM (Physics, Chemistry, Mathematics only)
- * NEET (grades 11-12) shows PCB (Physics, Chemistry, Biology only)
+ * Subject configuration - determines what subjects appear in UI
+ * 
+ * PCMB:       Physics, Chemistry, Mathematics, Biology (Grades 6-10)
+ * Scholarship: Mathematics, Science, Mental Ability, English (Grade 7 optional)
+ * JEE:        Physics, Chemistry, Mathematics (Grades 11-12)
+ * NEET:       Physics, Chemistry, Biology (Grades 11-12)
+ * CET:        Physics, Chemistry, Biology, Mathematics (Grades 11-12, State exams)
  */
 export const SUBJECT_CONFIG: SubjectConfig = {
-  'JEE': ['Physics', 'Chemistry', 'Mathematics'],
-  'JEE Main': ['Physics', 'Chemistry', 'Mathematics'],
-  'JEE Advanced': ['Physics', 'Chemistry', 'Mathematics'],
-  'NEET': ['Physics', 'Chemistry', 'Biology'],
-  'Foundation': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
+  // Foundation: Grades 6-10 (PCMB only)
   'Foundation-6': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
   'Foundation-7': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
   'Foundation-8': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
   'Foundation-9': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
   'Foundation-10': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
+  
+  // Scholarship: Grade 7 (SMAT)
   'Scholarship': ['Mathematics', 'Science', 'Mental Ability', 'English'],
-  'Homi Bhabha': ['Science', 'Mathematics'],
-  'Olympiad': ['Physics', 'Chemistry', 'Mathematics', 'Biology']
+  
+  // JEE: Grades 11-12 (PCM)
+  'JEE': ['Physics', 'Chemistry', 'Mathematics'],
+  'JEE Main': ['Physics', 'Chemistry', 'Mathematics'],
+  'JEE Advanced': ['Physics', 'Chemistry', 'Mathematics'],
+  
+  // NEET: Grades 11-12 (PCB)
+  'NEET': ['Physics', 'Chemistry', 'Biology'],
+  
+  // CET: Grades 11-12 (PCMB)
+  'CET': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
+  
+  // Legacy/Other
+  'Foundation': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
+  'Olympiad': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
+  'Homi Bhabha': ['Science', 'Mathematics']
 };
 
 /**

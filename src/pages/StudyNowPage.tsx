@@ -34,6 +34,13 @@ import {
   logBatchConfig,
   getBatchDependencies 
 } from '@/utils/batchConfig';
+import {
+  getPracticeQuestions,
+  getChaptersForBatch,
+  getTopicsForChapter,
+  mapBatchToExamField,
+  validateQuestionBelongsToBatch
+} from '@/utils/batchQueryBuilder';
 
 const StudyNowPage = () => {
   const navigate = useNavigate();
