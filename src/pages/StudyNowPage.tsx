@@ -535,9 +535,6 @@ const StudyNowPage = () => {
 
       const attemptedIds = attemptedAtLevel?.map(a => a.question_id) || [];
 
-      // Get user's target exam from profile
-      const targetExam = profile?.target_exam || 'JEE';
-
       let query = supabase
         .from('questions')
         .select('*')
