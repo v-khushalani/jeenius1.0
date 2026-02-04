@@ -479,13 +479,29 @@ const Settings = () => {
                       onChange={(e) => handleInputChange('target_exam', e.target.value)}
                       className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
                     >
-                      <option value="JEE">JEE (PCM)</option>
-                      <option value="NEET">NEET (PCB)</option>
-                      <option value="Foundation">Foundation</option>
+                      <optgroup label="Higher Education">
+                        <option value="JEE">JEE (PCM)</option>
+                        <option value="NEET">NEET (PCB)</option>
+                        <option value="CET">MHT-CET (PCMB)</option>
+                      </optgroup>
+                      <optgroup label="Foundation Courses">
+                        <option value="Foundation-6">Foundation - Class 6</option>
+                        <option value="Foundation-7">Foundation - Class 7</option>
+                        <option value="Foundation-8">Foundation - Class 8</option>
+                        <option value="Foundation-9">Foundation - Class 9</option>
+                        <option value="Foundation-10">Foundation - Class 10</option>
+                      </optgroup>
+                      <optgroup label="Competitive Exams">
+                        <option value="Scholarship">Scholarship Exam</option>
+                      </optgroup>
+                      <option value="Foundation">Foundation (Legacy)</option>
                     </select>
                     <p className="text-xs text-gray-500">
                       {profile.target_exam === 'JEE' ? 'Physics, Chemistry, Mathematics' : 
                        profile.target_exam === 'NEET' ? 'Physics, Chemistry, Biology' : 
+                       profile.target_exam === 'CET' ? 'Physics, Chemistry, Mathematics, Biology' :
+                       profile.target_exam === 'Scholarship' ? 'Maths, Science, Mental Ability, English' :
+                       profile.target_exam?.startsWith('Foundation') ? 'Physics, Chemistry, Mathematics, Biology' :
                        'All subjects'}
                     </p>
                   </div>

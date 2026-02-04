@@ -74,10 +74,13 @@ export interface AIInsights {
   motivationalMessage: string;
 }
 
+export type TargetExamType = 'JEE' | 'NEET' | 'CET' | 'MHT-CET' | 'Scholarship' | 'Foundation' | 
+  'Foundation-6' | 'Foundation-7' | 'Foundation-8' | 'Foundation-9' | 'Foundation-10';
+
 export interface StudyPlannerData {
   // User settings
   dailyStudyHours: number;
-  targetExam: 'JEE' | 'NEET';
+  targetExam: TargetExamType;
   examDate: string;
   daysToExam: number;
   

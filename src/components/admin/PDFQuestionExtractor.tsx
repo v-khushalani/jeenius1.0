@@ -278,6 +278,7 @@ export function PDFQuestionExtractor() {
                   <SelectItem value="JEE">JEE Main & Advanced</SelectItem>
                   <SelectItem value="NEET">NEET Medical</SelectItem>
                   <SelectItem value="MHT-CET">MHT CET Engineering</SelectItem>
+                  <SelectItem value="CET">CET (Generic)</SelectItem>
                   
                   {/* Foundation Courses */}
                   <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
@@ -288,6 +289,13 @@ export function PDFQuestionExtractor() {
                   <SelectItem value="Foundation-8">8th Foundation</SelectItem>
                   <SelectItem value="Foundation-9">9th Foundation</SelectItem>
                   <SelectItem value="Foundation-10">10th Foundation</SelectItem>
+                  
+                  {/* Competitive Exams */}
+                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                    COMPETITIVE EXAMS
+                  </div>
+                  <SelectItem value="Scholarship">Scholarship Exam</SelectItem>
+                  <SelectItem value="Olympiad">Olympiad</SelectItem>
                 </SelectContent>
               </Select>
             </div>

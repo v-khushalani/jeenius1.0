@@ -72,7 +72,7 @@ const Signup = () => {
             <CardTitle className="text-3xl font-bold text-[#013062]">
               Create Account
             </CardTitle>
-            <p className="text-[#013062]/60">Join 50,000+ students preparing for JEE & NEET</p>
+            <p className="text-[#013062]/60">Join 50,000+ students preparing for competitive exams</p>
           </CardHeader>
           
           <CardContent>

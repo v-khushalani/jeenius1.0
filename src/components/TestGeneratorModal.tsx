@@ -77,7 +77,7 @@ const TestGeneratorModal: React.FC<TestGeneratorModalProps> = ({
       // Auto-set defaults based on test type
       questionCount: testType === 'mock' ? 90 : testType === 'subject' ? 25 : 15,
       duration: testType === 'mock' ? 180 : testType === 'subject' ? 60 : 30,
-      title: testType === 'mock' ? 'JEE Main Mock Test' : 
+      title: testType === 'mock' ? 'Full Syllabus Mock Test' : 
              testType === 'subject' ? `${prev.subject || 'Subject'} Test` :
              testType === 'chapter' ? `${prev.chapter || 'Chapter'} Test` :
              'Practice Test'

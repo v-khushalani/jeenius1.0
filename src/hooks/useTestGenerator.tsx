@@ -24,12 +24,16 @@ interface TestGenerationResult {
   error?: string;
 }
 
-// Mock subjects and chapters data
-const mockSubjects = ['Mathematics', 'Physics', 'Chemistry'];
+// Mock subjects and chapters data - supports all exam types
+const mockSubjects = ['Mathematics', 'Physics', 'Chemistry', 'Biology', 'Science', 'Mental Ability', 'English'];
 const mockChapters = {
-  'Mathematics': ['Calculus', 'Algebra', 'Trigonometry', 'Geometry', 'Statistics'],
-  'Physics': ['Mechanics', 'Thermodynamics', 'Electricity', 'Optics', 'Modern Physics'],
-  'Chemistry': ['Organic Chemistry', 'Inorganic Chemistry', 'Physical Chemistry', 'Electrochemistry']
+  'Mathematics': ['Calculus', 'Algebra', 'Trigonometry', 'Geometry', 'Statistics', 'Number System', 'Arithmetic'],
+  'Physics': ['Mechanics', 'Thermodynamics', 'Electricity', 'Optics', 'Modern Physics', 'Waves', 'Motion'],
+  'Chemistry': ['Organic Chemistry', 'Inorganic Chemistry', 'Physical Chemistry', 'Electrochemistry', 'Atomic Structure'],
+  'Biology': ['Cell Biology', 'Genetics', 'Ecology', 'Human Physiology', 'Plant Biology', 'Evolution'],
+  'Science': ['Physics Basics', 'Chemistry Basics', 'Biology Basics', 'Environmental Science'],
+  'Mental Ability': ['Logical Reasoning', 'Pattern Recognition', 'Number Series', 'Verbal Reasoning'],
+  'English': ['Grammar', 'Reading Comprehension', 'Vocabulary', 'Writing Skills']
 };
 
 export const useTestGenerator = () => {

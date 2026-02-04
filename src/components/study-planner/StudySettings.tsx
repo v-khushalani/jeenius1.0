@@ -5,13 +5,13 @@ import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDown, ChevronUp, Settings, Save, Clock, Target } from 'lucide-react';
 import { useState } from 'react';
-import type { TimeAllocation } from '@/lib/studyPlannerTypes';
+import type { TimeAllocation, TargetExamType } from '@/lib/studyPlannerTypes';
 
 interface StudySettingsProps {
   dailyStudyHours: number;
-  targetExam: 'JEE' | 'NEET';
+  targetExam: TargetExamType;
   timeAllocation: TimeAllocation;
-  onUpdate: (hours: number, exam: 'JEE' | 'NEET') => void;
+  onUpdate: (hours: number, exam: TargetExamType) => void;
 }
 
 export function StudySettings({
@@ -22,7 +22,7 @@ export function StudySettings({
 }: StudySettingsProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [hours, setHours] = useState(dailyStudyHours);
-  const [exam, setExam] = useState(targetExam);
+  const [exam, setExam] = useState<TargetExamType>(targetExam);
 
   const handleSave = () => {
     onUpdate(hours, exam);
@@ -32,6 +32,12 @@ export function StudySettings({
   const studyMinutes = Math.round(hours * 60 * timeAllocation.studyTime);
   const revisionMinutes = Math.round(hours * 60 * timeAllocation.revisionTime);
   const mockMinutes = Math.round(hours * 60 * timeAllocation.mockTestTime);
+
+  // Get display name for exam
+  const getExamDisplayName = (examType: TargetExamType): string => {
+    if (examType?.toString().startsWith('Foundation')) return 'Foundation';
+    return examType?.toString() || 'JEE';
+  };
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -44,7 +50,7 @@ export function StudySettings({
             </CardTitle>
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="text-xs">
-                {dailyStudyHours}h/day • {targetExam}
+                {dailyStudyHours}h/day • {getExamDisplayName(targetExam)}
               </Badge>
               {isOpen ? <ChevronUp className="h-5 w-5 text-slate-400" /> : <ChevronDown className="h-5 w-5 text-slate-400" />}
             </div>
@@ -81,7 +87,7 @@ export function StudySettings({
                   <Target className="h-4 w-4 text-slate-500" />
                   Target Exam
                 </Label>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Button
                     variant={exam === 'JEE' ? 'default' : 'outline'}
                     size="sm"
@@ -97,6 +103,30 @@ export function StudySettings({
                     className={exam === 'NEET' ? 'bg-[#013062] hover:bg-[#013062]/90' : ''}
                   >
                     NEET
+                  </Button>
+                  <Button
+                    variant={exam === 'CET' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setExam('CET')}
+                    className={exam === 'CET' ? 'bg-[#013062] hover:bg-[#013062]/90' : ''}
+                  >
+                    CET
+                  </Button>
+                  <Button
+                    variant={exam?.toString().startsWith('Foundation') ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setExam('Foundation')}
+                    className={exam?.toString().startsWith('Foundation') ? 'bg-[#013062] hover:bg-[#013062]/90' : ''}
+                  >
+                    Foundation
+                  </Button>
+                  <Button
+                    variant={exam === 'Scholarship' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setExam('Scholarship')}
+                    className={exam === 'Scholarship' ? 'bg-[#013062] hover:bg-[#013062]/90' : ''}
+                  >
+                    Scholarship
                   </Button>
                 </div>
               </div>

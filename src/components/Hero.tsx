@@ -59,7 +59,7 @@ const Hero = () => {
 
             {/* Subtitle */}
             <p className="text-lg sm:text-xl lg:text-2xl text-[#8b9fb8] max-w-3xl mx-auto leading-relaxed font-normal">
-              The smartest way to prepare for JEE & NEET. Personalized learning that evolves with you.
+              The smartest way to prepare for JEE, NEET, CET & Foundation. Personalized learning that evolves with you.
             </p>
           </div>
 

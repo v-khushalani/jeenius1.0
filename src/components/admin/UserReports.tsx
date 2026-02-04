@@ -232,8 +232,24 @@ export const UserReports: React.FC = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Exams</SelectItem>
+                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                  HIGHER EDUCATION
+                </div>
                 <SelectItem value="JEE">JEE</SelectItem>
                 <SelectItem value="NEET">NEET</SelectItem>
+                <SelectItem value="CET">MHT-CET</SelectItem>
+                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">
+                  FOUNDATION
+                </div>
+                <SelectItem value="Foundation-6">Foundation-6</SelectItem>
+                <SelectItem value="Foundation-7">Foundation-7</SelectItem>
+                <SelectItem value="Foundation-8">Foundation-8</SelectItem>
+                <SelectItem value="Foundation-9">Foundation-9</SelectItem>
+                <SelectItem value="Foundation-10">Foundation-10</SelectItem>
+                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">
+                  COMPETITIVE
+                </div>
+                <SelectItem value="Scholarship">Scholarship</SelectItem>
               </SelectContent>
             </Select>
             <Select value={premiumFilter} onValueChange={setPremiumFilter}>

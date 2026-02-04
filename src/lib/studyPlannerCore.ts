@@ -270,12 +270,30 @@ export function generateWeeklyPlan(
 // RANK PREDICTION
 // ============================================
 
+// Candidate count by exam type
+const EXAM_CANDIDATES: Record<string, number> = {
+  'JEE': 1200000,
+  'JEE Main': 1200000,
+  'JEE Advanced': 200000,
+  'NEET': 1800000,
+  'CET': 400000,
+  'MHT-CET': 400000,
+  'Scholarship': 100000,
+  'Foundation': 500000,
+  'Foundation-6': 500000,
+  'Foundation-7': 500000,
+  'Foundation-8': 500000,
+  'Foundation-9': 500000,
+  'Foundation-10': 500000,
+};
+
 export function predictRank(
   avgAccuracy: number,
   questionsAttempted: number,
-  targetExam: 'JEE' | 'NEET'
+  targetExam: string
 ): RankPrediction {
-  const baseCandidates = targetExam === 'JEE' ? 1200000 : 1800000;
+  // Get candidate count for the exam type
+  const baseCandidates = EXAM_CANDIDATES[targetExam] || EXAM_CANDIDATES['Foundation'];
 
   // Experience factor
   const experienceFactor = questionsAttempted < 100 ? 1.3 :

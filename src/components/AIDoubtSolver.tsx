@@ -66,7 +66,7 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
 
 Main hoon **JEEnie** — aapka personal AI mentor! 💙
 
-🎯 Physics, Chemistry, Maths — kuch bhi pucho!`;
+🎯 Physics, Chemistry, Maths, Biology — kuch bhi pucho!`;
     } else {
       return `**Hello Puttar!** 🧞‍♂️
 

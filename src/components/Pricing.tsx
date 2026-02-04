@@ -42,7 +42,7 @@ const PricingPage = () => {
               🔥 STEAL DEAL
             </Badge>
             <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
-              The BEST Value in JEE Prep
+              The BEST Value in Exam Prep
             </h1>
             <p className="text-muted-foreground mb-6">
               {billingCycle === 'yearly' 

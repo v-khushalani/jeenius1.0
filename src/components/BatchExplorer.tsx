@@ -40,7 +40,7 @@ interface Batch {
   batch_subjects?: { id: string; subject: string }[];
 }
 
-type FilterType = 'all' | 'jee' | 'neet' | 'foundation';
+type FilterType = 'all' | 'jee' | 'neet' | 'cet' | 'foundation' | 'scholarship' | 'olympiad';
 
 export const BatchExplorer: React.FC = () => {
   const { user } = useAuth();
@@ -130,8 +130,16 @@ export const BatchExplorer: React.FC = () => {
     const matchesSearch = batch.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       batch.description?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesFilter = filterType === 'all' || 
-      batch.exam_type.toLowerCase() === filterType.toLowerCase();
+    let matchesFilter = filterType === 'all';
+    if (!matchesFilter) {
+      const examTypeLower = batch.exam_type.toLowerCase();
+      if (filterType === 'jee') matchesFilter = examTypeLower === 'jee';
+      else if (filterType === 'neet') matchesFilter = examTypeLower === 'neet';
+      else if (filterType === 'cet') matchesFilter = examTypeLower === 'cet' || examTypeLower === 'mht-cet';
+      else if (filterType === 'foundation') matchesFilter = examTypeLower === 'foundation' || examTypeLower.startsWith('foundation');
+      else if (filterType === 'scholarship') matchesFilter = examTypeLower === 'scholarship';
+      else if (filterType === 'olympiad') matchesFilter = examTypeLower === 'olympiad';
+    }
     
     return matchesSearch && matchesFilter;
   });
@@ -192,9 +200,21 @@ export const BatchExplorer: React.FC = () => {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Batches</SelectItem>
+            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+              HIGHER EDUCATION
+            </div>
             <SelectItem value="jee">JEE Preparation</SelectItem>
             <SelectItem value="neet">NEET Preparation</SelectItem>
+            <SelectItem value="cet">MHT-CET Preparation</SelectItem>
+            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">
+              FOUNDATION
+            </div>
             <SelectItem value="foundation">Foundation</SelectItem>
+            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">
+              COMPETITIVE
+            </div>
+            <SelectItem value="scholarship">Scholarship</SelectItem>
+            <SelectItem value="olympiad">Olympiad</SelectItem>
           </SelectContent>
         </Select>
       </div>

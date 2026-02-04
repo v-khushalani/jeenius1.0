@@ -7,9 +7,14 @@ interface ExamConfig {
   exam_date: string;
 }
 
+export type ExamType = 'JEE' | 'NEET' | 'CET' | 'MHT-CET' | 'Scholarship' | 'Foundation' | string;
+
 export const useExamDates = () => {
   const [jeeDate, setJeeDate] = useState('2026-05-24');
   const [neetDate, setNeetDate] = useState('2026-05-05');
+  const [cetDate, setCetDate] = useState('2026-05-20');
+  const [scholarshipDate, setScholarshipDate] = useState('2026-02-15');
+  const [foundationDate, setFoundationDate] = useState('2026-03-15');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -46,9 +51,15 @@ export const useExamDates = () => {
 
       const jee = data?.find((e: ExamConfig) => e.exam_name === 'JEE');
       const neet = data?.find((e: ExamConfig) => e.exam_name === 'NEET');
+      const cet = data?.find((e: ExamConfig) => e.exam_name === 'CET' || e.exam_name === 'MHT-CET');
+      const scholarship = data?.find((e: ExamConfig) => e.exam_name === 'Scholarship');
+      const foundation = data?.find((e: ExamConfig) => e.exam_name === 'Foundation');
 
       if (jee) setJeeDate(jee.exam_date);
       if (neet) setNeetDate(neet.exam_date);
+      if (cet) setCetDate(cet.exam_date);
+      if (scholarship) setScholarshipDate(scholarship.exam_date);
+      if (foundation) setFoundationDate(foundation.exam_date);
     } catch (error) {
       logger.error('Error loading exam dates:', error);
     } finally {
@@ -56,9 +67,14 @@ export const useExamDates = () => {
     }
   };
 
-  const getExamDate = (examType: 'JEE' | 'NEET') => {
-    return examType === 'JEE' ? jeeDate : neetDate;
+  const getExamDate = (examType: ExamType): string => {
+    if (examType === 'JEE' || examType === 'JEE Main' || examType === 'JEE Advanced') return jeeDate;
+    if (examType === 'NEET') return neetDate;
+    if (examType === 'CET' || examType === 'MHT-CET') return cetDate;
+    if (examType === 'Scholarship') return scholarshipDate;
+    if (examType?.startsWith('Foundation')) return foundationDate;
+    return jeeDate; // Default fallback
   };
 
-  return { jeeDate, neetDate, getExamDate, loading };
+  return { jeeDate, neetDate, cetDate, scholarshipDate, foundationDate, getExamDate, loading };
 };

@@ -253,7 +253,7 @@ const TestPage = () => {
 
       const testSession = {
         id: Date.now().toString(),
-        title: `Full Syllabus Mock Test - ${profile?.target_exam || 'JEE'} Pattern`,
+        title: `Full Syllabus Mock Test - ${profile?.target_exam?.startsWith('Foundation') ? 'Foundation' : profile?.target_exam || 'Practice'} Pattern`,
         questions: selected,
         duration: 180,
         startTime: new Date().toISOString()
@@ -539,7 +539,7 @@ const TestPage = () => {
                     Full Syllabus Mock
                   </h3>
                   <p className="text-gray-600 text-xs sm:text-sm mb-4 sm:mb-6">
-                    Complete JEE pattern mock test for real exam simulation
+                    Complete exam pattern mock test for real exam simulation
                   </p>
                   
                   <div className="flex items-center justify-center gap-3 sm:gap-4 mb-4 sm:mb-6">
@@ -569,7 +569,7 @@ const TestPage = () => {
                   </Button>
                   
                   <Badge className="mt-3 sm:mt-4 bg-orange-50 text-orange-700 border-orange-200 text-xs">
-                    Advanced • JEE Pattern
+                    Advanced • Full Syllabus
                   </Badge>
                 </div>
               </div>

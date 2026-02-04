@@ -66,7 +66,7 @@ export function useStudyPlanner() {
     questionsCount: number
   ) => {
     const dailyStudyHours = profile?.daily_study_hours || 4;
-    const targetExam = (profile?.target_exam as 'JEE' | 'NEET') || 'JEE';
+    const targetExam = profile?.target_exam || 'JEE';
     const examDate = profile?.target_exam_date || '2026-05-24';
     const daysToExam = calculateDaysToExam(examDate);
     const avgAccuracy = profile?.overall_accuracy || 0;
@@ -131,7 +131,7 @@ export function useStudyPlanner() {
           isLoading: false,
           hasEnoughData: false,
           dailyStudyHours: profile?.daily_study_hours || 4,
-          targetExam: (profile?.target_exam as 'JEE' | 'NEET') || 'JEE',
+          targetExam: profile?.target_exam || 'JEE',
           examDate: profile?.target_exam_date || '2026-05-24',
           daysToExam: calculateDaysToExam(profile?.target_exam_date || '2026-05-24'),
           streak: profile?.current_streak || 0,

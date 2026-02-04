@@ -23,6 +23,9 @@ const GoalSelectionPage = () => {
     'JEE Main': '2025-04-10',
     'JEE Advanced': '2025-05-25',
     'NEET': '2025-05-05',
+    'CET': '2025-05-20',
+    'MHT-CET': '2025-05-20',
+    'Scholarship': '2025-02-15',
     'Foundation': null
   };
 
@@ -89,17 +92,22 @@ const GoalSelectionPage = () => {
 
   const goals = {
     '6': [{ id: 'Foundation', name: 'Foundation Building', icon: <BookOpen className="w-6 h-6" />, color: 'bg-slate-600' }],
-    '7': [{ id: 'Foundation', name: 'Foundation Building', icon: <BookOpen className="w-6 h-6" />, color: 'bg-slate-600' }],
+    '7': [
+      { id: 'Foundation', name: 'Foundation Building', icon: <BookOpen className="w-6 h-6" />, color: 'bg-slate-600' },
+      { id: 'Scholarship', name: 'Scholarship Exam', icon: <Trophy className="w-6 h-6" />, color: 'bg-yellow-500' }
+    ],
     '8': [{ id: 'Foundation', name: 'Foundation Building', icon: <BookOpen className="w-6 h-6" />, color: 'bg-slate-600' }],
     '9': [{ id: 'Foundation', name: 'Foundation Building', icon: <BookOpen className="w-6 h-6" />, color: 'bg-slate-600' }],
     '10': [{ id: 'Foundation', name: 'Foundation Building', icon: <BookOpen className="w-6 h-6" />, color: 'bg-slate-600' }],
     '11': [
       { id: 'JEE', name: 'JEE Preparation', icon: <Calculator className="w-6 h-6" />, color: 'bg-red-500' },
-      { id: 'NEET', name: 'NEET Preparation', icon: <Stethoscope className="w-6 h-6" />, color: 'bg-green-500' }
+      { id: 'NEET', name: 'NEET Preparation', icon: <Stethoscope className="w-6 h-6" />, color: 'bg-green-500' },
+      { id: 'CET', name: 'MHT-CET Preparation', icon: <Target className="w-6 h-6" />, color: 'bg-purple-500' }
     ],
     '12': [
       { id: 'JEE', name: 'JEE Preparation', icon: <Calculator className="w-6 h-6" />, color: 'bg-red-500' },
-      { id: 'NEET', name: 'NEET Preparation', icon: <Stethoscope className="w-6 h-6" />, color: 'bg-green-500' }
+      { id: 'NEET', name: 'NEET Preparation', icon: <Stethoscope className="w-6 h-6" />, color: 'bg-green-500' },
+      { id: 'CET', name: 'MHT-CET Preparation', icon: <Target className="w-6 h-6" />, color: 'bg-purple-500' }
     ]
   };
   
@@ -107,7 +115,10 @@ const GoalSelectionPage = () => {
   const subjects = {
     'JEE': ['Physics', 'Chemistry', 'Mathematics'],
     'NEET': ['Physics', 'Chemistry', 'Biology'],
-    'Foundation': ['Mathematics', 'Science', 'English']
+    'CET': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
+    'MHT-CET': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
+    'Scholarship': ['Mathematics', 'Science', 'Mental Ability', 'English'],
+    'Foundation': ['Physics', 'Chemistry', 'Mathematics', 'Biology']
   };
 
   const handleNext = () => {
