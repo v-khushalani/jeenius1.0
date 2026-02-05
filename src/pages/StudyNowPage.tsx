@@ -167,11 +167,16 @@ const StudyNowPage = () => {
         .eq('id', user.id)
         .single();
       
-      const targetExam = profileData?.target_exam || 'JEE';
+      let targetExam = profileData?.target_exam || 'JEE';
       let userGrade = profileData?.grade || 12;
       
       // Parse grade properly (handles strings like "9th", "9", numbers, etc.)
       userGrade = parseGrade(userGrade);
+
+      // ✅ Normalize Foundation exam
+      if (isFoundationGrade(userGrade) && targetExam === 'Foundation') {
+        targetExam = `Foundation-${userGrade}`;
+      }
 
       // Get student's batch with its subjects from batch_subjects table
       const batch = await getBatchForStudent(user.id, userGrade, targetExam);
@@ -194,30 +199,40 @@ const StudyNowPage = () => {
           filtered: subjectsToShow
         });
       } else {
-        // Fallback: Get subjects from chapters table
-        let chaptersQuery = supabase
-          .from('chapters')
-          .select('subject, batch_id');
-
-        // For Foundation students, filter chapters by their batch
-        if (batch && batch.id) {
-          chaptersQuery = chaptersQuery.eq('batch_id', batch.id);
+        // CRITICAL: never fall back to global chapters for Foundation grades.
+        // If the Foundation batch isn't configured, we must show nothing (otherwise JEE content leaks).
+        if (isFoundationGrade(userGrade)) {
+          logger.error('Foundation batch missing/misconfigured for user', {
+            userId: user.id,
+            userGrade,
+            targetExam,
+          });
+          setSubjects([]);
+          toast.error('Your batch is not configured yet. Please contact admin.');
+          return;
         }
 
-        const { data: chaptersData, error: chaptersError } = await chaptersQuery;
+        // Non-Foundation fallback: derive subjects from JEE/NEET global chapters (batch_id is null)
+        const { data: chaptersData, error: chaptersError } = await supabase
+          .from('chapters')
+          .select('subject')
+          .is('batch_id', null);
 
         if (chaptersError) throw chaptersError;
 
-        // Filter subjects based on target exam
         subjectsToShow = [...new Set(chaptersData?.map(c => c.subject) || [])]
           .filter(subject => examSubjects.includes(subject));
       }
 
       // Get questions for counting
+      // Use proper exam field mapping for Foundation courses
+      const examFieldForQuestions = mapBatchToExamField(targetExam, userGrade);
+      logger.info('Fetching questions with exam field', { targetExam, examFieldForQuestions, userGrade });
+      
       const { data: allQuestions } = await supabase
         .from('questions')
         .select('subject, difficulty')
-        .eq('exam', targetExam);
+        .eq('exam', examFieldForQuestions);
 
       const { data: userAttempts } = await supabase
         .from('question_attempts')
@@ -306,11 +321,16 @@ const StudyNowPage = () => {
       const { data: { user } } = await supabase.auth.getUser();
 
       // Get user's target exam and grade from profile
-      const targetExam = profile?.target_exam || 'JEE';
+      let targetExam = profile?.target_exam || 'JEE';
       let userGrade = profile?.grade || 12;
       
       // Parse grade properly (handles strings like "9th", "9", numbers, etc.)
       userGrade = parseGrade(userGrade);
+
+      // ✅ Normalize Foundation exam types (some profiles store 'Foundation' instead of 'Foundation-9')
+      if (isFoundationGrade(userGrade) && targetExam === 'Foundation') {
+        targetExam = `Foundation-${userGrade}`;
+      }
 
       logger.info('LoadChapters debug', { targetExam, userGrade, subject });
 
@@ -320,37 +340,28 @@ const StudyNowPage = () => {
         .select('id, chapter_name, chapter_number, description, difficulty_level, batch_id')
         .eq('subject', subject);
 
-      // For Foundation students (grades 6-10), filter chapters by their batch
-      if (targetExam && targetExam.startsWith('Foundation-') && isFoundationGrade(userGrade)) {
-        // Parse grade from target_exam if available (e.g., "Foundation-9" -> 9)
-        let gradeToUse = userGrade;
-        const gradeFromExam = extractGradeFromExamType(targetExam);
-        if (gradeFromExam >= 6 && gradeFromExam <= 10) {
-          gradeToUse = gradeFromExam;
+      if (isFoundationGrade(userGrade)) {
+        // Resolve student's batch via shared helper (single source of truth)
+        const batch = user?.id
+          ? await getBatchForStudent(user.id, userGrade, targetExam)
+          : null;
+
+        if (!batch?.id) {
+          logger.error('Foundation batch missing/misconfigured; refusing to load chapters', {
+            userId: user?.id,
+            userGrade,
+            targetExam,
+            subject,
+          });
+          setChapters([]);
+          toast.error('Your batch is not configured yet. Please contact admin.');
+          return;
         }
 
-        logger.info('Foundation student detected', { targetExam, gradeToUse });
-
-        // Get the user's batch based on grade and exam type
-        const { data: userBatch, error: batchError } = await supabase
-          .from('batches')
-          .select('id, name, slug')
-          .eq('grade', gradeToUse)
-          .eq('exam_type', 'Foundation')
-          .single();
-
-        logger.info('Batch lookup result', { userBatch, batchError });
-
-        if (userBatch?.id) {
-          // Filter chapters to only those in the user's batch
-          chaptersQuery = chaptersQuery.eq('batch_id', userBatch.id);
-          logger.info('Filtering chapters by batch_id', { batch_id: userBatch.id });
-        } else {
-          logger.warn('No batch found for grade', { gradeToUse });
-        }
+        chaptersQuery = chaptersQuery.eq('batch_id', batch.id);
       } else {
-        // For JEE/NEET students (grades 11-12), don't filter by batch
-        logger.info('Non-Foundation student, no batch filtering');
+        // For JEE/NEET etc: use global chapters only (batch_id is null)
+        chaptersQuery = chaptersQuery.is('batch_id', null);
       }
 
       chaptersQuery = chaptersQuery.order('chapter_number', { ascending: true });
@@ -359,11 +370,13 @@ const StudyNowPage = () => {
       if (chaptersError) throw chaptersError;
 
       // Get questions count per chapter
+      // Use proper exam field mapping for Foundation courses
+      const examFieldForChapters = mapBatchToExamField(targetExam, userGrade);
       const { data: questionsData } = await supabase
         .from('questions')
         .select('chapter_id, difficulty')
         .eq('subject', subject)
-        .eq('exam', targetExam);
+        .eq('exam', examFieldForChapters);
 
       // Get user attempts for this subject
       const { data: userAttempts } = await supabase
@@ -424,15 +437,24 @@ const StudyNowPage = () => {
       const { data: { user } } = await supabase.auth.getUser();
 
       // Get user's target exam from profile
-      const targetExam = profile?.target_exam || 'JEE';
-      logger.info('LoadTopics debug', { targetExam, selectedSubject, chapter });
+      let targetExam = profile?.target_exam || 'JEE';
+      const userGrade = parseGrade(profile?.grade || 12);
+
+      // Normalize Foundation exam
+      if (isFoundationGrade(userGrade) && targetExam === 'Foundation') {
+        targetExam = `Foundation-${userGrade}`;
+      }
+      
+      // Use proper exam field mapping for Foundation courses
+      const examFieldForTopics = mapBatchToExamField(targetExam, userGrade);
+      logger.info('LoadTopics debug', { targetExam, examFieldForTopics, selectedSubject, chapter });
 
       const { data, error } = await supabase
         .from('questions')
         .select('topic, difficulty')
         .eq('subject', selectedSubject)
         .eq('chapter', chapter)
-        .eq('exam', targetExam);
+        .eq('exam', examFieldForTopics);
 
       if (error) throw error;
 
@@ -496,8 +518,17 @@ const StudyNowPage = () => {
       const { data: { user } } = await supabase.auth.getUser();
       
       // Get target exam - consistent with loadChapters logic
-      const targetExam = profile?.target_exam || 'JEE';
-      logger.info('StartPractice debug', { targetExam, selectedSubject, selectedChapter, topic });
+      let targetExam = profile?.target_exam || 'JEE';
+      const userGrade = parseGrade(profile?.grade || 12);
+
+      // Normalize Foundation exam
+      if (isFoundationGrade(userGrade) && targetExam === 'Foundation') {
+        targetExam = `Foundation-${userGrade}`;
+      }
+      
+      // Use proper exam field mapping for Foundation courses
+      const examFieldForPractice = mapBatchToExamField(targetExam, userGrade);
+      logger.info('StartPractice debug', { targetExam, examFieldForPractice, selectedSubject, selectedChapter, topic });
       
       // ✅ CHECK DAILY LIMIT BEFORE STARTING PRACTICE
       if (!isPremium) {
@@ -554,7 +585,7 @@ const StudyNowPage = () => {
         .eq('subject', selectedSubject)
         .eq('chapter', selectedChapter)
         .eq('difficulty', targetDifficulty)
-        .eq('exam', targetExam);
+        .eq('exam', examFieldForPractice);
 
       if (attemptedIds.length > 0) {
         query = query.not('id', 'in', `(${attemptedIds.join(',')})`);
@@ -589,7 +620,7 @@ const StudyNowPage = () => {
             .eq('subject', selectedSubject)
             .eq('chapter', selectedChapter)
             .eq('difficulty', nextDifficulty)
-            .eq('exam', targetExam);
+            .eq('exam', examFieldForPractice);
           
           if (topic) {
             nextQuery = nextQuery.eq('topic', topic);

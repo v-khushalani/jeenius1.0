@@ -25,8 +25,7 @@ import {
 } from '@/utils/batchConfig';
 import {
   getTestSeriesQuestions,
-  mapBatchToExamField,
-  validateQuestionBelongsToBatch
+  mapBatchToExamField
 } from '@/utils/batchQueryBuilder';
 
 const TestPage = () => {
@@ -80,17 +79,25 @@ const TestPage = () => {
 
   const fetchSubjectsAndChapters = async () => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
       // Get user's target exam and grade for subject/chapter filtering
-      const targetExam = profile?.target_exam || 'JEE';
+      let targetExam = profile?.target_exam || 'JEE';
       let userGrade = profile?.grade || 12;
       
       // Parse grade properly (handles strings like "9th", "9", numbers, etc.)
       userGrade = parseGrade(userGrade);
+
+      // Normalize Foundation exam
+      if (isFoundationGrade(userGrade) && targetExam === 'Foundation') {
+        targetExam = `Foundation-${userGrade}`;
+      }
       
       // Get student's batch with its subjects from batch_subjects table
-      const batch = await getBatchForStudent('user-id', userGrade, targetExam);
+      const batch = await getBatchForStudent(user.id, userGrade, targetExam);
       
-      logBatchConfig('fetchSubjectsAndChapters', 'user-id', userGrade, targetExam, batch);
+      logBatchConfig('fetchSubjectsAndChapters', user.id, userGrade, targetExam, batch);
 
       // Get allowed subjects for this target exam
       const examSubjects = getAllowedSubjects(targetExam);
@@ -218,6 +225,11 @@ const TestPage = () => {
         }
 
         const targetExam = profile?.target_exam || 'JEE';
+        const userGrade = parseGrade(profile?.grade || 12);
+        
+        // Use proper exam field mapping for Foundation courses
+        const examFieldForTest = mapBatchToExamField(targetExam, userGrade);
+        logger.info('Full mock test exam field', { targetExam, examFieldForTest, userGrade });
         
         const { data: attemptedQuestions } = await supabase
           .from('question_attempts')
@@ -226,7 +238,7 @@ const TestPage = () => {
         
         const attemptedIds = attemptedQuestions?.map(a => a.question_id) || [];
         
-        let query = supabase.from('questions').select('*').eq('exam', targetExam);
+        let query = supabase.from('questions').select('*').eq('exam', examFieldForTest);
         
         if (attemptedIds.length > 0) {
           query = query.not('id', 'in', `(${attemptedIds.join(',')})`);
@@ -301,8 +313,13 @@ const TestPage = () => {
       const attemptedIds = attemptedQuestions?.map(a => a.question_id) || [];
 
       const targetExam = profile?.target_exam || 'JEE';
+      const userGrade = parseGrade(profile?.grade || 12);
       
-      let query = supabase.from('questions').select('*').eq('exam', targetExam);
+      // Use proper exam field mapping for Foundation courses
+      const examFieldForTest = mapBatchToExamField(targetExam, userGrade);
+      logger.info('Chapter/Subject test exam field', { targetExam, examFieldForTest, userGrade });
+      
+      let query = supabase.from('questions').select('*').eq('exam', examFieldForTest);
       
       if (mode === "chapter" && selectedChapters.length > 0) {
         const chapterNames = selectedChapters.map(ch => ch.chapter);
