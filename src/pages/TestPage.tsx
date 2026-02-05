@@ -79,17 +79,25 @@ const TestPage = () => {
 
   const fetchSubjectsAndChapters = async () => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
       // Get user's target exam and grade for subject/chapter filtering
-      const targetExam = profile?.target_exam || 'JEE';
+      let targetExam = profile?.target_exam || 'JEE';
       let userGrade = profile?.grade || 12;
       
       // Parse grade properly (handles strings like "9th", "9", numbers, etc.)
       userGrade = parseGrade(userGrade);
+
+      // Normalize Foundation exam
+      if (isFoundationGrade(userGrade) && targetExam === 'Foundation') {
+        targetExam = `Foundation-${userGrade}`;
+      }
       
       // Get student's batch with its subjects from batch_subjects table
-      const batch = await getBatchForStudent('user-id', userGrade, targetExam);
+      const batch = await getBatchForStudent(user.id, userGrade, targetExam);
       
-      logBatchConfig('fetchSubjectsAndChapters', 'user-id', userGrade, targetExam, batch);
+      logBatchConfig('fetchSubjectsAndChapters', user.id, userGrade, targetExam, batch);
 
       // Get allowed subjects for this target exam
       const examSubjects = getAllowedSubjects(targetExam);
