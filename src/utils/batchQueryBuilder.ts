@@ -40,6 +40,15 @@ export interface BatchQueryFilters {
  */
 export const mapBatchToExamField = (examType: string, grade?: number): string => {
   if (examType.startsWith('Foundation')) {
+    // If stored as generic 'Foundation', convert to grade-specific exam field
+    // (questions.exam is stored as Foundation-6..Foundation-10)
+    if (examType === 'Foundation') {
+      if (typeof grade === 'number' && grade >= 6 && grade <= 10) {
+        return `Foundation-${grade}`;
+      }
+      return 'Foundation';
+    }
+
     // Foundation-6, Foundation-7, ... Foundation-10
     return examType;
   }

@@ -167,11 +167,16 @@ const StudyNowPage = () => {
         .eq('id', user.id)
         .single();
       
-      const targetExam = profileData?.target_exam || 'JEE';
+      let targetExam = profileData?.target_exam || 'JEE';
       let userGrade = profileData?.grade || 12;
       
       // Parse grade properly (handles strings like "9th", "9", numbers, etc.)
       userGrade = parseGrade(userGrade);
+
+      // ✅ Normalize Foundation exam
+      if (isFoundationGrade(userGrade) && targetExam === 'Foundation') {
+        targetExam = `Foundation-${userGrade}`;
+      }
 
       // Get student's batch with its subjects from batch_subjects table
       const batch = await getBatchForStudent(user.id, userGrade, targetExam);
@@ -310,11 +315,16 @@ const StudyNowPage = () => {
       const { data: { user } } = await supabase.auth.getUser();
 
       // Get user's target exam and grade from profile
-      const targetExam = profile?.target_exam || 'JEE';
+      let targetExam = profile?.target_exam || 'JEE';
       let userGrade = profile?.grade || 12;
       
       // Parse grade properly (handles strings like "9th", "9", numbers, etc.)
       userGrade = parseGrade(userGrade);
+
+      // ✅ Normalize Foundation exam types (some profiles store 'Foundation' instead of 'Foundation-9')
+      if (isFoundationGrade(userGrade) && targetExam === 'Foundation') {
+        targetExam = `Foundation-${userGrade}`;
+      }
 
       logger.info('LoadChapters debug', { targetExam, userGrade, subject });
 
@@ -324,8 +334,8 @@ const StudyNowPage = () => {
         .select('id, chapter_name, chapter_number, description, difficulty_level, batch_id')
         .eq('subject', subject);
 
-      // For Foundation students (grades 6-10), filter chapters by their batch
-      if (targetExam && targetExam.startsWith('Foundation-') && isFoundationGrade(userGrade)) {
+      // For Foundation students (grades 6-10), ALWAYS filter chapters by their batch
+      if (isFoundationGrade(userGrade)) {
         // Parse grade from target_exam if available (e.g., "Foundation-9" -> 9)
         let gradeToUse = userGrade;
         const gradeFromExam = extractGradeFromExamType(targetExam);
@@ -430,8 +440,13 @@ const StudyNowPage = () => {
       const { data: { user } } = await supabase.auth.getUser();
 
       // Get user's target exam from profile
-      const targetExam = profile?.target_exam || 'JEE';
+      let targetExam = profile?.target_exam || 'JEE';
       const userGrade = parseGrade(profile?.grade || 12);
+
+      // Normalize Foundation exam
+      if (isFoundationGrade(userGrade) && targetExam === 'Foundation') {
+        targetExam = `Foundation-${userGrade}`;
+      }
       
       // Use proper exam field mapping for Foundation courses
       const examFieldForTopics = mapBatchToExamField(targetExam, userGrade);
@@ -506,8 +521,13 @@ const StudyNowPage = () => {
       const { data: { user } } = await supabase.auth.getUser();
       
       // Get target exam - consistent with loadChapters logic
-      const targetExam = profile?.target_exam || 'JEE';
+      let targetExam = profile?.target_exam || 'JEE';
       const userGrade = parseGrade(profile?.grade || 12);
+
+      // Normalize Foundation exam
+      if (isFoundationGrade(userGrade) && targetExam === 'Foundation') {
+        targetExam = `Foundation-${userGrade}`;
+      }
       
       // Use proper exam field mapping for Foundation courses
       const examFieldForPractice = mapBatchToExamField(targetExam, userGrade);
