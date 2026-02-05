@@ -214,10 +214,14 @@ const StudyNowPage = () => {
       }
 
       // Get questions for counting
+      // Use proper exam field mapping for Foundation courses
+      const examFieldForQuestions = mapBatchToExamField(targetExam, userGrade);
+      logger.info('Fetching questions with exam field', { targetExam, examFieldForQuestions, userGrade });
+      
       const { data: allQuestions } = await supabase
         .from('questions')
         .select('subject, difficulty')
-        .eq('exam', targetExam);
+        .eq('exam', examFieldForQuestions);
 
       const { data: userAttempts } = await supabase
         .from('question_attempts')
@@ -359,11 +363,13 @@ const StudyNowPage = () => {
       if (chaptersError) throw chaptersError;
 
       // Get questions count per chapter
+      // Use proper exam field mapping for Foundation courses
+      const examFieldForChapters = mapBatchToExamField(targetExam, userGrade);
       const { data: questionsData } = await supabase
         .from('questions')
         .select('chapter_id, difficulty')
         .eq('subject', subject)
-        .eq('exam', targetExam);
+        .eq('exam', examFieldForChapters);
 
       // Get user attempts for this subject
       const { data: userAttempts } = await supabase
@@ -425,14 +431,18 @@ const StudyNowPage = () => {
 
       // Get user's target exam from profile
       const targetExam = profile?.target_exam || 'JEE';
-      logger.info('LoadTopics debug', { targetExam, selectedSubject, chapter });
+      const userGrade = parseGrade(profile?.grade || 12);
+      
+      // Use proper exam field mapping for Foundation courses
+      const examFieldForTopics = mapBatchToExamField(targetExam, userGrade);
+      logger.info('LoadTopics debug', { targetExam, examFieldForTopics, selectedSubject, chapter });
 
       const { data, error } = await supabase
         .from('questions')
         .select('topic, difficulty')
         .eq('subject', selectedSubject)
         .eq('chapter', chapter)
-        .eq('exam', targetExam);
+        .eq('exam', examFieldForTopics);
 
       if (error) throw error;
 
@@ -497,7 +507,11 @@ const StudyNowPage = () => {
       
       // Get target exam - consistent with loadChapters logic
       const targetExam = profile?.target_exam || 'JEE';
-      logger.info('StartPractice debug', { targetExam, selectedSubject, selectedChapter, topic });
+      const userGrade = parseGrade(profile?.grade || 12);
+      
+      // Use proper exam field mapping for Foundation courses
+      const examFieldForPractice = mapBatchToExamField(targetExam, userGrade);
+      logger.info('StartPractice debug', { targetExam, examFieldForPractice, selectedSubject, selectedChapter, topic });
       
       // ✅ CHECK DAILY LIMIT BEFORE STARTING PRACTICE
       if (!isPremium) {
@@ -554,7 +568,7 @@ const StudyNowPage = () => {
         .eq('subject', selectedSubject)
         .eq('chapter', selectedChapter)
         .eq('difficulty', targetDifficulty)
-        .eq('exam', targetExam);
+        .eq('exam', examFieldForPractice);
 
       if (attemptedIds.length > 0) {
         query = query.not('id', 'in', `(${attemptedIds.join(',')})`);
@@ -589,7 +603,7 @@ const StudyNowPage = () => {
             .eq('subject', selectedSubject)
             .eq('chapter', selectedChapter)
             .eq('difficulty', nextDifficulty)
-            .eq('exam', targetExam);
+            .eq('exam', examFieldForPractice);
           
           if (topic) {
             nextQuery = nextQuery.eq('topic', topic);

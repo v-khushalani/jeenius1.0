@@ -12,6 +12,7 @@ import { Upload, FileText, Loader2, CheckCircle2, XCircle, Image as ImageIcon, S
 import { supabase } from "@/integrations/supabase/client";
 import * as pdfjsLib from "pdfjs-dist";
 import { logger } from "@/utils/logger";
+import { parseGrade, isFoundationGrade, extractGradeFromExamType } from "@/utils/gradeParser";
 // @ts-ignore - Vite handles this URL import
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
@@ -55,23 +56,52 @@ export function PDFQuestionExtractor() {
 
   // Fetch chapters when subject changes
   useEffect(() => {
-    if (selectedSubject) {
+    if (selectedSubject && selectedExam) {
       fetchChaptersBySubject(selectedSubject);
     } else {
       setChapters([]);
       setSelectedChapterId("");
       setSelectedChapterName("");
     }
-  }, [selectedSubject]);
+  }, [selectedSubject, selectedExam]);
 
   const fetchChaptersBySubject = async (subject: string) => {
     setLoadingChapters(true);
     try {
-      const { data, error } = await supabase
+      // Determine batch filter based on selected exam type
+      let batchId: string | null = null;
+      
+      // For Foundation courses, get the appropriate batch
+      if (selectedExam.startsWith('Foundation-')) {
+        const gradeFromExam = extractGradeFromExamType(selectedExam);
+        if (gradeFromExam >= 6 && gradeFromExam <= 10) {
+          const { data: batch } = await supabase
+            .from('batches')
+            .select('id')
+            .eq('grade', gradeFromExam)
+            .eq('exam_type', 'Foundation')
+            .eq('is_active', true)
+            .single();
+          
+          if (batch) {
+            batchId = batch.id;
+          }
+        }
+      }
+      
+      let query = supabase
         .from("chapters")
         .select("id, chapter_name, subject")
-        .eq("subject", subject)
-        .order("chapter_number");
+        .eq("subject", subject);
+      
+      // Filter by batch for Foundation courses
+      if (batchId) {
+        query = query.eq("batch_id", batchId);
+        logger.info("Filtering chapters by batch", { batchId, exam: selectedExam });
+      }
+      
+      query = query.order("chapter_number");
+      const { data, error } = await query;
       
       if (error) throw error;
       setChapters(data || []);

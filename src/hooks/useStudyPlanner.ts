@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { logger } from '@/utils/logger';
 
 import type { StudyPlannerData, AIInsights } from '@/lib/studyPlannerTypes';
+import type { TargetExamType } from '@/lib/studyPlannerTypes';
 import {
   calculateTimeAllocation,
   categorizeTopics,
@@ -64,9 +65,9 @@ export function useStudyPlanner() {
     topicMastery: any[],
     profile: any,
     questionsCount: number
-  ) => {
+  ): StudyPlannerData => {
     const dailyStudyHours = profile?.daily_study_hours || 4;
-    const targetExam = profile?.target_exam || 'JEE';
+    const targetExam = (profile?.target_exam || 'JEE') as TargetExamType;
     const examDate = profile?.target_exam_date || '2026-05-24';
     const daysToExam = calculateDaysToExam(examDate);
     const avgAccuracy = profile?.overall_accuracy || 0;
@@ -131,7 +132,7 @@ export function useStudyPlanner() {
           isLoading: false,
           hasEnoughData: false,
           dailyStudyHours: profile?.daily_study_hours || 4,
-          targetExam: profile?.target_exam || 'JEE',
+          targetExam: (profile?.target_exam || 'JEE') as TargetExamType,
           examDate: profile?.target_exam_date || '2026-05-24',
           daysToExam: calculateDaysToExam(profile?.target_exam_date || '2026-05-24'),
           streak: profile?.current_streak || 0,
