@@ -199,21 +199,27 @@ const StudyNowPage = () => {
           filtered: subjectsToShow
         });
       } else {
-        // Fallback: Get subjects from chapters table
-        let chaptersQuery = supabase
-          .from('chapters')
-          .select('subject, batch_id');
-
-        // For Foundation students, filter chapters by their batch
-        if (batch && batch.id) {
-          chaptersQuery = chaptersQuery.eq('batch_id', batch.id);
+        // CRITICAL: never fall back to global chapters for Foundation grades.
+        // If the Foundation batch isn't configured, we must show nothing (otherwise JEE content leaks).
+        if (isFoundationGrade(userGrade)) {
+          logger.error('Foundation batch missing/misconfigured for user', {
+            userId: user.id,
+            userGrade,
+            targetExam,
+          });
+          setSubjects([]);
+          toast.error('Your batch is not configured yet. Please contact admin.');
+          return;
         }
 
-        const { data: chaptersData, error: chaptersError } = await chaptersQuery;
+        // Non-Foundation fallback: derive subjects from JEE/NEET global chapters (batch_id is null)
+        const { data: chaptersData, error: chaptersError } = await supabase
+          .from('chapters')
+          .select('subject')
+          .is('batch_id', null);
 
         if (chaptersError) throw chaptersError;
 
-        // Filter subjects based on target exam
         subjectsToShow = [...new Set(chaptersData?.map(c => c.subject) || [])]
           .filter(subject => examSubjects.includes(subject));
       }
@@ -334,37 +340,28 @@ const StudyNowPage = () => {
         .select('id, chapter_name, chapter_number, description, difficulty_level, batch_id')
         .eq('subject', subject);
 
-      // For Foundation students (grades 6-10), ALWAYS filter chapters by their batch
       if (isFoundationGrade(userGrade)) {
-        // Parse grade from target_exam if available (e.g., "Foundation-9" -> 9)
-        let gradeToUse = userGrade;
-        const gradeFromExam = extractGradeFromExamType(targetExam);
-        if (gradeFromExam >= 6 && gradeFromExam <= 10) {
-          gradeToUse = gradeFromExam;
+        // Resolve student's batch via shared helper (single source of truth)
+        const batch = user?.id
+          ? await getBatchForStudent(user.id, userGrade, targetExam)
+          : null;
+
+        if (!batch?.id) {
+          logger.error('Foundation batch missing/misconfigured; refusing to load chapters', {
+            userId: user?.id,
+            userGrade,
+            targetExam,
+            subject,
+          });
+          setChapters([]);
+          toast.error('Your batch is not configured yet. Please contact admin.');
+          return;
         }
 
-        logger.info('Foundation student detected', { targetExam, gradeToUse });
-
-        // Get the user's batch based on grade and exam type
-        const { data: userBatch, error: batchError } = await supabase
-          .from('batches')
-          .select('id, name, slug')
-          .eq('grade', gradeToUse)
-          .eq('exam_type', 'Foundation')
-          .single();
-
-        logger.info('Batch lookup result', { userBatch, batchError });
-
-        if (userBatch?.id) {
-          // Filter chapters to only those in the user's batch
-          chaptersQuery = chaptersQuery.eq('batch_id', userBatch.id);
-          logger.info('Filtering chapters by batch_id', { batch_id: userBatch.id });
-        } else {
-          logger.warn('No batch found for grade', { gradeToUse });
-        }
+        chaptersQuery = chaptersQuery.eq('batch_id', batch.id);
       } else {
-        // For JEE/NEET students (grades 11-12), don't filter by batch
-        logger.info('Non-Foundation student, no batch filtering');
+        // For JEE/NEET etc: use global chapters only (batch_id is null)
+        chaptersQuery = chaptersQuery.is('batch_id', null);
       }
 
       chaptersQuery = chaptersQuery.order('chapter_number', { ascending: true });
