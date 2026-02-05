@@ -45,7 +45,7 @@ export function PDFQuestionExtractor() {
   const [selectedSubject, setSelectedSubject] = useState<string>("");
   const [selectedChapterId, setSelectedChapterId] = useState<string>("");
   const [selectedChapterName, setSelectedChapterName] = useState<string>("");
-  const [selectedExam, setSelectedExam] = useState<string>("JEE");
+  const [selectedExam, setSelectedExam] = useState<string>("");
   const [startPage, setStartPage] = useState<number>(1);
   const [endPage, setEndPage] = useState<number | null>(null);
   
@@ -53,25 +53,70 @@ export function PDFQuestionExtractor() {
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [loadingChapters, setLoadingChapters] = useState(false);
 
-  // Fetch chapters when subject changes
+  // Curriculum-based subject mapping
+  const CURRICULUM_SUBJECTS: Record<string, string[]> = {
+    'JEE': ['Physics', 'Chemistry', 'Mathematics'],
+    'NEET': ['Physics', 'Chemistry', 'Biology'],
+    'MHT-CET': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
+    'CET': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
+    'Foundation-6': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
+    'Foundation-7': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
+    'Foundation-8': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
+    'Foundation-9': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
+    'Foundation-10': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
+    'Scholarship': ['Mathematics', 'Science', 'Mental Ability', 'English'],
+    'Olympiad': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
+  };
+
+  // Get available subjects based on selected course
+  const availableSubjects = selectedExam ? (CURRICULUM_SUBJECTS[selectedExam] || []) : [];
+
+  // Reset subject when course changes
   useEffect(() => {
-    if (selectedSubject) {
-      fetchChaptersBySubject(selectedSubject);
+    setSelectedSubject("");
+    setSelectedChapterId("");
+    setSelectedChapterName("");
+    setChapters([]);
+  }, [selectedExam]);
+
+  // Fetch chapters when subject or exam changes
+  useEffect(() => {
+    if (selectedSubject && selectedExam) {
+      fetchChaptersBySubjectAndExam(selectedSubject, selectedExam);
     } else {
       setChapters([]);
       setSelectedChapterId("");
       setSelectedChapterName("");
     }
-  }, [selectedSubject]);
+  }, [selectedSubject, selectedExam]);
 
-  const fetchChaptersBySubject = async (subject: string) => {
+  const fetchChaptersBySubjectAndExam = async (subject: string, exam: string) => {
     setLoadingChapters(true);
     try {
-      const { data, error } = await supabase
+      // For Foundation courses, filter by batch_id if available
+      let query = supabase
         .from("chapters")
-        .select("id, chapter_name, subject")
+        .select("id, chapter_name, subject, batch_id")
         .eq("subject", subject)
         .order("chapter_number");
+      
+      // If it's a Foundation course, try to filter by batch
+      if (exam.startsWith('Foundation')) {
+        const grade = exam.replace('Foundation-', '');
+        // First try to get batch for this grade
+        const { data: batchData } = await supabase
+          .from("batches")
+          .select("id")
+          .eq("exam_type", "Foundation")
+          .eq("grade", parseInt(grade))
+          .single();
+        
+        if (batchData?.id) {
+          query = query.eq("batch_id", batchData.id);
+        }
+      }
+
+      const { data, error } = await query;
       
       if (error) throw error;
       setChapters(data || []);
@@ -117,6 +162,20 @@ export function PDFQuestionExtractor() {
   const extractQuestions = async () => {
     if (!file) {
       toast.error("Please select a PDF file first");
+      return;
+    }
+
+    // Validate mandatory fields
+    if (!selectedExam) {
+      toast.error("Please select a Course Type");
+      return;
+    }
+    if (!selectedSubject) {
+      toast.error("Please select a Subject");
+      return;
+    }
+    if (!selectedChapterId || !selectedChapterName) {
+      toast.error("Please select a Chapter");
       return;
     }
 
@@ -262,13 +321,15 @@ export function PDFQuestionExtractor() {
             </label>
           </div>
 
-          {/* Pre-selection Filters */}
+          {/* Pre-selection Filters - ALL MANDATORY */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label>Course Type</Label>
+              <Label className="flex items-center gap-1">
+                Course Type <span className="text-red-500">*</span>
+              </Label>
               <Select value={selectedExam} onValueChange={setSelectedExam}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select course" />
+                <SelectTrigger className={!selectedExam ? "border-red-300" : ""}>
+                  <SelectValue placeholder="Select course type" />
                 </SelectTrigger>
                 <SelectContent>
                   {/* Higher Education */}
@@ -298,45 +359,59 @@ export function PDFQuestionExtractor() {
                   <SelectItem value="Olympiad">Olympiad</SelectItem>
                 </SelectContent>
               </Select>
+              {!selectedExam && (
+                <p className="text-xs text-red-500">Required</p>
+              )}
             </div>
 
             <div className="space-y-2">
-              <Label>Subject (Optional)</Label>
-              <Select value={selectedSubject || "auto"} onValueChange={(val) => setSelectedSubject(val === "auto" ? "" : val)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Auto-detect" />
+              <Label className="flex items-center gap-1">
+                Subject <span className="text-red-500">*</span>
+              </Label>
+              <Select 
+                value={selectedSubject} 
+                onValueChange={setSelectedSubject}
+                disabled={!selectedExam}
+              >
+                <SelectTrigger className={selectedExam && !selectedSubject ? "border-red-300" : ""}>
+                  <SelectValue placeholder={!selectedExam ? "Select course first" : "Select subject"} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="auto">Auto-detect</SelectItem>
-                  <SelectItem value="Physics">Physics</SelectItem>
-                  <SelectItem value="Chemistry">Chemistry</SelectItem>
-                  <SelectItem value="Mathematics">Mathematics</SelectItem>
-                  <SelectItem value="Biology">Biology</SelectItem>
+                  {availableSubjects.map(subject => (
+                    <SelectItem key={subject} value={subject}>{subject}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+              {!selectedExam && (
+                <p className="text-xs text-muted-foreground">Select a course type first</p>
+              )}
+              {selectedExam && !selectedSubject && (
+                <p className="text-xs text-red-500">Required</p>
+              )}
             </div>
 
             <div className="space-y-2">
-              <Label>Chapter (from database)</Label>
+              <Label className="flex items-center gap-1">
+                Chapter <span className="text-red-500">*</span>
+              </Label>
               <Select 
-                value={selectedChapterId || "auto"} 
+                value={selectedChapterId} 
                 onValueChange={(val) => {
-                  if (val === "auto") {
-                    setSelectedChapterId("");
-                    setSelectedChapterName("");
-                  } else {
-                    const chapter = chapters.find(c => c.id === val);
-                    setSelectedChapterId(val);
-                    setSelectedChapterName(chapter?.chapter_name || "");
-                  }
+                  const chapter = chapters.find(c => c.id === val);
+                  setSelectedChapterId(val);
+                  setSelectedChapterName(chapter?.chapter_name || "");
                 }}
                 disabled={!selectedSubject || loadingChapters}
               >
-                <SelectTrigger>
-                  <SelectValue placeholder={loadingChapters ? "Loading..." : "Auto-detect"} />
+                <SelectTrigger className={selectedSubject && !selectedChapterId ? "border-red-300" : ""}>
+                  <SelectValue placeholder={
+                    loadingChapters ? "Loading chapters..." : 
+                    !selectedSubject ? "Select subject first" : 
+                    chapters.length === 0 ? "No chapters found" :
+                    "Select chapter"
+                  } />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="auto">Auto-detect</SelectItem>
                   <ScrollArea className="h-60">
                     {chapters.map(c => (
                       <SelectItem key={c.id} value={c.id}>{c.chapter_name}</SelectItem>
@@ -345,10 +420,28 @@ export function PDFQuestionExtractor() {
                 </SelectContent>
               </Select>
               {!selectedSubject && (
-                <p className="text-xs text-muted-foreground">Select a subject first to see chapters</p>
+                <p className="text-xs text-muted-foreground">Select a subject first</p>
+              )}
+              {selectedSubject && loadingChapters && (
+                <p className="text-xs text-muted-foreground">Loading chapters...</p>
+              )}
+              {selectedSubject && !loadingChapters && chapters.length === 0 && (
+                <p className="text-xs text-amber-600">No chapters found for this course/subject</p>
+              )}
+              {selectedSubject && !loadingChapters && chapters.length > 0 && !selectedChapterId && (
+                <p className="text-xs text-red-500">Required</p>
               )}
             </div>
           </div>
+
+          {/* Selected Summary */}
+          {selectedExam && selectedSubject && selectedChapterName && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+              <p className="text-sm text-green-800 font-medium">
+                ✓ Ready to extract: {selectedExam} → {selectedSubject} → {selectedChapterName}
+              </p>
+            </div>
+          )}
 
           {/* Page Range */}
           <div className="grid grid-cols-2 gap-4">
@@ -376,7 +469,7 @@ export function PDFQuestionExtractor() {
           {/* Extract Button */}
           <Button 
             onClick={extractQuestions} 
-            disabled={!file || isExtracting}
+            disabled={!file || isExtracting || !selectedExam || !selectedSubject || !selectedChapterId}
             className="w-full"
             size="lg"
           >
@@ -384,6 +477,16 @@ export function PDFQuestionExtractor() {
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Extracting Page {currentPage} of {totalPages}...
+              </>
+            ) : !file ? (
+              <>
+                <Upload className="mr-2 h-4 w-4" />
+                Upload PDF First
+              </>
+            ) : !selectedExam || !selectedSubject || !selectedChapterId ? (
+              <>
+                <AlertTriangle className="mr-2 h-4 w-4" />
+                Select Course, Subject & Chapter
               </>
             ) : (
               <>
