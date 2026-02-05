@@ -10,7 +10,9 @@ interface AuthContextType {
   isLoading: boolean;
   isPremium: boolean;
   userRole: 'admin' | 'student' | 'super_admin' | null;
+  userBatchSubscriptions: any[]; // Batch subscriptions from user_batch_subscriptions table
   refreshPremium: () => Promise<void>;
+  refreshBatchSubscriptions: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<{ error?: string }>;
   signUpWithEmail: (email: string, password: string, fullName: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
@@ -35,6 +37,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
   const [isPremium, setIsPremium] = useState(false);
   const [userRole, setUserRole] = useState<'admin' | 'student' | 'super_admin' | null>(null);
+  const [userBatchSubscriptions, setUserBatchSubscriptions] = useState<any[]>([]);
   const listenerRef = React.useRef<any>(null);
 
   // Check premium status and user role
@@ -70,6 +73,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Fetch batch subscriptions for AI Doubt Solver access
+  const fetchBatchSubscriptions = async (userId: string) => {
+    try {
+      const { data: subscriptions, error } = await supabase
+        .from('user_batch_subscriptions')
+        .select(`
+          id,
+          batch_id,
+          status,
+          expires_at,
+          purchased_at,
+          batches (
+            id,
+            name,
+            grade,
+            exam_type
+          )
+        `)
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .order('expires_at', { ascending: false });
+
+      if (error) {
+        logger.error('Error fetching batch subscriptions:', error);
+        setUserBatchSubscriptions([]);
+        return;
+      }
+
+      // Filter to only active subscriptions (not expired)
+      const activeSubscriptions = (subscriptions || []).filter(
+        sub => sub.expires_at && new Date(sub.expires_at) > new Date()
+      );
+
+      setUserBatchSubscriptions(activeSubscriptions);
+      logger.log('✅ Batch subscriptions loaded:', activeSubscriptions.length);
+    } catch (error) {
+      logger.error('❌ Batch subscriptions fetch error:', error);
+      setUserBatchSubscriptions([]);
+    }
+  };
+
   useEffect(() => {
     let mounted = true;
     logger.log("🚀 Setting up Supabase Auth listener (runs once)");
@@ -79,12 +123,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSession(session);
       setUser(session?.user ?? null);
       
-      // Check premium status when user logs in
+      // Check premium status and batch subscriptions when user logs in
       if (session?.user) {
         await checkPremiumStatus(session.user.id);
+        await fetchBatchSubscriptions(session.user.id);
       } else {
         setIsPremium(false);
         setUserRole(null);
+        setUserBatchSubscriptions([]);
       }
       
       setIsLoading(false);
@@ -117,6 +163,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(null);
           setSession(null);
           setUserRole(null);
+          setUserBatchSubscriptions([]);
         }
       }
     );
@@ -330,6 +377,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const refreshBatchSubscriptions = async () => {
+    if (user) {
+      await fetchBatchSubscriptions(user.id);
+    }
+  };
+
   const value = {
     user,
     session,
@@ -337,7 +390,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isLoading,
     isPremium,
     userRole,
+    userBatchSubscriptions,
     refreshPremium,
+    refreshBatchSubscriptions,
     signInWithEmail,
     signUpWithEmail,
     signOut,

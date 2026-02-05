@@ -50,12 +50,14 @@ const AIDoubtSolver: React.FC<AIDoubtSolverProps> = ({
 
   const RATE_LIMIT_MS = 3000;
 
-  // ✅ Use isPremium from AuthContext
-  const { isPremium } = useAuth();
+  // ✅ Use isPremium and userBatchSubscriptions from AuthContext
+  const { isPremium, userBatchSubscriptions } = useAuth();
   
   useEffect(() => {
-    setIsPro(isPremium);
-  }, [isPremium]);
+    // Show AI if user has premium subscription OR has purchased any batch
+    const hasAccess = isPremium || (userBatchSubscriptions && userBatchSubscriptions.length > 0);
+    setIsPro(hasAccess);
+  }, [isPremium, userBatchSubscriptions]);
 
   // ✅ Initial welcome message
   const initialMessage = useMemo(() => {
