@@ -480,7 +480,6 @@ export const getUserBatchSubscriptions = async (userId: string) => {
           grade,
           exam_type,
           price,
-          offer_price,
           validity_days,
           is_active,
           batch_subjects (subject)
