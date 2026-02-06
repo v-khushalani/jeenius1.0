@@ -169,6 +169,7 @@ export const QuestionManager = () => {
       const { error } = await supabase.from('questions').insert([{
         ...formData,
         chapter_id: selectedChapter?.id || null,
+        topic: isFoundation ? null : (formData.topic || null),
         topic_id: isFoundation ? null : (selectedTopic?.id || null),
         subtopic: formData.subtopic || null,
         explanation: formData.explanation || null
@@ -206,6 +207,7 @@ export const QuestionManager = () => {
         .update({
           ...formData,
           chapter_id: selectedChapter?.id || null,
+          topic: isFoundation ? null : (formData.topic || null),
           topic_id: isFoundation ? null : (selectedTopic?.id || null),
           subtopic: formData.subtopic || null,
           explanation: formData.explanation || null

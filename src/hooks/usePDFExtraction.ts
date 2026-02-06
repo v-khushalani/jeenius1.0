@@ -82,11 +82,15 @@ export function usePDFExtraction() {
       // Validate chapter_id and topic_id exist (must be connected to existing curriculum)
       const chapterId = questionData.chapter_id as string | null;
       const topicId = questionData.topic_id as string | null;
+      const exam = (questionData.exam as string) || 'JEE';
       
       if (!chapterId) {
         toast.error("Cannot approve: Question not connected to existing chapter");
         return false;
       }
+
+      // Determine if this is a Foundation grade (no topics required)
+      const isFoundation = exam.startsWith('Foundation-') || exam === 'Scholarship' || exam === 'Olympiad';
 
       // Insert into questions table with foreign key references
       const { error: insertError } = await supabase.from("questions").insert({
@@ -100,10 +104,10 @@ export function usePDFExtraction() {
         subject: questionData.subject as string,
         chapter: questionData.chapter as string,
         chapter_id: chapterId, // Foreign key to chapters table
-        topic: (questionData.topic as string) || (questionData.chapter as string),
-        topic_id: topicId, // Foreign key to topics table (nullable)
+        topic: isFoundation ? null : ((questionData.topic as string) || (questionData.chapter as string)),
+        topic_id: isFoundation ? null : topicId, // Foreign key to topics table (nullable for Foundation)
         difficulty: (questionData.difficulty as string) || "Medium",
-        exam: (questionData.exam as string) || "JEE",
+        exam: exam,
         question_type: "single_correct"
       });
 
