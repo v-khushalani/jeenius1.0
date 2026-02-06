@@ -330,27 +330,37 @@ export function ExtractionReviewQueue() {
         }
       }
 
-      // STRICT VALIDATION: Both chapter_id and topic_id are required by database
+      // Determine if this is a Foundation or Scholarship exam (topic optional)
+      const isFoundationOrScholarship = (examType: string): boolean => {
+        return (examType || '').startsWith('Foundation-') || examType === 'Scholarship' || examType === 'Olympiad';
+      };
+
+      const examType = (q.exam || 'JEE').trim();
+      const isFoundation = isFoundationOrScholarship(examType);
+
+      // STRICT VALIDATION: chapter_id is required, but topic_id is optional for Foundation
       if (!chapterId) {
         const missingChapter = !chapterName ? "No chapter name provided" : `Chapter "${chapterName}" not found in database`;
         toast.error(`${missingChapter}. Please select a chapter manually using Edit.`);
         setSaving(false);
         return;
       }
-      if (!topicId) {
+      // Topic validation only for non-Foundation exams
+      if (!isFoundation && !topicId) {
         const missingTopic = !topicName ? "No topic name provided" : `Topic "${topicName}" not found in database`;
         toast.error(`${missingTopic}. Please select a topic manually.`);
         setSaving(false);
         return;
       }
       
-      // Final validation: Ensure chapter and topic names are not empty
+      // Final validation: Ensure chapter name is not empty
       if (!chapterName?.trim()) {
         toast.error("Chapter name is required. Please edit the question and select a chapter.");
         setSaving(false);
         return;
       }
-      if (!topicName?.trim()) {
+      // Topic name validation only for non-Foundation exams
+      if (!isFoundation && !topicName?.trim()) {
         toast.error("Topic name is required. Please edit the question and select a topic.");
         setSaving(false);
         return;
@@ -373,10 +383,10 @@ export function ExtractionReviewQueue() {
         subject: q.subject.trim(),
         chapter: chapterName.trim(),
         chapter_id: chapterId,
-        topic: topicName.trim(),
-        topic_id: topicId,
+        topic: isFoundation ? null : topicName.trim(),
+        topic_id: isFoundation ? null : topicId,
         difficulty: (q.difficulty || "Medium").trim(),
-        exam: (q.exam || "JEE").trim(),
+        exam: examType,
         question_type: "single_correct"
       });
 

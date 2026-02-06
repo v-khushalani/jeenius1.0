@@ -608,27 +608,27 @@ export const QuestionManager = () => {
             </Select>
           </div>
 
-          <div>
-            <Label>
-              Topic {isFoundationOrScholarship(formData.exam) ? '(Optional - Chapter-wise only)' : '*'}
-            </Label>
-            <Select 
-              value={formData.topic} 
-              onValueChange={(v) => setFormData(prev => ({...prev, topic: v}))}
-              disabled={!formData.chapter || filteredTopics.length === 0 || isFoundationOrScholarship(formData.exam)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder={isFoundationOrScholarship(formData.exam) ? "Not needed for Foundation" : filteredTopics.length === 0 ? "No topics available" : "Select topic"} />
-              </SelectTrigger>
-              <SelectContent>
-                {filteredTopics.map(topic => (
-                  <SelectItem key={topic.id} value={topic.topic_name}>
-                    {topic.topic_name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {!isFoundationOrScholarship(formData.exam) && (
+            <div>
+              <Label>Topic *</Label>
+              <Select 
+                value={formData.topic} 
+                onValueChange={(v) => setFormData(prev => ({...prev, topic: v}))}
+                disabled={!formData.chapter || filteredTopics.length === 0}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={filteredTopics.length === 0 ? "No topics available" : "Select topic"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredTopics.map(topic => (
+                    <SelectItem key={topic.id} value={topic.topic_name}>
+                      {topic.topic_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
 
         <div>
