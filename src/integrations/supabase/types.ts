@@ -1168,7 +1168,7 @@ export type Database = {
           reasoning_text?: string | null
           subject: string
           subtopic?: string | null
-          topic?: string | null
+          topic: string
           topic_id?: string | null
           year?: number | null
         }
