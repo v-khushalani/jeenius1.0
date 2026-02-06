@@ -91,6 +91,11 @@ export const QuestionManager = () => {
   // Get unique subjects from chapters
   const availableSubjects = [...new Set(chapters.map(c => c.subject))];
 
+  // Helper function to check if exam is Foundation or Scholarship (topic mapping optional)
+  const isFoundationOrScholarship = (examType: string): boolean => {
+    return examType.startsWith('Foundation-') || examType === 'Scholarship' || examType === 'Olympiad';
+  };
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -132,7 +137,9 @@ export const QuestionManager = () => {
       toast.error('Please select a chapter');
       return false;
     }
-    if (!formData.topic) {
+    // Topic is optional for Foundation and Scholarship exams
+    const isFoundation = isFoundationOrScholarship(formData.exam);
+    if (!isFoundation && !formData.topic) {
       toast.error('Please select a topic');
       return false;
     }
@@ -155,13 +162,14 @@ export const QuestionManager = () => {
     try {
       // Get chapter_id from selected chapter
       const selectedChapter = chapters.find(c => c.chapter_name === formData.chapter && c.subject === formData.subject);
-      // Get topic_id from selected topic
-      const selectedTopic = selectedChapter ? topics.find(t => t.chapter_id === selectedChapter.id && t.topic_name === formData.topic) : null;
+      // Get topic_id from selected topic (only for non-Foundation exams)
+      const isFoundation = isFoundationOrScholarship(formData.exam);
+      const selectedTopic = !isFoundation && selectedChapter ? topics.find(t => t.chapter_id === selectedChapter.id && t.topic_name === formData.topic) : null;
 
       const { error } = await supabase.from('questions').insert([{
         ...formData,
         chapter_id: selectedChapter?.id || null,
-        topic_id: selectedTopic?.id || null,
+        topic_id: isFoundation ? null : (selectedTopic?.id || null),
         subtopic: formData.subtopic || null,
         explanation: formData.explanation || null
       }]);
@@ -189,15 +197,16 @@ export const QuestionManager = () => {
     try {
       // Get chapter_id from selected chapter
       const selectedChapter = chapters.find(c => c.chapter_name === formData.chapter && c.subject === formData.subject);
-      // Get topic_id from selected topic
-      const selectedTopic = selectedChapter ? topics.find(t => t.chapter_id === selectedChapter.id && t.topic_name === formData.topic) : null;
+      // Get topic_id from selected topic (only for non-Foundation exams)
+      const isFoundation = isFoundationOrScholarship(formData.exam);
+      const selectedTopic = !isFoundation && selectedChapter ? topics.find(t => t.chapter_id === selectedChapter.id && t.topic_name === formData.topic) : null;
 
       const { error } = await supabase
         .from('questions')
         .update({
           ...formData,
           chapter_id: selectedChapter?.id || null,
-          topic_id: selectedTopic?.id || null,
+          topic_id: isFoundation ? null : (selectedTopic?.id || null),
           subtopic: formData.subtopic || null,
           explanation: formData.explanation || null
         })
@@ -600,14 +609,16 @@ export const QuestionManager = () => {
           </div>
 
           <div>
-            <Label>Topic *</Label>
+            <Label>
+              Topic {isFoundationOrScholarship(formData.exam) ? '(Optional - Chapter-wise only)' : '*'}
+            </Label>
             <Select 
               value={formData.topic} 
               onValueChange={(v) => setFormData(prev => ({...prev, topic: v}))}
-              disabled={!formData.chapter || filteredTopics.length === 0}
+              disabled={!formData.chapter || filteredTopics.length === 0 || isFoundationOrScholarship(formData.exam)}
             >
               <SelectTrigger>
-                <SelectValue placeholder={filteredTopics.length === 0 ? "No topics available" : "Select topic"} />
+                <SelectValue placeholder={isFoundationOrScholarship(formData.exam) ? "Not needed for Foundation" : filteredTopics.length === 0 ? "No topics available" : "Select topic"} />
               </SelectTrigger>
               <SelectContent>
                 {filteredTopics.map(topic => (
