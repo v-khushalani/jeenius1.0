@@ -74,7 +74,6 @@ export function PDFQuestionExtractor() {
 
   // Reset subject when course changes
   useEffect(() => {
-<<<<<<< HEAD
     setSelectedSubject("");
     setSelectedChapterId("");
     setSelectedChapterName("");
@@ -85,10 +84,6 @@ export function PDFQuestionExtractor() {
   useEffect(() => {
     if (selectedSubject && selectedExam) {
       fetchChaptersBySubjectAndExam(selectedSubject, selectedExam);
-=======
-    if (selectedSubject && selectedExam) {
-      fetchChaptersBySubject(selectedSubject);
->>>>>>> 8613e19c47ef254d3ef76c7b3e5b5a4754c02aa9
     } else {
       setChapters([]);
       setSelectedChapterId("");
@@ -99,51 +94,13 @@ export function PDFQuestionExtractor() {
   const fetchChaptersBySubjectAndExam = async (subject: string, exam: string) => {
     setLoadingChapters(true);
     try {
-<<<<<<< HEAD
-      // For Foundation courses, filter by batch_id if available
       let query = supabase
         .from("chapters")
         .select("id, chapter_name, subject, batch_id")
         .eq("subject", subject)
         .order("chapter_number");
-=======
-      // Determine batch filter based on selected exam type
-      let batchId: string | null = null;
-      
-      // For Foundation courses, get the appropriate batch
-      if (selectedExam.startsWith('Foundation-')) {
-        const gradeFromExam = extractGradeFromExamType(selectedExam);
-        if (gradeFromExam >= 6 && gradeFromExam <= 10) {
-          const { data: batch } = await supabase
-            .from('batches')
-            .select('id')
-            .eq('grade', gradeFromExam)
-            .eq('exam_type', 'Foundation')
-            .eq('is_active', true)
-            .single();
-          
-          if (batch) {
-            batchId = batch.id;
-          }
-        }
-      }
-      
-      let query = supabase
-        .from("chapters")
-        .select("id, chapter_name, subject")
-        .eq("subject", subject);
-      
-      // Filter by batch for Foundation courses
-      if (batchId) {
-        query = query.eq("batch_id", batchId);
-        logger.info("Filtering chapters by batch", { batchId, exam: selectedExam });
-      }
-      
-      query = query.order("chapter_number");
-      const { data, error } = await query;
->>>>>>> 8613e19c47ef254d3ef76c7b3e5b5a4754c02aa9
-      
-      // If it's a Foundation course, try to filter by batch
+
+      // If it's a Foundation course, filter by batch
       if (exam.startsWith('Foundation')) {
         const grade = exam.replace('Foundation-', '');
         // First try to get batch for this grade
