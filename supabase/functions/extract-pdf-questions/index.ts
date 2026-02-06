@@ -418,13 +418,16 @@ NOW EXTRACT ALL QUESTIONS - CHECK TWICE THAT YOU HAVEN'T MISSED ANY:`;
         ? q.difficulty 
         : determineDifficulty(q.question, [q.option_a, q.option_b, q.option_c || '', q.option_d || '']);
       
+      // Check if this is a Foundation exam (topics optional)
+      const isFoundationExam = (exam || 'JEE').startsWith('Foundation-') || exam === 'Scholarship' || exam === 'Olympiad';
+
       return {
         ...q,
         subject: finalSubject,
         chapter: matchedChapter.chapter_name,
         chapter_id: matchedChapter.id,
-        topic: matchedTopic?.topic_name || q.topic || matchedChapter.chapter_name,
-        topic_id: matchedTopic?.id || null,
+        topic: isFoundationExam ? null : (matchedTopic?.topic_name || q.topic || matchedChapter.chapter_name),
+        topic_id: isFoundationExam ? null : (matchedTopic?.id || null),
         difficulty: finalDifficulty,
         exam: exam || "JEE"
       };

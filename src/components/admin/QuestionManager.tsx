@@ -428,10 +428,14 @@ export const QuestionManager = () => {
           ? topics.find(t => t.chapter_id === matchingChapter.id && t.topic_name === question.topic)
           : null;
 
+        // Check if this is a Foundation exam (topics not required)
+        const isFoundation = isFoundationOrScholarship(question.exam);
+
         return {
           ...question,
           chapter_id: matchingChapter?.id || null,
-          topic_id: matchingTopic?.id || null
+          topic: isFoundation ? null : (question.topic || null),
+          topic_id: isFoundation ? null : (matchingTopic?.id || null)
         };
       });
 
