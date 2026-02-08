@@ -240,15 +240,6 @@ const StudyNowPage = () => {
         .eq('user_id', user.id);
 
       const subjectStats = subjectsToShow.map((subject) => {
-        const subjectQuestions = allQuestions?.filter(q => q.subject === subject) || [];
-        const totalQuestions = subjectQuestions.length;
-
-        const difficulties = {
-          easy: subjectQuestions.filter(q => q.difficulty === 'Easy').length,
-          medium: subjectQuestions.filter(q => q.difficulty === 'Medium').length,
-          hard: subjectQuestions.filter(q => q.difficulty === 'Hard').length
-        };
-
         const subjectAttempts = userAttempts?.filter(
           a => a.questions?.subject === subject
         ) || [];
@@ -291,8 +282,6 @@ const StudyNowPage = () => {
           name: subject,
           emoji: icons[subject] || '📚',
           ...colors[subject],
-          totalQuestions,
-          difficulties,
           attempted,
           accuracy
         };
@@ -387,13 +376,6 @@ const StudyNowPage = () => {
 
       const chapterStats = (chaptersData || []).map((chapter) => {
         const chapterQuestions = questionsData?.filter(q => q.chapter_id === chapter.id) || [];
-        const totalQuestions = chapterQuestions.length;
-
-        const difficulties = {
-          easy: chapterQuestions.filter(q => q.difficulty === 'Easy').length,
-          medium: chapterQuestions.filter(q => q.difficulty === 'Medium').length,
-          hard: chapterQuestions.filter(q => q.difficulty === 'Hard').length
-        };
 
         const chapterAttempts = userAttempts?.filter(
           a => a.questions?.chapter_id === chapter.id
@@ -402,15 +384,13 @@ const StudyNowPage = () => {
         const attempted = chapterAttempts.length;
         const correct = chapterAttempts.filter(a => a.is_correct).length;
         const accuracy = attempted > 0 ? Math.round((correct / attempted) * 100) : 0;
-        const progress = totalQuestions > 0 ? Math.min(100, Math.round((attempted / totalQuestions) * 100)) : 0;
+        const progress = chapterQuestions.length > 0 ? Math.min(100, Math.round((attempted / chapterQuestions.length) * 100)) : 0;
 
         return {
           id: chapter.id,
           name: chapter.chapter_name,
           sequence: chapter.chapter_number,
           description: chapter.description,
-          totalQuestions,
-          difficulties,
           attempted,
           accuracy,
           progress,
@@ -473,15 +453,6 @@ const StudyNowPage = () => {
         .eq('questions.chapter', chapter);
 
       const topicStats = uniqueTopics.map((topic) => {
-        const topicQuestions = data?.filter(q => q.topic === topic) || [];
-        const totalQuestions = topicQuestions.length;
-
-        const difficulties = {
-          easy: topicQuestions.filter(q => q.difficulty === 'Easy').length,
-          medium: topicQuestions.filter(q => q.difficulty === 'Medium').length,
-          hard: topicQuestions.filter(q => q.difficulty === 'Hard').length
-        };
-
         const topicAttempts = userAttempts?.filter(
           a => a.questions?.topic === topic
         ) || [];
@@ -492,8 +463,6 @@ const StudyNowPage = () => {
 
         return {
           name: topic,
-          totalQuestions,
-          difficulties,
           attempted,
           accuracy
         };
@@ -1027,49 +996,37 @@ const handleAnswer = async (answer: string) => {
         <Header />
         <div className="pt-16 sm:pt-20 pb-6 md:pb-10">
           <div className="container mx-auto px-3 sm:px-4 max-w-7xl">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
+            {/* Header */}
+            <div className="mb-8">
+              <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-2">Learn & Practice</h1>
+              <p className="text-slate-600">Choose a subject to get started</p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {subjects.map((subject) => (
                 <Card
                   key={subject.name}
                   onClick={() => loadChapters(subject.name)}
-                  className={`group cursor-pointer transform hover:scale-105 transition-all border-2 ${subject.borderColor} shadow-xl overflow-hidden`}
+                  className={`group cursor-pointer transform hover:shadow-2xl transition-all duration-300 border-0 shadow-lg overflow-hidden`}
                 >
-                  <div className={`p-3 sm:p-5 text-center bg-gradient-to-br ${subject.bgColor}`}>
-                    <div className="text-3xl sm:text-5xl mb-1 sm:mb-2">{subject.emoji}</div>
-                    <h3 className="text-lg sm:text-2xl font-bold text-slate-900 mb-1 sm:mb-2">{subject.name}</h3>
-                    <Badge className="bg-white/80 text-slate-700 text-xs sm:text-sm">AI Powered</Badge>
+                  <div className={`p-6 sm:p-8 text-center bg-gradient-to-br ${subject.bgColor}`}>
+                    <div className="text-4xl sm:text-6xl mb-3">{subject.emoji}</div>
+                    <h3 className="text-xl sm:text-2xl font-bold text-slate-900">{subject.name}</h3>
                   </div>
 
-                  <CardContent className="p-3 sm:p-4">
-                    <div className="text-center mb-3 sm:mb-4">
-                      <div className="text-xl sm:text-3xl font-extrabold text-slate-900">{subject.totalQuestions}</div>
-                      <div className="text-[10px] sm:text-xs text-slate-500">Total Questions</div>
-                    </div>
-
-                    <div className="mb-3 sm:mb-4 p-2 sm:p-3 bg-slate-50 rounded-lg">
-                      <div className="grid grid-cols-3 gap-1 sm:gap-2 text-center text-[10px] sm:text-xs">
-                        <div>
-                          <div className="font-bold text-green-600">{subject.difficulties.easy}</div>
-                          <div className="text-slate-500">Easy</div>
-                        </div>
-                        <div>
-                          <div className="font-bold text-yellow-600">{subject.difficulties.medium}</div>
-                          <div className="text-slate-500">Medium</div>
-                        </div>
-                        <div>
-                          <div className="font-bold text-red-600">{subject.difficulties.hard}</div>
-                          <div className="text-slate-500">Hard</div>
-                        </div>
+                  <CardContent className="p-4 sm:p-6">
+                    <div className="space-y-3">
+                      <div className="text-center">
+                        <p className="text-sm text-slate-600">Master this subject</p>
                       </div>
+                      <Button
+                        className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-4 py-2.5 text-sm font-semibold rounded-lg transition-all"
+                        onClick={() => loadChapters(subject.name)}
+                      >
+                        <Play className="w-4 h-4 mr-2" />
+                        Start Learning
+                      </Button>
                     </div>
-
-                    <Button
-                      className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold"
-                      onClick={() => loadChapters(subject.name)}
-                    >
-                      <Play className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 inline" />
-                      Start Practicing
-                    </Button>
                   </CardContent>
                 </Card>
               ))}
@@ -1087,125 +1044,97 @@ const handleAnswer = async (answer: string) => {
         <Header />
         <div className="pt-16 sm:pt-20 pb-6 md:pb-10">
           <div className="container mx-auto px-3 sm:px-4 max-w-6xl">
-            <div className="mb-4 md:mb-6">
+            <div className="mb-6">
               <Button
                 variant="outline"
                 onClick={() => setView('subjects')}
-                className="border-2 border-blue-600 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2"
+                className="border-2 border-blue-600 text-slate-900 font-semibold hover:bg-blue-50 mb-4"
               >
-                <ArrowLeft className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                Back
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Subjects
               </Button>
+              <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-1">{selectedSubject}</h1>
+              <p className="text-slate-600">Choose a chapter to learn</p>
             </div>
 
-            <div className="text-center mb-4 md:mb-6">
-              <Badge className="bg-blue-600 text-white text-sm md:text-base px-2 sm:px-3 py-1 sm:py-1.5">{selectedSubject}</Badge>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {chapters.map((chapter) => {
                 if (chapter.isLocked) {
                   return (
                     <Card
                       key={chapter.name}
-                      className="relative border-2 border-gray-200 shadow-lg opacity-70"
+                      className="relative border-0 shadow-lg overflow-hidden opacity-50 cursor-not-allowed"
                     >
                       <div className="absolute inset-0 bg-white/70 rounded-xl flex items-center justify-center z-10 p-4">
                         <div className="text-center">
-                          <div className="p-3 rounded-full bg-gradient-to-br from-orange-400 to-red-500 inline-block mb-3">
-                            <Lock className="w-6 h-6 text-white" />
-                          </div>
-                          <div className="font-bold text-lg mb-1">Premium Chapter</div>
-                          <div className="text-sm text-slate-600 mb-3">Upgrade to unlock all chapters</div>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate('/subscription-plans');
-                            }}
-                            className="bg-gradient-to-r from-green-500 to-blue-600 text-white px-4 py-2 rounded-lg font-semibold"
-                          >
-                            🔓 Unlock Now
-                          </button>
+                          <Lock className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                          <div className="font-bold text-sm text-slate-600">Unlock with Premium</div>
                         </div>
                       </div>
 
-                      <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50">
-                        <Badge className="mb-2 text-xs">Chapter {chapter.sequence}</Badge>
-                        <h3 className="font-bold text-lg text-slate-900">{chapter.name}</h3>
+                      <div className="p-6 bg-gradient-to-br from-slate-100 to-slate-200">
+                        <h3 className="font-bold text-lg text-slate-700">{chapter.name}</h3>
                       </div>
 
                       <CardContent className="p-4">
-                        <div className="text-center mb-3">
-                          <div className="text-xl font-bold text-slate-900">{chapter.totalQuestions}</div>
-                          <div className="text-xs text-slate-500">Questions</div>
-                        </div>
-
-                        <div className="mb-3 p-2 bg-slate-50 rounded-lg">
-                          <div className="grid grid-cols-3 text-center text-xs gap-1">
-                            <div>
-                              <div className="font-bold text-green-600">{chapter.difficulties.easy}</div>
-                              <div className="text-slate-500">Easy</div>
-                            </div>
-                            <div>
-                              <div className="font-bold text-yellow-600">{chapter.difficulties.medium}</div>
-                              <div className="text-slate-500">Med</div>
-                            </div>
-                            <div>
-                              <div className="font-bold text-red-600">{chapter.difficulties.hard}</div>
-                              <div className="text-slate-500">Hard</div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <Button className="w-full bg-blue-600 text-white text-sm" disabled>
-                          <Sparkles className="w-4 h-4 mr-2 inline" />
-                          Explore Topics
+                        <Button className="w-full bg-slate-300 text-slate-600 cursor-not-allowed" disabled>
+                          <Lock className="w-4 h-4 mr-2" />
+                          Locked
                         </Button>
                       </CardContent>
                     </Card>
                   );
                 }
 
+                // Check if this is a Foundation course (no topics needed)
+                const isFoundationCourse = profile?.target_exam?.startsWith('Foundation-') || 
+                                          profile?.target_exam === 'Scholarship' ||
+                                          profile?.target_exam === 'Olympiad';
+
                 return (
                   <Card
                     key={chapter.name}
-                    onClick={() => loadTopics(chapter.name)}
-                    className="group cursor-pointer hover:scale-105 transition-all border-2 border-blue-200 shadow-lg"
+                    onClick={() => {
+                      if (isFoundationCourse) {
+                        // For Foundation courses, directly start practice
+                        startPractice(chapter.name);
+                      } else {
+                        // For other courses, load topics
+                        loadTopics(chapter.name);
+                      }
+                    }}
+                    className="group cursor-pointer hover:shadow-2xl transition-all duration-300 border-0 shadow-lg overflow-hidden"
                   >
-                    <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50">
-                      <Badge className="mb-2 text-xs">Chapter {chapter.sequence}</Badge>
-                      <h3 className="font-bold text-lg text-slate-900">{chapter.name}</h3>
+                    <div className="p-6 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 hover:from-blue-100 hover:via-indigo-100 hover:to-purple-100 transition-colors">
+                      <h3 className="font-bold text-xl text-slate-900">{chapter.name}</h3>
+                      {chapter.description && (
+                        <p className="text-sm text-slate-600 mt-1">{chapter.description}</p>
+                      )}
                     </div>
 
                     <CardContent className="p-4">
-                      <div className="text-center mb-3">
-                        <div className="text-xl font-bold text-slate-900">{chapter.totalQuestions}</div>
-                        <div className="text-xs text-slate-500">Questions</div>
-                      </div>
-
-                      <div className="mb-3 p-2 bg-slate-50 rounded-lg">
-                        <div className="grid grid-cols-3 text-center text-xs gap-1">
-                          <div>
-                            <div className="font-bold text-green-600">{chapter.difficulties.easy}</div>
-                            <div className="text-slate-500">Easy</div>
-                          </div>
-                          <div>
-                            <div className="font-bold text-yellow-600">{chapter.difficulties.medium}</div>
-                            <div className="text-slate-500">Med</div>
-                          </div>
-                          <div>
-                            <div className="font-bold text-red-600">{chapter.difficulties.hard}</div>
-                            <div className="text-slate-500">Hard</div>
-                          </div>
-                        </div>
-                      </div>
-
                       <Button 
-                        className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm" 
-                        onClick={() => loadTopics(chapter.name)}
+                        className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold transition-all" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (isFoundationCourse) {
+                            startPractice(chapter.name);
+                          } else {
+                            loadTopics(chapter.name);
+                          }
+                        }}
                       >
-                        <Sparkles className="w-4 h-4 mr-2 inline" />
-                        Explore Topics
+                        {isFoundationCourse ? (
+                          <>
+                            <Play className="w-4 h-4 mr-2" />
+                            Start Practicing
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-4 h-4 mr-2" />
+                            Explore Topics
+                          </>
+                        )}
                       </Button>
                     </CardContent>
                   </Card>
@@ -1225,67 +1154,53 @@ const handleAnswer = async (answer: string) => {
         <Header />
         <div className="pt-16 sm:pt-20 pb-6 md:pb-10">
           <div className="container mx-auto px-3 sm:px-4 max-w-6xl">
-            <div className="mb-4 md:mb-6">
+            <div className="mb-6">
               <Button
                 variant="outline"
                 onClick={() => setView('chapters')}
-                className="border-2 border-blue-600 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2"
+                className="border-2 border-blue-600 text-slate-900 font-semibold hover:bg-blue-50"
               >
-                <ArrowLeft className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                Back
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Chapters
               </Button>
             </div>
 
-            <div className="text-center mb-4 md:mb-6">
-              <Badge className="bg-blue-600 text-white text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-1.5">
-                {selectedSubject} • {selectedChapter}
-              </Badge>
+            <div className="mb-6">
+              <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">Topics</h2>
+              <p className="text-slate-600 mt-1">Choose a topic to practice</p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-              {topics.map((topic) => (
-                <Card
-                  key={topic.name}
-                  onClick={() => startPractice(topic.name)}
-                  className="group cursor-pointer hover:scale-105 transition-all border-2 border-purple-200 shadow-lg"
-                >
-                  <div className="p-4 bg-gradient-to-br from-purple-50 to-pink-50">
-                    <h3 className="font-bold text-lg text-slate-900 mb-2">{topic.name}</h3>
-                  </div>
-
-                  <CardContent className="p-4">
-                    <div className="text-center mb-3">
-                      <div className="text-xl font-bold text-slate-900">{topic.totalQuestions}</div>
-                      <div className="text-xs text-slate-500">Questions</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {topics.length === 0 ? (
+                <div className="col-span-full text-center py-12">
+                  <div className="text-slate-400 text-lg">No topics available</div>
+                </div>
+              ) : (
+                topics.map((topic) => (
+                  <Card
+                    key={topic.name}
+                    onClick={() => startPractice(topic.name)}
+                    className="group cursor-pointer hover:shadow-2xl transition-all duration-300 border-0 shadow-lg overflow-hidden"
+                  >
+                    <div className="p-6 bg-gradient-to-br from-purple-50 via-pink-50 to-indigo-50 hover:from-purple-100 hover:via-pink-100 hover:to-indigo-100 transition-colors">
+                      <h3 className="font-bold text-lg text-slate-900">{topic.name}</h3>
                     </div>
 
-                    <div className="mb-3 p-2 bg-slate-50 rounded-lg">
-                      <div className="grid grid-cols-3 text-center text-xs gap-1">
-                        <div>
-                          <div className="font-bold text-green-600">{topic.difficulties.easy}</div>
-                          <div className="text-slate-500">Easy</div>
-                        </div>
-                        <div>
-                          <div className="font-bold text-yellow-600">{topic.difficulties.medium}</div>
-                          <div className="text-slate-500">Med</div>
-                        </div>
-                        <div>
-                          <div className="font-bold text-red-600">{topic.difficulties.hard}</div>
-                          <div className="text-slate-500">Hard</div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <Button 
-                      className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-sm" 
-                      onClick={() => startPractice(topic.name)}
-                    >
-                      <Zap className="w-4 h-4 mr-2 inline" />
-                      Start Practice
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
+                    <CardContent className="p-4">
+                      <Button 
+                        className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold transition-all"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          startPractice(topic.name);
+                        }}
+                      >
+                        <Zap className="w-4 h-4 mr-2" />
+                        Practice
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
             </div>
           </div>
         </div>
