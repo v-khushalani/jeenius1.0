@@ -113,7 +113,15 @@ export function PDFQuestionExtractor() {
         
         if (batchData?.id) {
           query = query.eq("batch_id", batchData.id);
+        } else {
+          // Batch not found - don't show any chapters
+          setChapters([]);
+          setLoadingChapters(false);
+          return;
         }
+      } else {
+        // JEE/NEET/CET: only show chapters with null batch_id
+        query = query.is("batch_id", null);
       }
 
       const { data, error } = await query;

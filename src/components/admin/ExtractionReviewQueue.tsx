@@ -244,13 +244,14 @@ export function ExtractionReviewQueue() {
   };
 
   // Helper function to get batch_id for an exam type
-  const getBatchIdForExam = (examType: string | undefined): string | null => {
+  const getBatchIdForExam = (examType: string | undefined): string | null | 'NOT_FOUND' => {
     if (!examType) return null;
     
     if (examType.startsWith('Foundation-')) {
       const grade = parseInt(examType.replace('Foundation-', ''));
       const batch = batches.find(b => b.exam_type === 'Foundation' && b.grade === grade);
-      return batch?.id || null;
+      // Return 'NOT_FOUND' if batch should exist but isn't loaded yet
+      return batch?.id || (batches.length === 0 ? 'NOT_FOUND' : 'NOT_FOUND');
     }
     
     // JEE/NEET/CET - chapters have batch_id = null
@@ -261,17 +262,17 @@ export function ExtractionReviewQueue() {
   const getFilteredChapters = (subject: string | undefined, examType: string | undefined): Chapter[] => {
     if (!subject) return [];
     
-    return chapters.filter(c => {
-      if (c.subject !== subject) return false;
-      
-      if (examType?.startsWith('Foundation-')) {
-        const batchId = getBatchIdForExam(examType);
-        return c.batch_id === batchId;
-      } else {
-        // JEE/NEET/CET: only show chapters with null batch_id
-        return c.batch_id === null;
-      }
-    });
+    const isFoundation = examType?.startsWith('Foundation-');
+    
+    if (isFoundation) {
+      const batchId = getBatchIdForExam(examType);
+      // If batch not found, return empty array (don't show other batch's chapters)
+      if (batchId === 'NOT_FOUND' || batchId === null) return [];
+      return chapters.filter(c => c.subject === subject && c.batch_id === batchId);
+    } else {
+      // JEE/NEET/CET: only show chapters with null batch_id
+      return chapters.filter(c => c.subject === subject && c.batch_id === null);
+    }
   };
 
   const fetchTopics = async (chapterId: string): Promise<Topic[]> => {
@@ -1110,7 +1111,35 @@ export function ExtractionReviewQueue() {
                         ))}
                       </div>
 
-                      <div className="grid grid-cols-3 gap-4">
+                      <div className="grid grid-cols-4 gap-4">
+                        <div className="space-y-2">
+                          <Label>Course Type</Label>
+                          <Select 
+                            value={editedQuestion.parsed_question.exam || "JEE"} 
+                            onValueChange={(v) => {
+                              updateEditedField("exam", v);
+                              // Reset chapter and topic when exam changes
+                              updateEditedField("auto_assigned_chapter_id", "");
+                              updateEditedField("auto_assigned_chapter_name", "");
+                              updateEditedField("auto_assigned_topic_id", "");
+                              updateEditedField("auto_assigned_topic_name", "");
+                            }}
+                          >
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">HIGHER EDUCATION</div>
+                              <SelectItem value="JEE">JEE Main & Advanced</SelectItem>
+                              <SelectItem value="NEET">NEET Medical</SelectItem>
+                              <SelectItem value="MHT-CET">MHT CET</SelectItem>
+                              <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">FOUNDATION</div>
+                              <SelectItem value="Foundation-6">6th Foundation</SelectItem>
+                              <SelectItem value="Foundation-7">7th Foundation</SelectItem>
+                              <SelectItem value="Foundation-8">8th Foundation</SelectItem>
+                              <SelectItem value="Foundation-9">9th Foundation</SelectItem>
+                              <SelectItem value="Foundation-10">10th Foundation</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                         <div className="space-y-2">
                           <Label>Correct Answer</Label>
                           <Select value={editedQuestion.parsed_question.correct_option} onValueChange={(v) => updateEditedField("correct_option", v)}>
@@ -1418,6 +1447,40 @@ export function ExtractionReviewQueue() {
                         );
                       })}
                     </div>
+
+                    {/* Course Type Selector */}
+                    {(editingInPreview || confirmDialog?.method === 'suggested') && (
+                      <div className="pt-2 border-t">
+                        <Label className="text-xs text-muted-foreground">Course Type</Label>
+                        <Select 
+                          value={previewQuestion.parsed_question.exam || "JEE"} 
+                          onValueChange={(v) => {
+                            updateQuestionInPreview(previewQuestion.id, 'exam', v);
+                            // Reset chapter and topic when exam changes
+                            updateQuestionInPreview(previewQuestion.id, 'auto_assigned_chapter_id', '');
+                            updateQuestionInPreview(previewQuestion.id, 'auto_assigned_chapter_name', '');
+                            updateQuestionInPreview(previewQuestion.id, 'auto_assigned_topic_id', '');
+                            updateQuestionInPreview(previewQuestion.id, 'auto_assigned_topic_name', '');
+                          }}
+                        >
+                          <SelectTrigger className="mt-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">HIGHER EDUCATION</div>
+                            <SelectItem value="JEE">JEE Main & Advanced</SelectItem>
+                            <SelectItem value="NEET">NEET Medical</SelectItem>
+                            <SelectItem value="MHT-CET">MHT CET</SelectItem>
+                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">FOUNDATION</div>
+                            <SelectItem value="Foundation-6">6th Foundation</SelectItem>
+                            <SelectItem value="Foundation-7">7th Foundation</SelectItem>
+                            <SelectItem value="Foundation-8">8th Foundation</SelectItem>
+                            <SelectItem value="Foundation-9">9th Foundation</SelectItem>
+                            <SelectItem value="Foundation-10">10th Foundation</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
 
                     {/* Chapter & Topic Assignment */}
                     <div className="space-y-3 pt-2 border-t">
