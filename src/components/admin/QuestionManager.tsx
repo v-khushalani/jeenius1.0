@@ -40,6 +40,14 @@ interface Chapter {
   subject: string;
   chapter_name: string;
   chapter_number: number;
+  batch_id: string | null;
+}
+
+interface Batch {
+  id: string;
+  name: string;
+  exam_type: string;
+  grade: number;
 }
 
 interface Topic {
@@ -71,6 +79,7 @@ export const QuestionManager = () => {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [topics, setTopics] = useState<Topic[]>([]);
+  const [batches, setBatches] = useState<Batch[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterSubject, setFilterSubject] = useState('all');
@@ -83,13 +92,49 @@ export const QuestionManager = () => {
   const [formData, setFormData] = useState(initialFormData);
   const [formSubmitting, setFormSubmitting] = useState(false);
 
+  // Get batch_id for current exam type
+  const getCurrentBatchId = (): string | null => {
+    if (!formData.exam) return null;
+    
+    // For Foundation courses, find matching batch by grade
+    if (formData.exam.startsWith('Foundation-')) {
+      const grade = parseInt(formData.exam.replace('Foundation-', ''));
+      const batch = batches.find(b => b.exam_type === 'Foundation' && b.grade === grade);
+      return batch?.id || null;
+    }
+    
+    // For JEE/NEET/CET - chapters have batch_id = null
+    return null;
+  };
+
   // Derived state for filtered chapters and topics
-  const filteredChapters = chapters.filter(c => c.subject === formData.subject);
+  // Filter by subject AND by exam type (batch_id for Foundation, null for JEE/NEET)
+  const filteredChapters = chapters.filter(c => {
+    if (c.subject !== formData.subject) return false;
+    
+    if (formData.exam.startsWith('Foundation-')) {
+      // Foundation courses: match batch_id
+      const batchId = getCurrentBatchId();
+      return c.batch_id === batchId;
+    } else {
+      // JEE/NEET/CET: only show chapters with null batch_id (global chapters)
+      return c.batch_id === null;
+    }
+  });
   const selectedChapter = chapters.find(c => c.chapter_name === formData.chapter && c.subject === formData.subject);
   const filteredTopics = selectedChapter ? topics.filter(t => t.chapter_id === selectedChapter.id) : [];
 
-  // Get unique subjects from chapters
-  const availableSubjects = [...new Set(chapters.map(c => c.subject))];
+  // Get unique subjects from chapters (filtered by current exam type)
+  const availableSubjects = [...new Set(chapters
+    .filter(c => {
+      if (formData.exam.startsWith('Foundation-')) {
+        const batchId = getCurrentBatchId();
+        return c.batch_id === batchId;
+      } else {
+        return c.batch_id === null;
+      }
+    })
+    .map(c => c.subject))];
 
   // Helper function to check if exam is Foundation or Scholarship (topic mapping optional)
   const isFoundationOrScholarship = (examType: string): boolean => {
@@ -100,22 +145,37 @@ export const QuestionManager = () => {
     fetchData();
   }, []);
 
+  // Reset subject and chapter when exam type changes
+  useEffect(() => {
+    if (formData.exam && !editingQuestion) {
+      setFormData(prev => ({
+        ...prev,
+        subject: '',
+        chapter: '',
+        topic: ''
+      }));
+    }
+  }, [formData.exam]);
+
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [questionsRes, chaptersRes, topicsRes] = await Promise.all([
+      const [questionsRes, chaptersRes, topicsRes, batchesRes] = await Promise.all([
         supabase.from('questions').select('*').order('created_at', { ascending: false }).limit(100),
         supabase.from('chapters').select('*').order('subject, chapter_number'),
-        supabase.from('topics').select('*').order('order_index')
+        supabase.from('topics').select('*').order('order_index'),
+        supabase.from('batches').select('id, name, exam_type, grade')
       ]);
 
       if (questionsRes.error) throw questionsRes.error;
       if (chaptersRes.error) throw chaptersRes.error;
       if (topicsRes.error) throw topicsRes.error;
+      if (batchesRes.error) throw batchesRes.error;
 
       setQuestions(questionsRes.data || []);
       setChapters(chaptersRes.data || []);
       setTopics(topicsRes.data || []);
+      setBatches(batchesRes.data || []);
     } catch (error) {
       logger.error('Error fetching data:', error);
       toast.error('Failed to fetch data');

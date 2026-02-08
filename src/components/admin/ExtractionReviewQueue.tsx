@@ -57,6 +57,14 @@ interface Chapter {
   id: string;
   chapter_name: string;
   subject: string;
+  batch_id: string | null;
+}
+
+interface Batch {
+  id: string;
+  name: string;
+  exam_type: string;
+  grade: number;
 }
 
 interface Topic {
@@ -82,6 +90,7 @@ export function ExtractionReviewQueue() {
   const [subjectFilter, setSubjectFilter] = useState<string>("all");
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [topics, setTopics] = useState<Topic[]>([]);
+  const [batches, setBatches] = useState<Batch[]>([]);
   const [stats, setStats] = useState({ pending: 0, rejected: 0, questionBank: 0 });
   const [duplicateInfo, setDuplicateInfo] = useState<{ isDuplicate: boolean; similarity: number; existingId?: string } | null>(null);
   const [checkingDuplicate, setCheckingDuplicate] = useState(false);
@@ -137,6 +146,7 @@ export function ExtractionReviewQueue() {
   useEffect(() => {
     fetchQuestions();
     fetchChapters();
+    fetchBatches();
     fetchStats();
   }, [statusFilter]);
 
@@ -223,9 +233,45 @@ export function ExtractionReviewQueue() {
   };
 
   const fetchChapters = async () => {
-    const { data } = await supabase.from("chapters").select("id, chapter_name, subject");
+    const { data } = await supabase.from("chapters").select("id, chapter_name, subject, batch_id");
     setChapters(data || []);
     clearCurriculumCache(); // Refresh NLP cache
+  };
+
+  const fetchBatches = async () => {
+    const { data } = await supabase.from("batches").select("id, name, exam_type, grade");
+    setBatches(data || []);
+  };
+
+  // Helper function to get batch_id for an exam type
+  const getBatchIdForExam = (examType: string | undefined): string | null => {
+    if (!examType) return null;
+    
+    if (examType.startsWith('Foundation-')) {
+      const grade = parseInt(examType.replace('Foundation-', ''));
+      const batch = batches.find(b => b.exam_type === 'Foundation' && b.grade === grade);
+      return batch?.id || null;
+    }
+    
+    // JEE/NEET/CET - chapters have batch_id = null
+    return null;
+  };
+
+  // Filter chapters by subject AND exam type
+  const getFilteredChapters = (subject: string | undefined, examType: string | undefined): Chapter[] => {
+    if (!subject) return [];
+    
+    return chapters.filter(c => {
+      if (c.subject !== subject) return false;
+      
+      if (examType?.startsWith('Foundation-')) {
+        const batchId = getBatchIdForExam(examType);
+        return c.batch_id === batchId;
+      } else {
+        // JEE/NEET/CET: only show chapters with null batch_id
+        return c.batch_id === null;
+      }
+    });
   };
 
   const fetchTopics = async (chapterId: string): Promise<Topic[]> => {
@@ -1114,7 +1160,7 @@ export function ExtractionReviewQueue() {
                           <SelectTrigger><SelectValue placeholder="Select chapter" /></SelectTrigger>
                           <SelectContent>
                             <ScrollArea className="h-60">
-                              {chapters.filter(c => c.subject === editedQuestion.parsed_question.subject).map(c => (
+                              {getFilteredChapters(editedQuestion.parsed_question.subject, editedQuestion.parsed_question.exam).map(c => (
                                 <SelectItem key={c.id} value={c.id}>{c.chapter_name}</SelectItem>
                               ))}
                             </ScrollArea>
@@ -1406,7 +1452,7 @@ export function ExtractionReviewQueue() {
                             </SelectTrigger>
                             <SelectContent>
                               <ScrollArea className="h-60">
-                                {chapters.filter(c => c.subject === previewQuestion.parsed_question.subject).map(c => (
+                                {getFilteredChapters(previewQuestion.parsed_question.subject, previewQuestion.parsed_question.exam).map(c => (
                                   <SelectItem key={c.id} value={c.id}>{c.chapter_name}</SelectItem>
                                 ))}
                               </ScrollArea>
