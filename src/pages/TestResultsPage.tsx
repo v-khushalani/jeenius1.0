@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { jsPDF } from "jspdf";
+import { toast } from "sonner";
 import {
   Trophy,
   Target,
@@ -22,9 +24,23 @@ import {
   Award,
   FileText,
   MessageCircle,
-  Instagram,
-  Medal,
+  RefreshCw,
+  Printer,
 } from "lucide-react";
+
+interface Question {
+  id: string;
+  question: string;
+  option_a: string;
+  option_b: string;
+  option_c: string;
+  option_d: string;
+  correct_option: string;
+  explanation?: string;
+  topic?: string;
+  chapter?: string;
+  difficulty?: string;
+}
 
 interface TestResult {
   testTitle: string;
@@ -33,6 +49,8 @@ interface TestResult {
   correctAnswers: number;
   percentage: string;
   timeSpent: number;
+  completedAt?: string;
+  questions?: Question[];
   results: Array<{
     questionId: string;
     selectedOption: string;
@@ -141,110 +159,170 @@ const TestResultsPage = () => {
     };
   };
 
+  const getTestDate = () => {
+    if (testResult?.completedAt) {
+      const date = new Date(testResult.completedAt);
+      return date.toLocaleDateString('en-IN', { 
+        day: '2-digit', 
+        month: 'short', 
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+    return new Date().toLocaleDateString('en-IN', { 
+      day: '2-digit', 
+      month: 'short', 
+      year: 'numeric' 
+    });
+  };
+
   const handleWhatsAppShare = () => {
     if (!testResult) return;
     const stats = calculateStats();
     const performance = getPerformanceLevel(parseFloat(stats?.scorePercentage || "0"));
+    const testDate = getTestDate();
     
-    const message = `🎯 Test Results 📊
+    // WhatsApp supports *bold* formatting
+    const message = `📊 *TEST RESULT* 📊
 
-📝 Test: ${testResult.testTitle}
-📊 Score: ${stats?.earnedMarks}/${stats?.totalMarks} (${stats?.scorePercentage}%)
-✅ Correct: ${stats?.correctAnswers}
-❌ Wrong: ${stats?.incorrectAnswers}  
-⏱️ Time: ${formatTime(testResult.timeSpent)}
-🎯 Accuracy: ${stats?.accuracy}%
+📝 *${testResult.testTitle}*
+📅 (${testDate})
 
-${performance.label} Performance! 🌟`;
+━━━━━━━━━━━━━━━━━
+🎯 *Score:* ${stats?.earnedMarks}/${stats?.totalMarks} *(${stats?.scorePercentage}%)*
+✅ *Correct:* ${stats?.correctAnswers}
+❌ *Wrong:* ${stats?.incorrectAnswers}
+⏱️ *Time:* ${formatTime(testResult.timeSpent)}
+🎯 *Accuracy:* ${stats?.accuracy}%
+━━━━━━━━━━━━━━━━━
+
+📈 *Percentile:* Coming Soon
+
+*${performance.label} Performance!* 🌟
+
+_Powered by Jeenius_`;
 
     const encodedMessage = encodeURIComponent(message);
     window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
   };
 
-  const handleInstagramShare = () => {
-    if (!testResult) return;
-    const stats = calculateStats();
-    const performance = getPerformanceLevel(parseFloat(stats?.scorePercentage || "0"));
-    
-    const message = `🎯 Test Results Update! 📊
-
-📝 ${testResult.testTitle}
-📊 ${stats?.earnedMarks}/${stats?.totalMarks} marks
-🎯 ${stats?.scorePercentage}% score
-✅ ${stats?.correctAnswers} correct answers
-⏱️ ${formatTime(testResult.timeSpent)}
-
-${performance.label} performance! 🌟
-
-#TestResults #StudyHard #AcademicGoals #ExamPrep`;
-
-    if (navigator.share) {
-      navigator.share({
-        title: 'My Test Results',
-        text: message
-      });
-    } else {
-      navigator.clipboard.writeText(message).then(() => {
-        alert('Instagram post text copied! You can now paste it in Instagram.');
-      });
+  const generateQuestionPaperPDF = () => {
+    if (!testResult || !testResult.questions || testResult.questions.length === 0) {
+      toast.error('Question data not available for PDF generation');
+      return;
     }
+
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 15;
+    let yPos = 20;
+
+    // Helper to add new page if needed
+    const checkPageBreak = (requiredSpace: number) => {
+      if (yPos + requiredSpace > 280) {
+        doc.addPage();
+        yPos = 20;
+      }
+    };
+
+    // Helper to clean text (remove HTML/LaTeX for PDF)
+    const cleanText = (text: string): string => {
+      if (!text) return '';
+      return text
+        .replace(/<[^>]*>/g, '') // Remove HTML tags
+        .replace(/\\[a-zA-Z]+\{[^}]*\}/g, '[Math Expression]') // Replace LaTeX
+        .replace(/\$[^$]+\$/g, '[Math]') // Replace inline math
+        .trim();
+    };
+
+    // Title
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text(testResult.testTitle, pageWidth / 2, yPos, { align: 'center' });
+    yPos += 8;
+
+    // Subtitle
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Date: ${getTestDate()} | Total Questions: ${testResult.totalQuestions} | Total Marks: ${testResult.totalQuestions * 4}`, pageWidth / 2, yPos, { align: 'center' });
+    yPos += 10;
+
+    // Instructions
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'italic');
+    doc.text('Instructions: +4 for correct, -1 for incorrect, 0 for unattempted', margin, yPos);
+    yPos += 8;
+
+    // Divider line
+    doc.setDrawColor(150);
+    doc.line(margin, yPos, pageWidth - margin, yPos);
+    yPos += 10;
+
+    // Questions
+    testResult.questions.forEach((q, index) => {
+      checkPageBreak(50);
+
+      // Question number and text
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      const questionText = `Q${index + 1}. ${cleanText(q.question)}`;
+      const splitQuestion = doc.splitTextToSize(questionText, pageWidth - 2 * margin);
+      doc.text(splitQuestion, margin, yPos);
+      yPos += splitQuestion.length * 5 + 3;
+
+      // Options
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      const options = [
+        { label: 'A', text: cleanText(q.option_a) },
+        { label: 'B', text: cleanText(q.option_b) },
+        { label: 'C', text: cleanText(q.option_c) },
+        { label: 'D', text: cleanText(q.option_d) },
+      ];
+
+      options.forEach(opt => {
+        checkPageBreak(8);
+        const optText = `   (${opt.label}) ${opt.text}`;
+        const splitOpt = doc.splitTextToSize(optText, pageWidth - 2 * margin - 10);
+        doc.text(splitOpt, margin, yPos);
+        yPos += splitOpt.length * 4 + 2;
+      });
+
+      yPos += 5;
+    });
+
+    // Save PDF
+    const fileName = `${testResult.testTitle.replace(/[^a-zA-Z0-9]/g, '_')}_Question_Paper.pdf`;
+    doc.save(fileName);
+    toast.success('Question paper downloaded!');
   };
 
   const handleScorecardShare = () => {
     if (!testResult) return;
     const stats = calculateStats();
     const performance = getPerformanceLevel(parseFloat(stats?.scorePercentage || "0"));
+    const testDate = getTestDate();
     
     if (navigator.share) {
       navigator.share({
         title: 'My Test Results',
-        text: `I scored ${stats?.earnedMarks}/${stats?.totalMarks} (${stats?.scorePercentage}%) in ${testResult.testTitle}! 🎯`,
+        text: `I scored ${stats?.earnedMarks}/${stats?.totalMarks} (${stats?.scorePercentage}%) in ${testResult.testTitle} on ${testDate}! 🎯`,
         url: window.location.href
       });
     } else {
-      const message = `🎯 I scored ${stats?.earnedMarks}/${stats?.totalMarks} (${stats?.scorePercentage}%) in ${testResult.testTitle}! 
+      const message = `🎯 ${testResult.testTitle} (${testDate})
 
+Score: ${stats?.earnedMarks}/${stats?.totalMarks} (${stats?.scorePercentage}%)
 ✅ ${stats?.correctAnswers} Correct | ❌ ${stats?.incorrectAnswers} Wrong
 🎯 ${stats?.accuracy}% Accuracy | ⏱️ ${formatTime(testResult.timeSpent)}
 
 ${performance.label} Performance! 🌟`;
       
       navigator.clipboard.writeText(message).then(() => {
-        alert('Scorecard copied to clipboard! You can now paste it anywhere.');
+        toast.success('Scorecard copied to clipboard!');
       });
     }
-  };
-
-  const handleQuestionPaperDownload = () => {
-    if (!testResult) return;
-    
-    const content = `${testResult.testTitle}
-${'='.repeat(50)}
-
-Instructions:
-- Each question carries 4 marks for correct answer
-- 1 mark deducted for incorrect answer
-- No marks deducted for unattempted questions
-
-${testResult.results.map((_, index) => `Question ${index + 1}:
-[Question content would be here]
-
-A) Option A
-B) Option B  
-C) Option C
-D) Option D
-
-`).join('')}${'='.repeat(50)}
-Total Questions: ${testResult.totalQuestions}
-Total Marks: ${testResult.totalQuestions * 4}`;
-
-    const blob = new Blob([content], { type: 'text/plain' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${testResult.testTitle.replace(/\s+/g, '_')}_Question_Paper.txt`;
-    a.click();
-    window.URL.revokeObjectURL(url);
   };
 
   if (!testResult) {
@@ -561,52 +639,70 @@ Total Marks: ${testResult.totalQuestions * 4}`;
             {/* Sidebar */}
             <div className="space-y-6">
 
-              {/* Actions */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Actions</CardTitle>
+              {/* Quick Actions */}
+              <Card className="border-2 border-primary/20">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center text-lg">
+                    <Target className="w-5 h-5 mr-2 text-primary" />
+                    Quick Actions
+                  </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  <Button className="w-full" onClick={() => navigate("/tests")}>
-                    <Target className="w-4 h-4 mr-2" />
+                <CardContent className="space-y-4">
+                  {/* Primary Action */}
+                  <Button 
+                    className="w-full bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 shadow-md" 
+                    onClick={() => navigate("/tests")}
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2" />
                     Take Another Test
                   </Button>
 
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button variant="outline" size="sm" onClick={handleWhatsAppShare}>
-                      <MessageCircle className="w-4 h-4 mr-1" />
-                      WhatsApp
+                  {/* Share Section */}
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Share Results</p>
+                    <Button 
+                      variant="outline" 
+                      className="w-full border-green-500 text-green-600 hover:bg-green-50 hover:text-green-700" 
+                      onClick={handleWhatsAppShare}
+                    >
+                      <MessageCircle className="w-4 h-4 mr-2" />
+                      Share on WhatsApp
                     </Button>
-                    <Button variant="outline" size="sm" onClick={handleInstagramShare}>
-                      <Instagram className="w-4 h-4 mr-1" />
-                      Instagram
-                    </Button>
-                  </div>
-
-                  <Button variant="outline" className="w-full" onClick={handleScorecardShare}>
-                    <Medal className="w-4 h-4 mr-2" />
-                    Share Scorecard
-                  </Button>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button variant="outline" size="sm" onClick={handleQuestionPaperDownload}>
-                      <FileText className="w-4 h-4 mr-1" />
-                      Question Paper
-                    </Button>
-                    <Button variant="outline" size="sm">
-                      <Download className="w-4 h-4 mr-1" />
-                      PDF Report
+                    <Button 
+                      variant="outline" 
+                      className="w-full" 
+                      onClick={handleScorecardShare}
+                    >
+                      <Share2 className="w-4 h-4 mr-2" />
+                      Copy Scorecard
                     </Button>
                   </div>
 
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => navigate("/study-now")}
-                  >
-                    <BookOpen className="w-4 h-4 mr-2" />
-                    Study Weak Areas
-                  </Button>
+                  {/* Download Section */}
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Downloads</p>
+                    <Button 
+                      variant="outline" 
+                      className="w-full" 
+                      onClick={generateQuestionPaperPDF}
+                    >
+                      <FileText className="w-4 h-4 mr-2" />
+                      Question Paper (PDF)
+                    </Button>
+                  </div>
+
+                  {/* Study Section */}
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Continue Learning</p>
+                    <Button
+                      variant="outline"
+                      className="w-full border-purple-500 text-purple-600 hover:bg-purple-50 hover:text-purple-700"
+                      onClick={() => navigate("/study-now")}
+                    >
+                      <BookOpen className="w-4 h-4 mr-2" />
+                      Study Weak Areas
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
 

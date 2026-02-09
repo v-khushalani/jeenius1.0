@@ -261,6 +261,8 @@ const TestAttemptPage = () => {
           percentage: percentage.toFixed(1),
           timeSpent: totalTimeSpent,
           results,
+          questions: testSession.questions,
+          completedAt: new Date().toISOString(),
         })
       );
 
