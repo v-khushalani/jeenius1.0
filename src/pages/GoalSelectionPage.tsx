@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import LoadingScreen from '@/components/ui/LoadingScreen';
-import { ChevronRight, Calendar, BookOpen, Stethoscope, Calculator, Clock, Rocket, Trophy, Target, Sparkles, Lock, AlertTriangle } from 'lucide-react';
+import { ChevronRight, Calendar, BookOpen, Stethoscope, Calculator, Clock, Rocket, Trophy, Target, Sparkles, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { logger } from '@/utils/logger';
 import { toast } from 'sonner';
+import GoalChangeWarning from '@/components/GoalChangeWarning';
 
 const GoalSelectionPage = () => {
   const navigate = useNavigate();
@@ -18,6 +19,12 @@ const GoalSelectionPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [showWelcomeDialog, setShowWelcomeDialog] = useState(false);
   const [isStartingJourney, setIsStartingJourney] = useState(false);
+  
+  // For goal change flow
+  const [existingGoal, setExistingGoal] = useState<string | null>(null);
+  const [existingGrade, setExistingGrade] = useState<number | null>(null);
+  const [isChangingGoal, setIsChangingGoal] = useState(false);
+  const [showGoalChangeWarning, setShowGoalChangeWarning] = useState(false);
 
   // Calculate exam dates and days remaining
   const examDates = {
@@ -41,7 +48,7 @@ const GoalSelectionPage = () => {
       try {
         const { data: profile, error } = await supabase
           .from('profiles')
-          .select('full_name, target_exam, grade, goals_set')
+          .select('full_name, target_exam, grade, goals_set, selected_goal')
           .eq('id', user.id)
           .single();
   
@@ -51,8 +58,21 @@ const GoalSelectionPage = () => {
           return;
         }
   
-        // If profile is complete (has grade and exam), redirect to dashboard
+        // If profile is complete (has grade and exam)
         if (profile?.goals_set && profile?.target_exam && profile?.grade) {
+          // Check if coming from settings to change goal
+          const urlParams = new URLSearchParams(window.location.search);
+          const isChangeMode = urlParams.get('change') === 'true';
+          
+          if (isChangeMode) {
+            // User wants to change their goal
+            setExistingGoal(profile.selected_goal || profile.target_exam);
+            setExistingGrade(profile.grade);
+            setIsChangingGoal(true);
+            setIsLoading(false);
+            return;
+          }
+          
           logger.info('Profile already complete, redirecting to dashboard');
           navigate('/dashboard', { replace: true });
           return;
@@ -134,6 +154,13 @@ const GoalSelectionPage = () => {
       logger.warn('Missing required selections');
       return;
     }
+    
+    // If changing goal, show warning instead of welcome dialog
+    if (isChangingGoal) {
+      setShowGoalChangeWarning(true);
+      return;
+    }
+    
     setShowWelcomeDialog(true);
   };
 
@@ -154,16 +181,9 @@ const GoalSelectionPage = () => {
       // Get user's name from Google auth (already stored in profile)
       const { data: profile } = await supabase
         .from('profiles')
-        .select('full_name, goal_locked')
+        .select('full_name')
         .eq('id', user.id)
         .single();
-  
-      // Check if goal is already locked
-      if (profile?.goal_locked) {
-        toast.error('Your goal is already locked and cannot be changed.');
-        navigate('/dashboard', { replace: true });
-        return;
-      }
   
       logger.info('User name from profile:', profile?.full_name);
   
@@ -176,7 +196,7 @@ const GoalSelectionPage = () => {
         targetExamValue = `Foundation-${gradeNumber}`;
       }
       
-      // LOCK THE GOAL PERMANENTLY
+      // Save goal for new users (first time setup)
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
@@ -185,10 +205,7 @@ const GoalSelectionPage = () => {
           subjects: selectedSubjects,
           daily_goal: selectedSubjects.length * 10,
           goals_set: true,
-          // GOAL LOCK FIELDS
           selected_goal: selectedGoal.toLowerCase(),
-          goal_locked: true,
-          goal_locked_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
         .eq('id', user.id);
@@ -210,7 +227,7 @@ const GoalSelectionPage = () => {
           reason: 'Initial goal selection'
         });
   
-      logger.info('Profile updated and goal locked successfully');
+      logger.info('Profile updated successfully');
       toast.success('Your learning path is set! 🎯');
   
       // Save to localStorage as backup
@@ -220,7 +237,6 @@ const GoalSelectionPage = () => {
         subjects: selectedSubjects,
         name: profile?.full_name,
         daysRemaining: daysRemaining,
-        goalLocked: true,
         createdAt: new Date().toISOString()
       };
       localStorage.setItem('userGoals', JSON.stringify(userGoals));
@@ -256,10 +272,37 @@ const GoalSelectionPage = () => {
         <div className="h-full flex flex-col">
           {/* Header - Fixed height */}
           <div className="flex-shrink-0 text-center pt-8 pb-6">
+            {/* Back button for change mode */}
+            {isChangingGoal && (
+              <button
+                onClick={() => navigate('/settings')}
+                className="absolute left-4 top-8 flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5" />
+                <span className="hidden sm:inline">Back to Settings</span>
+              </button>
+            )}
+            
             <h1 className="text-4xl md:text-6xl font-bold mb-4" style={{color: '#013062'}}>
-              Welcome to JEEnius! 🎯
+              {isChangingGoal ? 'Change Your Goal ⚠️' : 'Welcome to JEEnius! 🎯'}
             </h1>
-            <p className="text-lg md:text-xl text-gray-600">Let's customize your learning journey</p>
+            <p className="text-lg md:text-xl text-gray-600">
+              {isChangingGoal 
+                ? 'Warning: Changing your goal will reset all progress data'
+                : "Let's customize your learning journey"}
+            </p>
+            
+            {/* Change Warning Banner */}
+            {isChangingGoal && (
+              <div className="max-w-2xl mx-auto mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <div className="flex items-center justify-center gap-2 text-amber-800">
+                  <AlertTriangle className="w-5 h-5" />
+                  <span className="text-sm font-medium">
+                    Changing from <strong>{existingGoal?.toUpperCase()}</strong> will DELETE all your points, streaks, and question history.
+                  </span>
+                </div>
+              </div>
+            )}
             
             {/* Progress Bar - Only 2 steps */}
             <div className="flex justify-center mt-6 mb-4">
@@ -485,6 +528,23 @@ const GoalSelectionPage = () => {
             )}
           </div>
         </div>
+      )}
+
+      {/* Goal Change Warning Dialog */}
+      {user && isChangingGoal && (
+        <GoalChangeWarning
+          isOpen={showGoalChangeWarning}
+          onClose={() => setShowGoalChangeWarning(false)}
+          currentGoal={existingGoal || ''}
+          newGoal={selectedGoal.toLowerCase()}
+          newGrade={parseInt(selectedGrade, 10) || 11}
+          newTargetExam={selectedGoal === 'Foundation' ? `Foundation-${selectedGrade}` : selectedGoal}
+          userId={user.id}
+          onSuccess={() => {
+            toast.success('Goal changed! Starting fresh 🎯');
+            navigate('/dashboard', { replace: true });
+          }}
+        />
       )}
     </>
   );

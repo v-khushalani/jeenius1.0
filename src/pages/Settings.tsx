@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { 
   User, Bell, Shield, Palette, LogOut, Save, Loader2, AlertCircle, CheckCircle,
-  Heart, Sparkles, Download, Lock, Eye, EyeOff
+  Heart, Sparkles, Download, Lock, Eye, EyeOff, AlertTriangle
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -24,6 +24,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { logger } from "@/utils/logger";
+import GoalChangeWarning from '@/components/GoalChangeWarning';
 
 const Settings = () => {
   const [profile, setProfile] = useState({
@@ -54,6 +55,11 @@ const Settings = () => {
   const [showFarewellDialog, setShowFarewellDialog] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
   const [theme, setTheme] = useState('light');
+  
+  // Goal change tracking
+  const [originalGoal, setOriginalGoal] = useState({ grade: '', target_exam: '', selected_goal: '' });
+  const [showGoalChangeWarning, setShowGoalChangeWarning] = useState(false);
+  const [pendingGoalChange, setPendingGoalChange] = useState({ grade: 0, target_exam: '', goal: '' });
 
   const { signOut, isPremium } = useAuth();
   const { toast } = useToast();
@@ -125,6 +131,16 @@ const Settings = () => {
           daily_goal: profileData.daily_goal || 15,
           daily_study_hours: profileData.daily_study_hours || 4
         });
+        
+        // Store original goal for change detection
+        setOriginalGoal({
+          grade: profileData.grade === 11 ? '11th' : 
+                 profileData.grade === 12 ? '12th' : 
+                 profileData.grade >= 6 && profileData.grade <= 10 ? `${profileData.grade}th` :
+                 '12th-pass',
+          target_exam: displayExam,
+          selected_goal: profileData.selected_goal || ''
+        });
       }
 
       logger.info('Profile loaded successfully');
@@ -172,6 +188,54 @@ const Settings = () => {
         targetExamValue = `Foundation-${gradeNumber}`;
       }
 
+      // Check if goal/grade is changing - show warning if so
+      const isGoalChanging = (profile.grade !== originalGoal.grade) || 
+                             (profile.target_exam !== originalGoal.target_exam);
+      
+      if (isGoalChanging && originalGoal.selected_goal) {
+        // Determine new goal based on target_exam
+        let newGoal = 'foundation';
+        if (targetExamValue === 'JEE' || targetExamValue.includes('JEE')) {
+          newGoal = 'jee';
+        } else if (targetExamValue === 'NEET' || targetExamValue.includes('NEET')) {
+          newGoal = 'neet';
+        } else if (targetExamValue === 'CET' || targetExamValue.includes('CET')) {
+          newGoal = 'cet';
+        } else if (targetExamValue === 'Scholarship') {
+          newGoal = 'scholarship';
+        }
+        
+        setPendingGoalChange({
+          grade: gradeNumber,
+          target_exam: targetExamValue,
+          goal: newGoal
+        });
+        setShowGoalChangeWarning(true);
+        setSaving(false);
+        return;
+      }
+
+      // No goal change - proceed with normal save
+      await performProfileSave(gradeNumber, targetExamValue);
+      
+    } catch (error: any) {
+      logger.error('Error saving profile:', error);
+      setSaveStatus('error');
+      toast({
+        title: "Save Failed",
+        description: error.message || "Failed to update profile",
+        variant: "destructive"
+      });
+      setTimeout(() => setSaveStatus('idle'), 5000);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const performProfileSave = async (gradeNumber: number, targetExamValue: string) => {
+    if (!user) return;
+
+    try {
       const updateData = {
         full_name: `${profile.firstName.trim()} ${profile.lastName.trim()}`.trim(),
         email: profile.email.trim(),
@@ -191,6 +255,13 @@ const Settings = () => {
         .eq('id', user.id);
 
       if (error) throw error;
+
+      // Update original goal to current after successful save
+      setOriginalGoal({
+        grade: profile.grade,
+        target_exam: profile.target_exam,
+        selected_goal: originalGoal.selected_goal
+      });
 
       setSaveStatus('success');
       toast({
@@ -504,6 +575,13 @@ const Settings = () => {
                        profile.target_exam?.startsWith('Foundation') ? 'Physics, Chemistry, Mathematics, Biology' :
                        'All subjects'}
                     </p>
+                    {originalGoal.selected_goal && (
+                      <div className="mt-2 p-2 bg-amber-50 rounded-md border border-amber-200">
+                        <p className="text-xs text-amber-700">
+                          ⚠️ Changing your goal will reset all progress including streaks, points, and solved questions.
+                        </p>
+                      </div>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="daily_goal">Daily Question Goal</Label>
@@ -765,6 +843,23 @@ const Settings = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Goal Change Warning Dialog */}
+      {user && (
+        <GoalChangeWarning
+          isOpen={showGoalChangeWarning}
+          onClose={() => setShowGoalChangeWarning(false)}
+          currentGoal={originalGoal.selected_goal || originalGoal.target_exam}
+          newGoal={pendingGoalChange.goal}
+          newGrade={pendingGoalChange.grade}
+          newTargetExam={pendingGoalChange.target_exam}
+          userId={user.id}
+          onSuccess={() => {
+            // Refresh the page to show updated data
+            window.location.reload();
+          }}
+        />
+      )}
     </div>
   );
 };
