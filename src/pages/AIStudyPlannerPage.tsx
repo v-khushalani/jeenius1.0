@@ -29,12 +29,10 @@ const AIStudyPlannerPage = () => {
   }
   
   return (
-    <div className="h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex flex-col overflow-hidden">
+    <div className="h-screen flex flex-col bg-white overflow-hidden">
       <Header />
-      <div className="flex-1 overflow-hidden pt-16 sm:pt-20 pb-2">
-        <div className="container mx-auto px-3 sm:px-4 lg:px-8 max-w-7xl h-full">
-          <AIStudyPlanner />
-        </div>
+      <div className="flex-1 overflow-hidden">
+        <AIStudyPlanner />
       </div>
     </div>
   );
