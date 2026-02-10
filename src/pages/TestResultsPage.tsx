@@ -18,9 +18,7 @@ import {
   Brain,
   BookOpen,
   ArrowLeft,
-  Download,
   Eye,
-  Award,
   FileText,
   MessageCircle,
   RefreshCw,
@@ -181,24 +179,24 @@ const TestResultsPage = () => {
     const performance = getPerformanceLevel(parseFloat(stats?.scorePercentage || "0"));
     const testDate = getTestDate();
     
-    // WhatsApp supports *bold* formatting - using text symbols instead of emojis
+    // WhatsApp supports *bold* formatting
     const message = `*TEST RESULT* (${testDate})
 
 *${testResult.testTitle}*
 
-----------------------------
+-----------------------------
 *Score:* ${stats?.earnedMarks}/${stats?.totalMarks} *(${stats?.scorePercentage}%)*
 *Correct:* ${stats?.correctAnswers}
 *Wrong:* ${stats?.incorrectAnswers}
 *Time:* ${formatTime(testResult.timeSpent)}
 *Accuracy:* ${stats?.accuracy}%
-----------------------------
+-----------------------------
 
 *Percentile:* -
 
 *${performance.label} Performance!*
 
-_-Powered by JEEnius_`;
+_Powered by JEEnius_`;
 
     const encodedMessage = encodeURIComponent(message);
     window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
@@ -214,39 +212,16 @@ _-Powered by JEEnius_`;
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 15;
-    let yPos = 25;
+    let yPos = 20;
 
     // Helper to add new page if needed
     const checkPageBreak = (requiredSpace: number) => {
-      if (yPos + requiredSpace > pageHeight - 30) {
-        // Add footer before new page
+      if (yPos + requiredSpace > 270) {
         addFooter();
         doc.addPage();
         yPos = 25;
         addHeader();
       }
-    };
-
-    // Add JEEnius branding header
-    const addHeader = () => {
-      doc.setFillColor(79, 70, 229); // Primary purple
-      doc.rect(0, 0, pageWidth, 18, 'F');
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.text('JEEnius', margin, 12);
-      doc.setFontSize(8);
-      doc.setFont('helvetica', 'normal');
-      doc.text('Question Paper', pageWidth - margin - 30, 12);
-      doc.setTextColor(0, 0, 0);
-    };
-
-    // Add footer
-    const addFooter = () => {
-      doc.setFontSize(8);
-      doc.setTextColor(128, 128, 128);
-      doc.text('-Powered by JEEnius', pageWidth / 2, pageHeight - 10, { align: 'center' });
-      doc.setTextColor(0, 0, 0);
     };
 
     // Helper to clean text (remove HTML/LaTeX for PDF)
@@ -263,7 +238,31 @@ _-Powered by JEEnius_`;
         .trim();
     };
 
-    // Add header
+    // Add header with JEEnius branding
+    const addHeader = () => {
+      doc.setFillColor(79, 70, 229); // Primary purple
+      doc.rect(0, 0, pageWidth, 18, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('JEEnius', margin, 12);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Your AI-Powered JEE/NEET Prep Partner', pageWidth - margin, 12, { align: 'right' });
+      doc.setTextColor(0, 0, 0);
+    };
+
+    // Add footer
+    const addFooter = () => {
+      const pageNum = doc.getNumberOfPages();
+      doc.setFontSize(8);
+      doc.setTextColor(128, 128, 128);
+      doc.text(`Page ${pageNum}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+      doc.text('Powered by JEEnius', pageWidth - margin, pageHeight - 10, { align: 'right' });
+      doc.setTextColor(0, 0, 0);
+    };
+
+    // Add initial header
     addHeader();
     yPos = 30;
 
@@ -275,96 +274,92 @@ _-Powered by JEEnius_`;
     doc.setTextColor(0, 0, 0);
     yPos += 8;
 
-    // Subtitle
+    // Subtitle with date
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 100, 100);
     doc.text(`Date: ${getTestDate()} | Total Questions: ${testResult.totalQuestions} | Total Marks: ${testResult.totalQuestions * 4}`, pageWidth / 2, yPos, { align: 'center' });
+    doc.setTextColor(0, 0, 0);
     yPos += 10;
 
     // Instructions box
     doc.setFillColor(245, 245, 250);
-    doc.roundedRect(margin, yPos - 3, pageWidth - 2 * margin, 12, 2, 2, 'F');
+    doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 12, 2, 2, 'F');
     doc.setFontSize(9);
     doc.setFont('helvetica', 'italic');
-    doc.text('Instructions: +4 for correct | -1 for incorrect | 0 for unattempted', pageWidth / 2, yPos + 4, { align: 'center' });
-    yPos += 15;
+    doc.text('Instructions: +4 for correct answer | -1 for incorrect | 0 for unattempted', pageWidth / 2, yPos + 7, { align: 'center' });
+    yPos += 18;
 
-    // Divider line
-    doc.setDrawColor(79, 70, 229);
-    doc.setLineWidth(0.5);
-    doc.line(margin, yPos, pageWidth - margin, yPos);
-    yPos += 10;
-
-    // Check if questions data is available
+    // Check if questions are available
     if (!testResult.questions || testResult.questions.length === 0) {
-      // Fallback: Generate placeholder questions from results
-      doc.setFontSize(11);
+      doc.setFontSize(12);
       doc.setFont('helvetica', 'normal');
-      doc.text('Question details not available for this test.', margin, yPos);
-      yPos += 8;
-      doc.text('Please retake a new test to download the question paper.', margin, yPos);
-      yPos += 20;
-
-      // Show summary instead
-      doc.setFont('helvetica', 'bold');
-      doc.text('Test Summary:', margin, yPos);
-      yPos += 8;
-      doc.setFont('helvetica', 'normal');
-      testResult.results.forEach((result, index) => {
-        checkPageBreak(8);
-        const status = result.isCorrect ? '[Correct]' : result.selectedOption ? '[Wrong]' : '[Skipped]';
-        doc.text(`Q${index + 1}: ${status} - Your Answer: ${result.selectedOption || 'N/A'} | Correct: ${result.correctOption}`, margin, yPos);
-        yPos += 6;
-      });
-    } else {
-      // Questions available - generate full paper
-      testResult.questions.forEach((q, index) => {
-        checkPageBreak(50);
-
-        // Question number with background
-        doc.setFillColor(79, 70, 229);
-        doc.circle(margin + 4, yPos - 1, 4, 'F');
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(8);
-        doc.setFont('helvetica', 'bold');
-        doc.text(`${index + 1}`, margin + 4, yPos + 1, { align: 'center' });
-        doc.setTextColor(0, 0, 0);
-
-        // Question text
-        doc.setFontSize(11);
-        doc.setFont('helvetica', 'bold');
-        const questionText = cleanText(q.question);
-        const splitQuestion = doc.splitTextToSize(questionText, pageWidth - 2 * margin - 15);
-        doc.text(splitQuestion, margin + 12, yPos);
-        yPos += splitQuestion.length * 5 + 5;
-
-        // Options
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        const options = [
-          { label: 'A', text: cleanText(q.option_a) },
-          { label: 'B', text: cleanText(q.option_b) },
-          { label: 'C', text: cleanText(q.option_c) },
-          { label: 'D', text: cleanText(q.option_d) },
-        ];
-
-        options.forEach(opt => {
-          checkPageBreak(8);
-          const optText = `(${opt.label}) ${opt.text}`;
-          const splitOpt = doc.splitTextToSize(optText, pageWidth - 2 * margin - 20);
-          doc.text(splitOpt, margin + 15, yPos);
-          yPos += splitOpt.length * 4 + 3;
-        });
-
-        yPos += 8;
-      });
+      doc.text('Question details are not available for this test.', pageWidth / 2, yPos + 20, { align: 'center' });
+      doc.text('This may happen for tests taken before the update.', pageWidth / 2, yPos + 30, { align: 'center' });
+      doc.setFontSize(10);
+      doc.text(`Test Summary: ${testResult.correctAnswers}/${testResult.totalQuestions} correct`, pageWidth / 2, yPos + 45, { align: 'center' });
+      addFooter();
+      const fileName = `${testResult.testTitle.replace(/[^a-zA-Z0-9]/g, '_')}_Summary.pdf`;
+      doc.save(fileName);
+      toast.success('Summary PDF downloaded!');
+      return;
     }
 
-    // Add final footer
+    // Questions
+    testResult.questions.forEach((q, index) => {
+      checkPageBreak(55);
+
+      // Question number box
+      doc.setFillColor(79, 70, 229);
+      doc.circle(margin + 4, yPos + 2, 4, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`${index + 1}`, margin + 4, yPos + 4, { align: 'center' });
+      doc.setTextColor(0, 0, 0);
+
+      // Question text
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      const questionText = cleanText(q.question);
+      const splitQuestion = doc.splitTextToSize(questionText, pageWidth - 2 * margin - 15);
+      doc.text(splitQuestion, margin + 12, yPos + 3);
+      yPos += splitQuestion.length * 5 + 5;
+
+      // Options
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      const options = [
+        { label: 'A', text: cleanText(q.option_a) },
+        { label: 'B', text: cleanText(q.option_b) },
+        { label: 'C', text: cleanText(q.option_c) },
+        { label: 'D', text: cleanText(q.option_d) },
+      ];
+
+      options.forEach(opt => {
+        checkPageBreak(8);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`(${opt.label})`, margin + 5, yPos);
+        doc.setFont('helvetica', 'normal');
+        const splitOpt = doc.splitTextToSize(opt.text, pageWidth - 2 * margin - 20);
+        doc.text(splitOpt, margin + 15, yPos);
+        yPos += splitOpt.length * 4 + 3;
+      });
+
+      yPos += 6;
+
+      // Divider line between questions
+      if (index < testResult.questions.length - 1) {
+        doc.setDrawColor(220, 220, 220);
+        doc.line(margin, yPos - 3, pageWidth - margin, yPos - 3);
+      }
+    });
+
+    // Add footer to last page
     addFooter();
 
     // Save PDF
-    const fileName = `${testResult.testTitle.replace(/[^a-zA-Z0-9]/g, '_')}_JEEnius.pdf`;
+    const fileName = `${testResult.testTitle.replace(/[^a-zA-Z0-9]/g, '_')}_Question_Paper.pdf`;
     doc.save(fileName);
     toast.success('Question paper downloaded!');
   };
