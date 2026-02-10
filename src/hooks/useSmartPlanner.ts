@@ -90,8 +90,30 @@ export function useSmartPlanner() {
       const totalQuestions = questionsRes.count || 0;
       const rawTopicMastery = topicMasteryRes.data || [];
 
+      // Filter topic mastery: only keep topics that exist in questions for this student's exam
+      const targetExamRaw = profile?.target_exam || 'JEE';
+      // Fetch distinct subject+topic combos from questions for this exam
+      const { data: validTopics } = await supabase
+        .from('questions')
+        .select('subject, topic')
+        .eq('exam', targetExamRaw);
+
+      // Build a Set of valid "subject::topic" keys
+      const validSet = new Set<string>();
+      if (validTopics) {
+        for (const q of validTopics) {
+          if (q.subject && q.topic) validSet.add(`${q.subject}::${q.topic}`);
+        }
+      }
+
+      // Filter: keep only topics that match student's exam content
+      // If we can't fetch valid topics, keep all (graceful fallback)
+      const filteredTopicMastery = validSet.size > 0
+        ? rawTopicMastery.filter(t => validSet.has(`${t.subject}::${t.topic}`))
+        : rawTopicMastery;
+
       // Not enough data check
-      if (totalQuestions < MIN_QUESTIONS || rawTopicMastery.length < 3) {
+      if (totalQuestions < MIN_QUESTIONS || filteredTopicMastery.length < 3) {
         setState(prev => ({
           ...prev,
           isLoading: false,
@@ -116,7 +138,7 @@ export function useSmartPlanner() {
         (new Date(examDate).getTime() - Date.now()) / 86400000
       );
 
-      const topics = analyzeTopics(rawTopicMastery);
+      const topics = analyzeTopics(filteredTopicMastery);
       const allocation = computeTimeAllocation(daysToExam);
 
       // Generate today's plan

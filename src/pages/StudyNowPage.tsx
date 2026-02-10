@@ -733,14 +733,21 @@ const handleAnswer = async (answer: string) => {
         mode: 'study'
       }),
       
-      // Calculate points
+      // Calculate points — use currentLevel to pass correct difficulty
       PointsService.calculatePoints(
         user.id,
-        question.difficulty,
+        currentLevel === 1 ? 'Easy' : currentLevel === 2 ? 'Medium' : 'Hard',
         isCorrect,
         timeSpent
       )
     ]);
+
+    // Show points animation
+    if (pointsResult && pointsResult.points !== 0) {
+      setPointsEarned(pointsResult.points);
+      setShowPointsAnimation(true);
+      setTimeout(() => setShowPointsAnimation(false), 1500);
+    }
 
     // Update adaptive level and topic mastery (NON-BLOCKING)
     AdaptiveLevelService.updateTopicLevel(
@@ -875,9 +882,13 @@ const handleAnswer = async (answer: string) => {
             )}
 
             {showPointsAnimation && (
-              <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 animate-bounce">
-                <div className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-6 py-3 rounded-full shadow-2xl text-2xl font-bold">
-                  +{pointsEarned} points! ⚡
+              <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 animate-bounce pointer-events-none">
+                <div className={`px-6 py-3 rounded-full shadow-2xl text-2xl font-bold ${
+                  pointsEarned > 0
+                    ? 'bg-gradient-to-r from-yellow-400 to-orange-500 text-white'
+                    : 'bg-gradient-to-r from-red-400 to-red-500 text-white'
+                }`}>
+                  {pointsEarned > 0 ? `+${pointsEarned}` : pointsEarned} pts
                 </div>
               </div>
             )}

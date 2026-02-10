@@ -56,8 +56,8 @@ export default function AIStudyPlanner() {
   ];
 
   return (
-    <div className="space-y-3">
-      {/* Header */}
+    <div className="flex flex-col h-full gap-2 overflow-hidden">
+      {/* Header — fixed */}
       <PlannerHeader
         greeting={state.greeting}
         motivation={state.motivation}
@@ -68,13 +68,13 @@ export default function AIStudyPlanner() {
         onOpenSettings={() => setSettingsOpen(true)}
       />
 
-      {/* Tab navigation */}
-      <div className="flex bg-slate-100 rounded-xl p-1 gap-1">
+      {/* Tab navigation — fixed */}
+      <div className="flex bg-slate-100 rounded-xl p-1 gap-1 shrink-0">
         {tabs.map(tab => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-sm font-medium transition-all ${
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all ${
               activeTab === tab.key
                 ? 'bg-white text-[#013062] shadow-sm'
                 : 'text-slate-500 hover:text-slate-700'
@@ -86,8 +86,8 @@ export default function AIStudyPlanner() {
         ))}
       </div>
 
-      {/* Tab content */}
-      <div className="min-h-[300px]">
+      {/* Tab content — scrollable */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 pb-2 -mx-1 px-1">
         {activeTab === 'today' && (
           <TodayView
             todayPlan={state.todayPlan}

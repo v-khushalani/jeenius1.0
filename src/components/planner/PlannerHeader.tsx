@@ -50,73 +50,59 @@ export function PlannerHeader({ greeting, motivation, stats, targetExam, examDat
   });
 
   return (
-    <div className="bg-gradient-to-br from-[#013062] to-[#024a8c] rounded-2xl p-5 text-white relative overflow-hidden">
+    <div className="bg-gradient-to-br from-[#013062] to-[#024a8c] rounded-2xl p-4 text-white relative overflow-hidden shrink-0">
       {/* Subtle background pattern */}
       <div className="absolute inset-0 opacity-[0.04]"
         style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '30px 30px' }} />
 
       <div className="relative z-10">
-        {/* Top row: greeting + actions */}
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex-1 min-w-0">
-            <h2 className="text-lg font-semibold tracking-tight truncate">{greeting}</h2>
-            <p className="text-sm text-white/70 mt-0.5 line-clamp-2">{motivation}</p>
-          </div>
-          <div className="flex items-center gap-1.5 ml-3 shrink-0">
-            <button onClick={onRefresh}
-              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors active:scale-95"
-              title="Refresh plan">
-              <RefreshCw className="h-4 w-4" />
-            </button>
-            <button onClick={onOpenSettings}
-              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors active:scale-95"
-              title="Settings">
-              <Settings className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-
-        {/* Stats row */}
-        <div className="flex items-center gap-4">
+        {/* Single compact row: greeting + stats + actions */}
+        <div className="flex items-center gap-3">
           {/* Daily progress ring */}
-          <CircularProgress percent={completionPercent} size={60} stroke={5}>
-            <span className="text-sm font-bold">{completionPercent}%</span>
+          <CircularProgress percent={completionPercent} size={48} stroke={4}>
+            <span className="text-[11px] font-bold">{completionPercent}%</span>
           </CircularProgress>
 
-          <div className="flex-1 grid grid-cols-3 gap-3">
-            {/* Exam countdown */}
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-1">
-                <Target className="h-3.5 w-3.5 text-white/60" />
-              </div>
-              <p className="text-xl font-bold tabular-nums">{stats.daysToExam}</p>
-              <p className="text-[10px] text-white/50 uppercase tracking-wider">Days Left</p>
-            </div>
+          {/* Greeting + motivation */}
+          <div className="flex-1 min-w-0">
+            <h2 className="text-sm font-semibold tracking-tight truncate">{greeting}</h2>
+            <p className="text-[11px] text-white/60 mt-0.5 line-clamp-1">{motivation}</p>
+          </div>
 
-            {/* Streak */}
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-1">
-                <Flame className="h-3.5 w-3.5 text-orange-400" />
-              </div>
-              <p className="text-xl font-bold tabular-nums">{stats.currentStreak}</p>
-              <p className="text-[10px] text-white/50 uppercase tracking-wider">Streak</p>
-            </div>
-
-            {/* Accuracy */}
-            <div className="text-center">
-              <p className="text-xl font-bold tabular-nums">{stats.avgAccuracy}%</p>
-              <p className="text-[10px] text-white/50 uppercase tracking-wider">Accuracy</p>
-            </div>
+          {/* Actions */}
+          <div className="flex items-center gap-1 shrink-0">
+            <button onClick={onRefresh}
+              className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors active:scale-95"
+              title="Refresh plan">
+              <RefreshCw className="h-3.5 w-3.5" />
+            </button>
+            <button onClick={onOpenSettings}
+              className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors active:scale-95"
+              title="Settings">
+              <Settings className="h-3.5 w-3.5" />
+            </button>
           </div>
         </div>
 
-        {/* Exam tag */}
-        <div className="mt-3 flex items-center gap-2">
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-white/60 uppercase tracking-wider">
+        {/* Compact stats strip */}
+        <div className="mt-2.5 flex items-center gap-2 justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1">
+              <Target className="h-3 w-3 text-white/50" />
+              <span className="text-xs font-bold tabular-nums">{stats.daysToExam}</span>
+              <span className="text-[9px] text-white/40">days</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Flame className="h-3 w-3 text-orange-400" />
+              <span className="text-xs font-bold tabular-nums">{stats.currentStreak}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-xs font-bold tabular-nums">{stats.avgAccuracy}%</span>
+              <span className="text-[9px] text-white/40">acc</span>
+            </div>
+          </div>
+          <span className="text-[9px] px-2 py-0.5 rounded-full bg-white/10 text-white/50">
             {targetExam} · {examDateFormatted}
-          </span>
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-white/60">
-            {stats.totalTopicsPracticed} topics · {stats.masteredCount} mastered
           </span>
         </div>
       </div>
