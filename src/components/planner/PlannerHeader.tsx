@@ -1,111 +1,120 @@
 /**
- * Planner Header — Greeting, exam countdown, daily progress ring
- * Clean, premium, data-driven.
+ * Planner Header — Brain score, rank prediction, XP bar, streak
+ * The hero section. First thing student sees.
  */
+import { Flame, Target, TrendingUp, TrendingDown, Minus, RefreshCw, Settings, Zap } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import type { PlannerStats, BrainScore, RankPrediction } from '@/lib/ai-planner/types';
+import { PHASES } from '@/lib/ai-planner/constants';
 
-import { Settings, RefreshCw, Flame, Target } from 'lucide-react';
-import type { PlannerStats } from '@/lib/planner/types';
-
-interface Props {
+interface PlannerHeaderProps {
   greeting: string;
   motivation: string;
   stats: PlannerStats;
+  brainScore: BrainScore;
+  rankPrediction: RankPrediction;
   targetExam: string;
-  examDate: string;
   onRefresh: () => void;
   onOpenSettings: () => void;
 }
 
-function CircularProgress({ percent, size = 56, stroke = 5, children }: {
-  percent: number; size?: number; stroke?: number; children?: React.ReactNode;
-}) {
-  const radius = (size - stroke) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (Math.min(percent, 100) / 100) * circumference;
+export function PlannerHeader({
+  greeting, motivation, stats, brainScore, rankPrediction, targetExam,
+  onRefresh, onOpenSettings,
+}: PlannerHeaderProps) {
+  const phase = PHASES[stats.examPhase as keyof typeof PHASES];
+  const TrendIcon = brainScore.trend === 'rising' ? TrendingUp : brainScore.trend === 'declining' ? TrendingDown : Minus;
 
   return (
-    <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="-rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={radius} fill="none"
-          stroke="currentColor" strokeWidth={stroke} className="text-white/15" />
-        <circle cx={size / 2} cy={size / 2} r={radius} fill="none"
-          stroke="currentColor" strokeWidth={stroke} className="text-white"
-          strokeDasharray={circumference} strokeDashoffset={offset}
-          strokeLinecap="round" style={{ transition: 'stroke-dashoffset 0.6s ease' }} />
-      </svg>
-      <div className="absolute inset-0 flex items-center justify-center">
-        {children}
+    <div className="bg-gradient-to-br from-[#013062] via-[#01408a] to-[#013062] text-white px-4 pt-3 pb-4">
+      {/* Top bar: greeting + actions */}
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-base font-bold truncate">{greeting}</h1>
+          <p className="text-[11px] text-blue-200 mt-0.5 line-clamp-1">{motivation}</p>
+        </div>
+        <div className="flex items-center gap-1 shrink-0 ml-2">
+          <button onClick={onRefresh} className="p-1.5 rounded-lg hover:bg-white/10 transition-colors active:scale-95">
+            <RefreshCw className="w-4 h-4 text-blue-200" />
+          </button>
+          <button onClick={onOpenSettings} className="p-1.5 rounded-lg hover:bg-white/10 transition-colors active:scale-95">
+            <Settings className="w-4 h-4 text-blue-200" />
+          </button>
+        </div>
+      </div>
+
+      {/* Stats row */}
+      <div className="grid grid-cols-4 gap-2 mb-3">
+        <StatBadge label="Brain" value={`${brainScore.overall}`} sub={
+          <span className="flex items-center gap-0.5">
+            <TrendIcon className="w-2.5 h-2.5" />
+            {brainScore.weeklyDelta > 0 ? `+${brainScore.weeklyDelta}` : brainScore.weeklyDelta}
+          </span>
+        } />
+        <StatBadge label="Rank" value={`~${formatRank(rankPrediction.estimatedRank)}`} sub={`${rankPrediction.confidence}% conf`} />
+        <StatBadge label="D-Day" value={`${stats.daysToExam}`} sub={phase?.emoji || ''} />
+        <StatBadge label="Streak" value={`${stats.currentStreak}`} sub={
+          <Flame className="w-3 h-3 text-orange-400" />
+        } />
+      </div>
+
+      {/* XP Bar */}
+      <div className="bg-white/10 rounded-xl p-2.5">
+        <div className="flex items-center justify-between mb-1.5">
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm">{stats.levelIcon}</span>
+            <span className="text-xs font-bold">Lv.{stats.level}</span>
+            <span className="text-[10px] text-blue-200">{stats.levelTitle}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Zap className="w-3 h-3 text-amber-400" />
+            <span className="text-[10px] font-bold text-amber-300">{stats.currentXP.toLocaleString()} XP</span>
+          </div>
+        </div>
+        <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-gradient-to-r from-amber-400 to-amber-300 rounded-full transition-all duration-700"
+            style={{ width: `${stats.xpProgress}%` }}
+          />
+        </div>
+        <p className="text-[9px] text-blue-300 mt-1 text-right">
+          {stats.xpToNextLevel.toLocaleString()} XP to next level
+        </p>
+      </div>
+
+      {/* Today progress */}
+      <div className="flex items-center justify-between mt-3 bg-white/10 rounded-lg px-3 py-2">
+        <div className="flex items-center gap-2">
+          <Target className="w-4 h-4 text-blue-200" />
+          <span className="text-xs font-medium">Today's Progress</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-bold">{stats.todayTasksDone}/{stats.todayTasksTotal}</span>
+          <div className="w-16 h-1.5 bg-white/10 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-emerald-400 rounded-full transition-all duration-500"
+              style={{ width: `${stats.todayTasksTotal > 0 ? (stats.todayTasksDone / stats.todayTasksTotal) * 100 : 0}%` }}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
-export function PlannerHeader({ greeting, motivation, stats, targetExam, examDate, onRefresh, onOpenSettings }: Props) {
-  const completionPercent = stats.todayTasksTotal > 0
-    ? Math.round((stats.todayTasksDone / stats.todayTasksTotal) * 100)
-    : 0;
-
-  const examDateFormatted = new Date(examDate).toLocaleDateString('en-IN', {
-    day: 'numeric', month: 'short', year: 'numeric'
-  });
-
+function StatBadge({ label, value, sub }: { label: string; value: string; sub: React.ReactNode }) {
   return (
-    <div className="bg-gradient-to-br from-[#013062] to-[#024a8c] rounded-2xl p-4 text-white relative overflow-hidden shrink-0">
-      {/* Subtle background pattern */}
-      <div className="absolute inset-0 opacity-[0.04]"
-        style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '30px 30px' }} />
-
-      <div className="relative z-10">
-        {/* Single compact row: greeting + stats + actions */}
-        <div className="flex items-center gap-3">
-          {/* Daily progress ring */}
-          <CircularProgress percent={completionPercent} size={48} stroke={4}>
-            <span className="text-[11px] font-bold">{completionPercent}%</span>
-          </CircularProgress>
-
-          {/* Greeting + motivation */}
-          <div className="flex-1 min-w-0">
-            <h2 className="text-sm font-semibold tracking-tight truncate">{greeting}</h2>
-            <p className="text-[11px] text-white/60 mt-0.5 line-clamp-1">{motivation}</p>
-          </div>
-
-          {/* Actions */}
-          <div className="flex items-center gap-1 shrink-0">
-            <button onClick={onRefresh}
-              className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors active:scale-95"
-              title="Refresh plan">
-              <RefreshCw className="h-3.5 w-3.5" />
-            </button>
-            <button onClick={onOpenSettings}
-              className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors active:scale-95"
-              title="Settings">
-              <Settings className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        </div>
-
-        {/* Compact stats strip */}
-        <div className="mt-2.5 flex items-center gap-2 justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1">
-              <Target className="h-3 w-3 text-white/50" />
-              <span className="text-xs font-bold tabular-nums">{stats.daysToExam}</span>
-              <span className="text-[9px] text-white/40">days</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Flame className="h-3 w-3 text-orange-400" />
-              <span className="text-xs font-bold tabular-nums">{stats.currentStreak}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="text-xs font-bold tabular-nums">{stats.avgAccuracy}%</span>
-              <span className="text-[9px] text-white/40">acc</span>
-            </div>
-          </div>
-          <span className="text-[9px] px-2 py-0.5 rounded-full bg-white/10 text-white/50">
-            {targetExam} · {examDateFormatted}
-          </span>
-        </div>
-      </div>
+    <div className="bg-white/10 rounded-lg p-2 text-center">
+      <p className="text-[9px] text-blue-300 uppercase font-medium tracking-wider">{label}</p>
+      <p className="text-sm font-bold mt-0.5">{value}</p>
+      <div className="text-[9px] text-blue-200 mt-0.5 flex items-center justify-center gap-0.5">{sub}</div>
     </div>
   );
+}
+
+function formatRank(rank: number): string {
+  if (rank >= 100000) return `${Math.round(rank / 1000)}K`;
+  if (rank >= 10000) return `${Math.round(rank / 1000)}K`;
+  if (rank >= 1000) return `${(rank / 1000).toFixed(1)}K`;
+  return `${rank}`;
 }
