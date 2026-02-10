@@ -520,3 +520,190 @@ export const getBatchSubjects = async (batchId: string): Promise<string[]> => {
     return [];
   }
 };
+
+// =============================================
+// TIER-BASED ACCESS SYSTEM
+// =============================================
+
+interface TierFeatures {
+  videos: boolean;
+  pdfs: boolean;
+  tests: boolean;
+  solutions: boolean;
+  liveClasses: boolean;
+  doubtSupport: boolean;
+}
+
+interface TierAccessResult {
+  hasAccess: boolean;
+  tier: 'free' | 'pro' | 'none';
+  features: TierFeatures;
+  expiresAt?: Date;
+  daysRemaining?: number;
+  contentLimit?: number | null;
+}
+
+/**
+ * Check user's tier-based access to a batch
+ * Returns tier info, features unlocked, and expiry
+ */
+export const checkBatchTierAccess = async (
+  userId: string,
+  batchId: string
+): Promise<TierAccessResult> => {
+  const noAccess: TierAccessResult = {
+    hasAccess: false,
+    tier: 'none',
+    features: {
+      videos: false,
+      pdfs: false,
+      tests: false,
+      solutions: false,
+      liveClasses: false,
+      doubtSupport: false
+    }
+  };
+
+  try {
+    // Get user's subscription with tier info
+    const { data: subscription, error } = await supabase
+      .from('user_batch_subscriptions')
+      .select(`
+        tier,
+        expires_at,
+        features_unlocked,
+        status
+      `)
+      .eq('user_id', userId)
+      .eq('batch_id', batchId)
+      .eq('status', 'active')
+      .single();
+
+    if (error || !subscription) {
+      return noAccess;
+    }
+
+    // Check expiry
+    const expiresAt = new Date(subscription.expires_at);
+    const now = new Date();
+
+    if (expiresAt < now) {
+      return noAccess;
+    }
+
+    const daysRemaining = Math.ceil(
+      (expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    // Get tier details for content limit
+    const { data: tierInfo } = await supabase
+      .from('batch_access_tiers')
+      .select('content_limit, features')
+      .eq('batch_id', batchId)
+      .eq('tier_name', subscription.tier)
+      .single();
+
+    const features = subscription.features_unlocked || tierInfo?.features || noAccess.features;
+
+    return {
+      hasAccess: true,
+      tier: subscription.tier as 'free' | 'pro',
+      features: features as TierFeatures,
+      expiresAt,
+      daysRemaining,
+      contentLimit: tierInfo?.content_limit
+    };
+  } catch (error) {
+    logger.error('Error checking batch tier access:', error);
+    return noAccess;
+  }
+};
+
+/**
+ * Check if user can access specific content type based on tier
+ */
+export const canAccessContent = async (
+  userId: string,
+  batchId: string,
+  contentType: keyof TierFeatures
+): Promise<boolean> => {
+  const access = await checkBatchTierAccess(userId, batchId);
+  return access.hasAccess && access.features[contentType];
+};
+
+/**
+ * Get user's goal (immutable after first set)
+ */
+export const getUserGoal = async (userId: string): Promise<string | null> => {
+  try {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('selected_goal, goal_locked')
+      .eq('id', userId)
+      .single();
+
+    return profile?.selected_goal || null;
+  } catch (error) {
+    logger.error('Error fetching user goal:', error);
+    return null;
+  }
+};
+
+/**
+ * Check if user's goal is locked
+ */
+export const isGoalLocked = async (userId: string): Promise<boolean> => {
+  try {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('goal_locked')
+      .eq('id', userId)
+      .single();
+
+    return profile?.goal_locked || false;
+  } catch (error) {
+    logger.error('Error checking goal lock:', error);
+    return false;
+  }
+};
+
+/**
+ * Get batches aligned with user's goal
+ */
+export const getGoalAlignedBatches = async (userId: string) => {
+  try {
+    const goal = await getUserGoal(userId);
+    if (!goal) return [];
+
+    const { data: batches, error } = await supabase
+      .from('batches')
+      .select(`
+        id,
+        name,
+        slug,
+        description,
+        grade,
+        exam_type,
+        price,
+        offer_price,
+        validity_days,
+        is_active,
+        goal_aligned,
+        free_mode_enabled,
+        pro_mode_enabled,
+        batch_subjects (subject)
+      `)
+      .eq('is_active', true)
+      .eq('goal_aligned', goal)
+      .order('grade');
+
+    if (error) {
+      return [];
+    }
+
+    return batches || [];
+  } catch (error) {
+    logger.error('Error fetching goal-aligned batches:', error);
+    return [];
+  }
+};

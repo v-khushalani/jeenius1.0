@@ -29,11 +29,11 @@ const UpgradePrompt: React.FC<UpgradePromptProps> = ({ questionsCompleted, onDis
             Great progress! 🎉
           </p>
           <p className="text-xs text-muted-foreground mb-3">
-            You've solved {questionsCompleted} questions. Go unlimited with Pro at just ₹1.37/day!
+            You've solved {questionsCompleted} questions. Upgrade to Pro for unlimited access!
           </p>
           <Button 
             size="sm" 
-            onClick={() => navigate('/subscription-plans')}
+            onClick={() => navigate('/batches')}
             className="w-full h-8 text-xs"
           >
             Upgrade to Pro

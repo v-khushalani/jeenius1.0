@@ -11,17 +11,24 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { 
   BookOpen, 
   Calendar, 
-  ShoppingCart, 
   Check, 
   Loader2,
   Search,
   Filter,
-  Zap
+  Zap,
+  Crown
 } from 'lucide-react';
+import { BatchTierSelector } from './batches/BatchTierSelector';
 import { BatchPurchaseModal } from './BatchPurchaseModal';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -33,11 +40,20 @@ interface Batch {
   grade: number;
   exam_type: string;
   price: number;
+  offer_price?: number | null;
   validity_days: number;
   is_active: boolean;
   color: string | null;
   icon: string | null;
+  free_mode_enabled?: boolean;
+  pro_mode_enabled?: boolean;
   batch_subjects?: { id: string; subject: string }[];
+}
+
+interface UserSubscription {
+  batchId: string;
+  tier: 'free' | 'pro';
+  expiresAt: Date;
 }
 
 type FilterType = 'all' | 'jee' | 'neet' | 'cet' | 'foundation' | 'scholarship' | 'olympiad';
@@ -48,9 +64,11 @@ export const BatchExplorer: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<FilterType>('all');
-  const [userSubscriptions, setUserSubscriptions] = useState<Set<string>>(new Set());
+  const [userSubscriptions, setUserSubscriptions] = useState<Map<string, UserSubscription>>(new Map());
   const [selectedBatch, setSelectedBatch] = useState<Batch | null>(null);
+  const [isTierSelectorOpen, setIsTierSelectorOpen] = useState(false);
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
+  const [selectedTierPrice, setSelectedTierPrice] = useState(0);
 
   useEffect(() => {
     fetchBatches();
@@ -69,10 +87,13 @@ export const BatchExplorer: React.FC = () => {
           grade,
           exam_type,
           price,
+          offer_price,
           validity_days,
           is_active,
           color,
           icon,
+          free_mode_enabled,
+          pro_mode_enabled,
           batch_subjects (id, subject)
         `)
         .eq('is_active', true)
@@ -108,16 +129,20 @@ export const BatchExplorer: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from('user_batch_subscriptions')
-        .select('batch_id, expires_at')
+        .select('batch_id, tier, expires_at')
         .eq('user_id', user.id)
         .eq('status', 'active');
 
       if (error) throw error;
 
-      const active = new Set<string>();
+      const active = new Map<string, UserSubscription>();
       data?.forEach((sub: any) => {
         if (new Date(sub.expires_at) > new Date()) {
-          active.add(sub.batch_id);
+          active.set(sub.batch_id, {
+            batchId: sub.batch_id,
+            tier: sub.tier || 'free',
+            expiresAt: new Date(sub.expires_at)
+          });
         }
       });
       setUserSubscriptions(active);
@@ -144,17 +169,27 @@ export const BatchExplorer: React.FC = () => {
     return matchesSearch && matchesFilter;
   });
 
-  const handlePurchase = (batch: Batch) => {
+  const handleSelectBatch = (batch: Batch) => {
     if (!user) {
-      toast.error('Please log in to purchase a batch');
+      toast.error('Please log in to access this batch');
       return;
     }
     setSelectedBatch(batch);
-    setIsPurchaseModalOpen(true);
+    setIsTierSelectorOpen(true);
   };
 
-  const handlePurchaseSuccess = () => {
-    fetchUserSubscriptions();
+  const handleTierSelect = (tier: 'free' | 'pro', tierId: string, price: number) => {
+    if (tier === 'free') {
+      // Free tier enrolled via BatchTierSelector
+      setIsTierSelectorOpen(false);
+      fetchUserSubscriptions();
+      toast.success('Free trial activated!');
+    } else {
+      // Pro tier needs payment
+      setSelectedTierPrice(price);
+      setIsTierSelectorOpen(false);
+      setIsPurchaseModalOpen(true);
+    }
   };
 
   const formatPrice = (paise: number) => {
@@ -227,8 +262,11 @@ export const BatchExplorer: React.FC = () => {
       {/* Batches Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredBatches.map((batch) => {
-          const hasAccess = userSubscriptions.has(batch.id);
-          const priceInRupees = formatPrice(batch.price);
+          const subscription = userSubscriptions.get(batch.id);
+          const hasAccess = !!subscription;
+          const userTier = subscription?.tier || null;
+          const priceInRupees = formatPrice(batch.offer_price || batch.price);
+          const originalPrice = batch.offer_price ? formatPrice(batch.price) : null;
 
           return (
             <Card
@@ -252,9 +290,15 @@ export const BatchExplorer: React.FC = () => {
                     </p>
                   </div>
                   {hasAccess && (
-                    <Badge className="bg-green-100 text-green-800 border-0">
-                      <Check className="w-3 h-3 mr-1" />
-                      Owned
+                    <Badge className={userTier === 'pro' 
+                      ? 'bg-yellow-100 text-yellow-800 border-0' 
+                      : 'bg-green-100 text-green-800 border-0'
+                    }>
+                      {userTier === 'pro' ? (
+                        <><Crown className="w-3 h-3 mr-1" />Pro</>
+                      ) : (
+                        <><Check className="w-3 h-3 mr-1" />Free</>  
+                      )}
                     </Badge>
                   )}
                 </div>
@@ -297,44 +341,62 @@ export const BatchExplorer: React.FC = () => {
 
                 {/* Pricing & Action */}
                 <div className="border-t pt-3 space-y-3">
-                {batch.price > 0 ? (
-                    <>
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-medium text-muted-foreground">
-                          Price
+                  {/* Price Display */}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-medium text-muted-foreground">
+                      {batch.free_mode_enabled ? 'Free Trial + Pro' : 'Price'}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      {originalPrice && (
+                        <span className="text-sm text-muted-foreground line-through">
+                          ₹{originalPrice}
                         </span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-2xl font-bold text-primary">
-                            ₹{priceInRupees}
-                          </span>
-                        </div>
-                      </div>
-                      <Button
-                        onClick={() => handlePurchase(batch)}
-                        disabled={hasAccess}
-                        className="w-full gap-2"
-                        variant={hasAccess ? 'outline' : 'default'}
-                      >
-                        {hasAccess ? (
-                          <>
-                            <Check className="w-4 h-4" />
-                            Access Granted
-                          </>
-                        ) : (
-                          <>
-                            <ShoppingCart className="w-4 h-4" />
-                            Purchase Now
-                          </>
-                        )}
-                      </Button>
-                    </>
-                  ) : (
-                    <div className="flex items-center justify-center gap-2 p-2 bg-green-50 rounded-lg">
-                      <Zap className="w-4 h-4 text-green-600" />
-                      <span className="text-sm font-medium text-green-600">
-                        Free Access
+                      )}
+                      <span className="text-2xl font-bold text-primary">
+                        ₹{priceInRupees}
                       </span>
                     </div>
+                  </div>
+
+                  {/* Free Trial Badge */}
+                  {batch.free_mode_enabled && !hasAccess && (
+                    <div className="flex items-center justify-center gap-2 p-2 bg-green-50 rounded-lg">
+                      <Zap className="w-4 h-4 text-green-600" />
+                      <span className="text-xs font-medium text-green-600">
+                        7-day Free Trial Available
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Action Button */}
+                  {hasAccess ? (
+                    <div className="space-y-2">
+                      <Button
+                        variant="outline"
+                        className="w-full gap-2"
+                        disabled
+                      >
+                        <Check className="w-4 h-4" />
+                        {userTier === 'pro' ? 'Pro Access' : 'Free Access'}
+                      </Button>
+                      {userTier === 'free' && (
+                        <Button
+                          onClick={() => handleSelectBatch(batch)}
+                          className="w-full gap-2 bg-yellow-500 hover:bg-yellow-600 text-black"
+                        >
+                          <Crown className="w-4 h-4" />
+                          Upgrade to Pro
+                        </Button>
+                      )}
+                    </div>
+                  ) : (
+                    <Button
+                      onClick={() => handleSelectBatch(batch)}
+                      className="w-full gap-2"
+                    >
+                      <Zap className="w-4 h-4" />
+                      {batch.free_mode_enabled ? 'Start Free Trial' : 'Get Access'}
+                    </Button>
                   )}
                 </div>
               </CardContent>
@@ -377,15 +439,40 @@ export const BatchExplorer: React.FC = () => {
         </Card>
       )}
 
-      {/* Purchase Modal */}
+      {/* Tier Selector Dialog */}
+      <Dialog open={isTierSelectorOpen} onOpenChange={setIsTierSelectorOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Choose Your Plan</DialogTitle>
+          </DialogHeader>
+          {selectedBatch && (
+            <BatchTierSelector
+              batchId={selectedBatch.id}
+              batchName={selectedBatch.name}
+              onSelect={handleTierSelect}
+              onClose={() => {
+                setIsTierSelectorOpen(false);
+                setSelectedBatch(null);
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Purchase Modal (Pro tier) */}
       <BatchPurchaseModal
-        batch={selectedBatch}
+        batch={selectedBatch ? {...selectedBatch, price: selectedTierPrice} : null}
         isOpen={isPurchaseModalOpen}
         onClose={() => {
           setIsPurchaseModalOpen(false);
           setSelectedBatch(null);
+          setSelectedTierPrice(0);
         }}
-        onSuccess={handlePurchaseSuccess}
+        onSuccess={() => {
+          fetchUserSubscriptions();
+          setIsPurchaseModalOpen(false);
+          setSelectedBatch(null);
+        }}
       />
     </div>
   );

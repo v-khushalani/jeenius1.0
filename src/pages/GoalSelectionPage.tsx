@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import LoadingScreen from '@/components/ui/LoadingScreen';
-import { ChevronRight, Calendar, BookOpen, Stethoscope, Calculator, Clock, Rocket, Trophy, Target, Sparkles } from 'lucide-react';
+import { ChevronRight, Calendar, BookOpen, Stethoscope, Calculator, Clock, Rocket, Trophy, Target, Sparkles, Lock, AlertTriangle } from 'lucide-react';
 import { logger } from '@/utils/logger';
+import { toast } from 'sonner';
 
 const GoalSelectionPage = () => {
   const navigate = useNavigate();
@@ -145,7 +146,7 @@ const GoalSelectionPage = () => {
     try {
       if (!user?.id) {
         logger.error('No user found');
-        alert('Please login again');
+        toast.error('Please login again');
         navigate('/login');
         return;
       }
@@ -153,9 +154,16 @@ const GoalSelectionPage = () => {
       // Get user's name from Google auth (already stored in profile)
       const { data: profile } = await supabase
         .from('profiles')
-        .select('full_name')
+        .select('full_name, goal_locked')
         .eq('id', user.id)
         .single();
+  
+      // Check if goal is already locked
+      if (profile?.goal_locked) {
+        toast.error('Your goal is already locked and cannot be changed.');
+        navigate('/dashboard', { replace: true });
+        return;
+      }
   
       logger.info('User name from profile:', profile?.full_name);
   
@@ -163,13 +171,12 @@ const GoalSelectionPage = () => {
       const gradeNumber = parseInt(selectedGrade, 10) || 11;
       
       // Map goal to specific course type
-      // For Foundation courses, use "Foundation-{grade}" (e.g., "Foundation-9")
-      // For JEE/NEET, use as-is
       let targetExamValue = selectedGoal;
       if (selectedGoal === 'Foundation') {
         targetExamValue = `Foundation-${gradeNumber}`;
       }
       
+      // LOCK THE GOAL PERMANENTLY
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
@@ -177,45 +184,58 @@ const GoalSelectionPage = () => {
           grade: gradeNumber,
           subjects: selectedSubjects,
           daily_goal: selectedSubjects.length * 10,
-          goals_set: true, // Mark profile as complete
+          goals_set: true,
+          // GOAL LOCK FIELDS
+          selected_goal: selectedGoal.toLowerCase(),
+          goal_locked: true,
+          goal_locked_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
         .eq('id', user.id);
   
       if (profileError) {
         logger.error('Profile update error:', profileError);
-        alert('Error saving profile. Please try again.');
+        toast.error('Error saving profile. Please try again.');
         setIsStartingJourney(false);
         return;
       }
   
-      logger.info('Profile updated successfully');
+      // Log the goal selection in audit table
+      await supabase
+        .from('goal_change_audit')
+        .insert({
+          user_id: user.id,
+          new_goal: selectedGoal.toLowerCase(),
+          status: 'success',
+          reason: 'Initial goal selection'
+        });
   
-      // Optional: Save to localStorage as backup
+      logger.info('Profile updated and goal locked successfully');
+      toast.success('Your learning path is set! 🎯');
+  
+      // Save to localStorage as backup
       const userGoals = {
         grade: selectedGrade,
         goal: selectedGoal,
         subjects: selectedSubjects,
         name: profile?.full_name,
         daysRemaining: daysRemaining,
+        goalLocked: true,
         createdAt: new Date().toISOString()
       };
       localStorage.setItem('userGoals', JSON.stringify(userGoals));
       
       // Wait a bit for the animation
-    await new Promise(resolve => setTimeout(resolve, 1500));
+      await new Promise(resolve => setTimeout(resolve, 1500));
     
-    // Navigate to dashboard
-    logger.info('Navigating to dashboard after goal setup');
-    navigate('/dashboard', { replace: true });
+      // Navigate to dashboard
+      logger.info('Navigating to dashboard after goal setup');
+      navigate('/dashboard', { replace: true });
     
     } catch (error) {
       logger.error('Error saving goals:', error);
-      // Still navigate even if save fails
-      navigate('/dashboard', { replace: true });
-    } finally {
-    // Always reset loading state
-    setIsStartingJourney(false);
+      toast.error('Something went wrong. Please try again.');
+      setIsStartingJourney(false);
     }
   };
 
@@ -399,6 +419,19 @@ const GoalSelectionPage = () => {
               <p className="text-gray-600 text-lg mb-4">
                 You're about to embark on an incredible learning journey!
               </p>
+            </div>
+
+            {/* Goal Lock Warning */}
+            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-left">
+              <div className="flex items-start space-x-2">
+                <Lock className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-amber-800">Important Notice</p>
+                  <p className="text-xs text-amber-700 mt-1">
+                    Your goal selection is <strong>permanent</strong> and helps us personalize your learning path. This cannot be changed later.
+                  </p>
+                </div>
+              </div>
             </div>
 
             <div className="space-y-3 mb-6 text-left">
