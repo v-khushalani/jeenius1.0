@@ -471,7 +471,7 @@ const GoalSelectionPage = () => {
                 <div>
                   <p className="text-sm font-semibold text-amber-800">Important Notice</p>
                   <p className="text-xs text-amber-700 mt-1">
-                    Your goal selection is <strong>permanent</strong> and helps us personalize your learning path. This cannot be changed later.
+                    You can change your goal later, but it will reset your progress so we can personalize your new path.
                   </p>
                 </div>
               </div>

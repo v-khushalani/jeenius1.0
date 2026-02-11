@@ -65,6 +65,52 @@ const Settings = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  const foundationGrades = new Set(['6th', '7th', '8th', '9th', '10th']);
+  const isFoundationGrade = (gradeValue: string) => foundationGrades.has(gradeValue);
+  const isCompetitiveExam = (examValue: string) => ['JEE', 'NEET', 'CET'].includes(examValue);
+  const normalizeGradeExamPair = (
+    nextProfile: typeof profile,
+    changedField: 'grade' | 'target_exam'
+  ) => {
+    let nextGrade = nextProfile.grade;
+    let nextExam = nextProfile.target_exam;
+
+    if (changedField === 'grade') {
+      const nextGradeNumber = nextGrade === '11th' ? 11 :
+        nextGrade === '12th' ? 12 :
+        nextGrade === '12th-pass' ? 13 :
+        parseInt(nextGrade) || 12;
+
+      if (isCompetitiveExam(nextExam) && nextGradeNumber < 11) {
+        nextExam = 'Foundation';
+      }
+
+      if (nextExam === 'Scholarship' && nextGradeNumber > 10) {
+        nextExam = 'Foundation';
+      }
+
+      if (nextExam === 'Foundation' && (nextGradeNumber < 6 || nextGradeNumber > 10)) {
+        nextGrade = '10th';
+      }
+    }
+
+    if (changedField === 'target_exam') {
+      if (nextExam === 'Foundation' && !isFoundationGrade(nextGrade)) {
+        nextGrade = '10th';
+      }
+
+      if (nextExam === 'Scholarship' && !isFoundationGrade(nextGrade)) {
+        nextGrade = '9th';
+      }
+
+      if (isCompetitiveExam(nextExam) && isFoundationGrade(nextGrade)) {
+        nextGrade = '11th';
+      }
+    }
+
+    return { ...nextProfile, grade: nextGrade, target_exam: nextExam };
+  };
+
   useEffect(() => {
     loadUserProfile();
   }, []);
@@ -176,6 +222,28 @@ const Settings = () => {
         return;
       }
 
+      const rawPhone = profile.phone?.trim() || '';
+      const normalizedPhone = rawPhone.replace(/[\s-]/g, '');
+      if (!normalizedPhone) {
+        toast({
+          title: "Phone Required",
+          description: "Mobile number is required to protect your account",
+          variant: "destructive"
+        });
+        setSaving(false);
+        return;
+      }
+
+      if (!/^\+?\d{10,15}$/.test(normalizedPhone)) {
+        toast({
+          title: "Invalid Phone",
+          description: "Enter a valid mobile number with country code",
+          variant: "destructive"
+        });
+        setSaving(false);
+        return;
+      }
+
       const gradeNumber = profile.grade === '11th' ? 11 : 
                           profile.grade === '12th' ? 12 : 
                           profile.grade === '12th-pass' ? 13 :
@@ -186,6 +254,40 @@ const Settings = () => {
       let targetExamValue = profile.target_exam;
       if (profile.target_exam === 'Foundation' && gradeNumber >= 6 && gradeNumber <= 10) {
         targetExamValue = `Foundation-${gradeNumber}`;
+      }
+
+      const isFoundationExam = targetExamValue.startsWith('Foundation');
+      const isScholarshipExam = targetExamValue === 'Scholarship';
+      const isCompetitive = ['JEE', 'NEET', 'CET'].includes(targetExamValue);
+
+      if (isCompetitive && gradeNumber < 11) {
+        toast({
+          title: "Grade Mismatch",
+          description: "JEE/NEET/CET is only for Class 11 or higher",
+          variant: "destructive"
+        });
+        setSaving(false);
+        return;
+      }
+
+      if (isFoundationExam && (gradeNumber < 6 || gradeNumber > 10)) {
+        toast({
+          title: "Grade Mismatch",
+          description: "Foundation is only for Class 6 to 10",
+          variant: "destructive"
+        });
+        setSaving(false);
+        return;
+      }
+
+      if (isScholarshipExam && (gradeNumber < 6 || gradeNumber > 10)) {
+        toast({
+          title: "Grade Mismatch",
+          description: "Scholarship exam is only for Class 6 to 10",
+          variant: "destructive"
+        });
+        setSaving(false);
+        return;
       }
 
       // Check if goal/grade is changing - show warning if so
@@ -216,7 +318,7 @@ const Settings = () => {
       }
 
       // No goal change - proceed with normal save
-      await performProfileSave(gradeNumber, targetExamValue);
+      await performProfileSave(gradeNumber, targetExamValue, normalizedPhone);
       
     } catch (error: any) {
       logger.error('Error saving profile:', error);
@@ -232,18 +334,27 @@ const Settings = () => {
     }
   };
 
-  const performProfileSave = async (gradeNumber: number, targetExamValue: string) => {
+  const performProfileSave = async (gradeNumber: number, targetExamValue: string, phoneValue: string) => {
     if (!user) return;
+
+    const selectedGoalValue =
+      targetExamValue.startsWith('Foundation') ? 'foundation' :
+      targetExamValue === 'JEE' ? 'jee' :
+      targetExamValue === 'NEET' ? 'neet' :
+      targetExamValue === 'CET' ? 'cet' :
+      targetExamValue === 'Scholarship' ? 'scholarship' :
+      'foundation';
 
     try {
       const updateData = {
         full_name: `${profile.firstName.trim()} ${profile.lastName.trim()}`.trim(),
         email: profile.email.trim(),
-        phone: profile.phone?.trim() || null,
+        phone: phoneValue,
         city: profile.city?.trim() || null,
         state: profile.state?.trim() || null,
         grade: gradeNumber,
         target_exam: targetExamValue,
+        selected_goal: selectedGoalValue,
         daily_goal: profile.daily_goal,
         daily_study_hours: profile.daily_study_hours,
         updated_at: new Date().toISOString()
@@ -393,7 +504,13 @@ const Settings = () => {
   };
 
   const handleInputChange = (field: keyof typeof profile, value: any) => {
-    setProfile(prev => ({ ...prev, [field]: value }));
+    setProfile(prev => {
+      const nextProfile = { ...prev, [field]: value };
+      if (field === 'grade' || field === 'target_exam') {
+        return normalizeGradeExamPair(nextProfile, field);
+      }
+      return nextProfile;
+    });
     if (saveStatus !== 'idle') setSaveStatus('idle');
   };
 
@@ -491,13 +608,14 @@ const Settings = () => {
 
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number</Label>
+                    <Label htmlFor="phone">Phone Number *</Label>
                     <Input
                       id="phone"
                       value={profile.phone}
                       onChange={(e) => handleInputChange('phone', e.target.value)}
                       placeholder="+91 9876543210"
                     />
+                    <p className="text-xs text-gray-500">Required for account protection</p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="grade">Current Grade *</Label>
@@ -556,16 +674,11 @@ const Settings = () => {
                         <option value="CET">MHT-CET (PCMB)</option>
                       </optgroup>
                       <optgroup label="Foundation Courses">
-                        <option value="Foundation-6">Foundation - Class 6</option>
-                        <option value="Foundation-7">Foundation - Class 7</option>
-                        <option value="Foundation-8">Foundation - Class 8</option>
-                        <option value="Foundation-9">Foundation - Class 9</option>
-                        <option value="Foundation-10">Foundation - Class 10</option>
+                        <option value="Foundation">Foundation (Class 6-10)</option>
                       </optgroup>
                       <optgroup label="Competitive Exams">
                         <option value="Scholarship">Scholarship Exam</option>
                       </optgroup>
-                      <option value="Foundation">Foundation (Legacy)</option>
                     </select>
                     <p className="text-xs text-gray-500">
                       {profile.target_exam === 'JEE' ? 'Physics, Chemistry, Mathematics' : 
