@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Search, Shield, User, Gift, Crown } from 'lucide-react';
+import { Search, Shield, User, Gift, Crown, XCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { logger } from '@/utils/logger';
@@ -182,6 +182,43 @@ const grantProMembership = async (userId: string, durationMonths: number = 1) =>
     });
   }
 };
+
+const revokeProMembership = async (userId: string) => {
+  try {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ 
+        is_premium: false,
+        subscription_end_date: null
+      })
+      .eq('id', userId);
+
+    if (error) throw error;
+
+    // Update local state
+    const updatedUsers = users.map(user => 
+      user.user_id === userId ? { 
+        ...user, 
+        is_premium: false, 
+        subscription_end_date: null 
+      } : user
+    );
+    
+    setUsers(updatedUsers);
+
+    toast({
+      title: "Success",
+      description: "Pro membership revoked",
+    });
+  } catch (error) {
+    logger.error('Error revoking pro membership:', error);
+    toast({
+      title: "Error",
+      description: "Failed to revoke pro membership",
+      variant: "destructive"
+    });
+  }
+};
   
   const getRoleIcon = (role?: string) => {
     switch (role) {
@@ -313,7 +350,7 @@ const grantProMembership = async (userId: string, durationMonths: number = 1) =>
                               <SelectItem value="admin">Admin</SelectItem>
                             </SelectContent>
                           </Select>
-                          {!user.is_premium && (
+                          {!user.is_premium ? (
                             <Button
                               size="sm"
                               variant="outline"
@@ -322,6 +359,16 @@ const grantProMembership = async (userId: string, durationMonths: number = 1) =>
                             >
                               <Gift className="h-4 w-4 mr-1" />
                               Grant Pro
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => revokeProMembership(user.user_id)}
+                              className="whitespace-nowrap text-destructive hover:text-destructive"
+                            >
+                              <XCircle className="h-4 w-4 mr-1" />
+                              Revoke Pro
                             </Button>
                           )}
                         </div>

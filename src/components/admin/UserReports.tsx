@@ -35,6 +35,25 @@ export const UserReports: React.FC = () => {
 
   useEffect(() => {
     loadUserReports();
+    
+    // Set up real-time subscription for updates
+    const channel = supabase
+      .channel('admin-reports-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'question_attempts' },
+        () => loadUserReports()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'profiles' },
+        () => loadUserReports()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   useEffect(() => {
@@ -43,13 +62,53 @@ export const UserReports: React.FC = () => {
 
   const loadUserReports = async () => {
     try {
-      const { data, error } = await supabase
+      // Fetch profiles
+      const { data: profilesData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setUsers(data || []);
+      if (profileError) throw profileError;
+
+      // Fetch all question attempts to compute real stats
+      const { data: attemptsData, error: attemptsError } = await supabase
+        .from('question_attempts')
+        .select('user_id, is_correct, time_spent, created_at');
+
+      if (attemptsError) {
+        logger.error('Error fetching attempts:', attemptsError);
+      }
+
+      // Group attempts by user and compute stats
+      const attemptsByUser = new Map<string, { total: number; correct: number; totalTime: number }>();
+      attemptsData?.forEach(attempt => {
+        const userId = attempt.user_id;
+        if (!attemptsByUser.has(userId)) {
+          attemptsByUser.set(userId, { total: 0, correct: 0, totalTime: 0 });
+        }
+        const userStats = attemptsByUser.get(userId)!;
+        userStats.total++;
+        if (attempt.is_correct) userStats.correct++;
+        userStats.totalTime += (attempt.time_spent || 0);
+      });
+
+      // Merge computed stats with profile data
+      const usersWithStats = (profilesData || []).map(profile => {
+        const computed = attemptsByUser.get(profile.id);
+        return {
+          ...profile,
+          // Use computed values if available, otherwise fall back to stored values
+          total_questions_solved: computed?.total || profile.total_questions_solved || 0,
+          overall_accuracy: computed && computed.total > 0 
+            ? (computed.correct / computed.total) * 100 
+            : (profile.overall_accuracy || 0),
+          total_study_time: computed?.totalTime 
+            ? Math.floor(computed.totalTime / 60) 
+            : (profile.total_study_time || 0), // Convert seconds to minutes
+        };
+      });
+
+      setUsers(usersWithStats);
     } catch (error) {
       logger.error('Error loading user reports:', error);
       toast.error('Failed to load user reports');

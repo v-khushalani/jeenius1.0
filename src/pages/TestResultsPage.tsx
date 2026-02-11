@@ -161,9 +161,7 @@ const TestResultsPage = () => {
       return date.toLocaleDateString('en-IN', { 
         day: '2-digit', 
         month: 'short', 
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
+        year: 'numeric'
       });
     }
     return new Date().toLocaleDateString('en-IN', { 
@@ -179,29 +177,20 @@ const TestResultsPage = () => {
     const performance = getPerformanceLevel(parseFloat(stats?.scorePercentage || "0"));
     const testDate = getTestDate();
     
-    // Use Unicode escape sequences for emojis (more reliable encoding)
-    const chartEmoji = '\u{1F4CA}'; // 📊
-    const noteEmoji = '\u{1F4DD}'; // 📝
-    const targetEmoji = '\u{1F3AF}'; // 🎯
-    const checkEmoji = '\u{2705}'; // ✅
-    const crossEmoji = '\u{274C}'; // ❌
-    const timerEmoji = '\u{23F1}'; // ⏱
-    const graphEmoji = '\u{1F4C8}'; // 📈
-    const starEmoji = '\u{2B50}'; // ⭐
-    
-    const message = `${chartEmoji} *TEST RESULT* (${testDate})
+    // Use direct emoji characters - works better across Android/iOS
+    const message = `📊 *TEST RESULT* (${testDate})
 
-${noteEmoji} *${testResult.testTitle}*
+📝 *${testResult.testTitle}*
 
-${targetEmoji} *Score:* ${stats?.earnedMarks}/${stats?.totalMarks} *(${stats?.scorePercentage}%)*
-${checkEmoji} *Correct:* ${stats?.correctAnswers}
-${crossEmoji} *Wrong:* ${stats?.incorrectAnswers}
-${timerEmoji} *Time:* ${formatTime(testResult.timeSpent)}
-${targetEmoji} *Accuracy:* ${stats?.accuracy}%
+🎯 *Score:* ${stats?.earnedMarks}/${stats?.totalMarks} *(${stats?.scorePercentage}%)*
+✅ *Correct:* ${stats?.correctAnswers}
+❌ *Wrong:* ${stats?.incorrectAnswers}
+⏱️ *Time:* ${formatTime(testResult.timeSpent)}
+🎯 *Accuracy:* ${stats?.accuracy}%
 
-${graphEmoji} *Percentile:* -
+📈 *Percentile:* -
 
-${starEmoji} *${performance.label} Performance!* ${starEmoji}
+⭐ *${performance.label} Performance!* ⭐
 
 _Powered by JEEnius_`;
 

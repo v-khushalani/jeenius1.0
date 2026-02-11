@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Upload, Plus, Edit, Trash2, Search, Download, Trash, AlertCircle, RotateCcw } from 'lucide-react';
+import { Upload, Plus, Edit, Trash2, Search, Download, Trash, AlertCircle, RotateCcw, GraduationCap } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { logger } from '@/utils/logger';
 
@@ -796,6 +796,63 @@ export const QuestionManager = () => {
 
   return (
     <div className="space-y-6">
+      {/* Course/Grade Selector Banner */}
+      <Card className={`border-2 ${filterExam !== 'all' ? 'border-primary bg-primary/5' : 'border-dashed border-muted-foreground/30'}`}>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-3">
+              <div className={`p-2 rounded-lg ${filterExam !== 'all' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                <GraduationCap className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">
+                  {filterExam !== 'all' ? `Viewing: ${filterExam} Questions` : 'All Courses / Grades'}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {filterExam !== 'all' 
+                    ? 'Questions are filtered for this course only'
+                    : 'Select a specific course to avoid mixing questions from different grades'
+                  }
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                variant={filterExam === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFilterExam('all')}
+              >
+                All
+              </Button>
+              <Button
+                variant={filterExam === 'JEE' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFilterExam('JEE')}
+              >
+                JEE
+              </Button>
+              <Button
+                variant={filterExam === 'NEET' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFilterExam('NEET')}
+              >
+                NEET
+              </Button>
+              {[6, 7, 8, 9, 10].map(grade => (
+                <Button
+                  key={grade}
+                  variant={filterExam === `Foundation-${grade}` ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setFilterExam(`Foundation-${grade}`)}
+                >
+                  {grade}th
+                </Button>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Header Actions */}
       <Card className="border-0 shadow-sm">
         <CardContent className="p-6">
