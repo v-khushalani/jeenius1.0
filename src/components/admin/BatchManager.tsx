@@ -22,9 +22,7 @@ import {
   GraduationCap,
   Loader2,
   Tag,
-  X,
-  Percent,
-  Star
+  X
 } from 'lucide-react';
 
 interface BatchSubject {
@@ -41,7 +39,6 @@ interface Batch {
   grade: number;
   exam_type: string;
   price: number;
-  offer_price: number | null;
   validity_days: number;
   is_active: boolean;
   color: string | null;
@@ -69,7 +66,6 @@ export const BatchManager: React.FC = () => {
     grade: 6,
     exam_type: 'Foundation',
     price: 999,
-    offer_price: null as number | null,
     validity_days: 365,
     is_active: true,
     color: '#3B82F6',
@@ -91,12 +87,7 @@ export const BatchManager: React.FC = () => {
         .order('display_order', { ascending: true });
 
       if (error) throw error;
-      // Map data to include offer_price which may exist from migration
-      const batchesWithOfferPrice: Batch[] = (data || []).map(batch => ({
-        ...batch,
-        offer_price: (batch as any).offer_price ?? null
-      }));
-      setBatches(batchesWithOfferPrice);
+      setBatches(data || []);
     } catch (error: any) {
       toast.error('Failed to fetch batches: ' + error.message);
     } finally {
@@ -117,7 +108,6 @@ export const BatchManager: React.FC = () => {
       grade: 6,
       exam_type: 'Foundation',
       price: 999,
-      offer_price: null,
       validity_days: 365,
       is_active: true,
       color: '#3B82F6',
@@ -135,7 +125,6 @@ export const BatchManager: React.FC = () => {
       grade: batch.grade,
       exam_type: batch.exam_type,
       price: batch.price,
-      offer_price: batch.offer_price,
       validity_days: batch.validity_days,
       is_active: batch.is_active,
       color: batch.color || '#3B82F6',
@@ -180,7 +169,6 @@ export const BatchManager: React.FC = () => {
             grade: formData.grade,
             exam_type: formData.exam_type,
             price: formData.price,
-            offer_price: formData.offer_price,
             validity_days: formData.validity_days,
             is_active: formData.is_active,
             color: formData.color,
@@ -222,7 +210,6 @@ export const BatchManager: React.FC = () => {
             grade: formData.grade,
             exam_type: formData.exam_type,
             price: formData.price,
-            offer_price: formData.offer_price,
             validity_days: formData.validity_days,
             is_active: formData.is_active,
             color: formData.color,
@@ -395,18 +382,7 @@ export const BatchManager: React.FC = () => {
                   <span className="text-sm text-muted-foreground">Price</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  {batch.offer_price ? (
-                    <>
-                      <span className="text-xs text-muted-foreground line-through">₹{batch.price}</span>
-                      <span className="text-sm font-semibold text-green-600">₹{batch.offer_price}</span>
-                      <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
-                        <Star className="w-3 h-3" />
-                        {Math.round(((batch.price - batch.offer_price) / batch.price) * 100)}% OFF
-                      </span>
-                    </>
-                  ) : (
-                    <span className="text-sm font-semibold">₹{batch.price}</span>
-                  )}
+                  <span className="text-sm font-semibold">₹{batch.price}</span>
                 </div>
               </div>
 
@@ -569,44 +545,15 @@ export const BatchManager: React.FC = () => {
             </div>
 
             {/* Pricing */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="price">Original Price (₹)</Label>
-                <Input
-                  id="price"
-                  type="number"
-                  value={formData.price}
-                  onChange={(e) => setFormData(prev => ({ ...prev, price: parseInt(e.target.value) || 0 }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="offer_price">Offer Price (₹) <span className="text-xs text-muted-foreground">Optional</span></Label>
-                <Input
-                  id="offer_price"
-                  type="number"
-                  value={formData.offer_price ?? ''}
-                  onChange={(e) => setFormData(prev => ({ 
-                    ...prev, 
-                    offer_price: e.target.value ? parseInt(e.target.value) : null 
-                  }))}
-                  placeholder="Leave empty for no discount"
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="price">Price (₹)</Label>
+              <Input
+                id="price"
+                type="number"
+                value={formData.price}
+                onChange={(e) => setFormData(prev => ({ ...prev, price: parseInt(e.target.value) || 0 }))}
+              />
             </div>
-
-            {formData.offer_price && formData.price > formData.offer_price && (
-              <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                <div className="flex items-center gap-2 text-green-700">
-                  <Percent className="w-4 h-4" />
-                  <span className="text-sm font-medium">
-                    {Math.round(((formData.price - formData.offer_price) / formData.price) * 100)}% discount
-                  </span>
-                  <span className="text-xs text-green-600">
-                    (Save ₹{formData.price - formData.offer_price})
-                  </span>
-                </div>
-              </div>
-            )}
 
             <div className="space-y-2">
               <Label htmlFor="validity">Validity (days)</Label>
