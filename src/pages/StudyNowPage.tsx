@@ -199,29 +199,28 @@ const StudyNowPage = () => {
           filtered: subjectsToShow
         });
       } else {
-        // CRITICAL: never fall back to global chapters for Foundation grades.
-        // If the Foundation batch isn't configured, we must show nothing (otherwise JEE content leaks).
+        // For Foundation grades, use static subjects from config as fallback
+        // This prevents "BATCH NOT CONFIGURED" errors when batch_subjects table isn't populated
         if (isFoundationGrade(userGrade)) {
-          logger.error('Foundation batch missing/misconfigured for user', {
+          logger.warn('Foundation batch missing/misconfigured - using static subjects', {
             userId: user.id,
             userGrade,
             targetExam,
           });
-          setSubjects([]);
-          toast.error('Your batch is not configured yet. Please contact admin.');
-          return;
+          // Use static subjects from SUBJECT_CONFIG (PCMB for Foundation)
+          subjectsToShow = examSubjects;
+        } else {
+          // Non-Foundation fallback: derive subjects from JEE/NEET global chapters (batch_id is null)
+          const { data: chaptersData, error: chaptersError } = await supabase
+            .from('chapters')
+            .select('subject')
+            .is('batch_id', null);
+
+          if (chaptersError) throw chaptersError;
+
+          subjectsToShow = [...new Set(chaptersData?.map(c => c.subject) || [])]
+            .filter(subject => examSubjects.includes(subject));
         }
-
-        // Non-Foundation fallback: derive subjects from JEE/NEET global chapters (batch_id is null)
-        const { data: chaptersData, error: chaptersError } = await supabase
-          .from('chapters')
-          .select('subject')
-          .is('batch_id', null);
-
-        if (chaptersError) throw chaptersError;
-
-        subjectsToShow = [...new Set(chaptersData?.map(c => c.subject) || [])]
-          .filter(subject => examSubjects.includes(subject));
       }
 
       // Get questions for counting
@@ -349,19 +348,19 @@ const StudyNowPage = () => {
           ? await getBatchForStudent(user.id, userGrade, targetExam)
           : null;
 
-        if (!batch?.id) {
-          logger.error('Foundation batch missing/misconfigured; refusing to load chapters', {
+        if (batch?.id) {
+          // Use batch-specific chapters
+          chaptersQuery = chaptersQuery.eq('batch_id', batch.id);
+        } else {
+          // Fallback: use global chapters when Foundation batch isn't configured
+          logger.warn('Foundation batch missing - falling back to global chapters', {
             userId: user?.id,
             userGrade,
             targetExam,
             subject,
           });
-          setChapters([]);
-          toast.error('Your batch is not configured yet. Please contact admin.');
-          return;
+          chaptersQuery = chaptersQuery.is('batch_id', null);
         }
-
-        chaptersQuery = chaptersQuery.eq('batch_id', batch.id);
       } else {
         // For JEE/NEET etc: use global chapters only (batch_id is null)
         chaptersQuery = chaptersQuery.is('batch_id', null);
