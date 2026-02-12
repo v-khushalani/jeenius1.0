@@ -39,6 +39,7 @@ interface Batch {
   grade: number;
   exam_type: string;
   price: number;
+  offer_price: number | null;
   validity_days: number;
   is_active: boolean;
   color: string | null;
@@ -66,6 +67,7 @@ export const BatchManager: React.FC = () => {
     grade: 6,
     exam_type: 'Foundation',
     price: 999,
+    offer_price: null as number | null,
     validity_days: 365,
     is_active: true,
     color: '#3B82F6',
@@ -87,7 +89,8 @@ export const BatchManager: React.FC = () => {
         .order('display_order', { ascending: true });
 
       if (error) throw error;
-      setBatches(data || []);
+      // Type assertion to handle offer_price which may be in DB but not yet in generated types
+      setBatches((data as Batch[]) || []);
     } catch (error: any) {
       toast.error('Failed to fetch batches: ' + error.message);
     } finally {
@@ -108,6 +111,7 @@ export const BatchManager: React.FC = () => {
       grade: 6,
       exam_type: 'Foundation',
       price: 999,
+      offer_price: null,
       validity_days: 365,
       is_active: true,
       color: '#3B82F6',
@@ -125,6 +129,7 @@ export const BatchManager: React.FC = () => {
       grade: batch.grade,
       exam_type: batch.exam_type,
       price: batch.price,
+      offer_price: batch.offer_price,
       validity_days: batch.validity_days,
       is_active: batch.is_active,
       color: batch.color || '#3B82F6',
@@ -169,6 +174,7 @@ export const BatchManager: React.FC = () => {
             grade: formData.grade,
             exam_type: formData.exam_type,
             price: formData.price,
+            offer_price: formData.offer_price,
             validity_days: formData.validity_days,
             is_active: formData.is_active,
             color: formData.color,
@@ -210,6 +216,7 @@ export const BatchManager: React.FC = () => {
             grade: formData.grade,
             exam_type: formData.exam_type,
             price: formData.price,
+            offer_price: formData.offer_price,
             validity_days: formData.validity_days,
             is_active: formData.is_active,
             color: formData.color,
@@ -382,7 +389,17 @@ export const BatchManager: React.FC = () => {
                   <span className="text-sm text-muted-foreground">Price</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold">₹{batch.price}</span>
+                  {batch.offer_price ? (
+                    <>
+                      <span className="text-xs text-muted-foreground line-through">₹{batch.price}</span>
+                      <span className="text-sm font-semibold text-green-600">₹{batch.offer_price}</span>
+                      <Badge variant="secondary" className="bg-green-100 text-green-700 text-xs">
+                        {Math.round(((batch.price - batch.offer_price) / batch.price) * 100)}% OFF
+                      </Badge>
+                    </>
+                  ) : (
+                    <span className="text-sm font-semibold">₹{batch.price}</span>
+                  )}
                 </div>
               </div>
 
@@ -545,14 +562,40 @@ export const BatchManager: React.FC = () => {
             </div>
 
             {/* Pricing */}
-            <div className="space-y-2">
-              <Label htmlFor="price">Price (₹)</Label>
-              <Input
-                id="price"
-                type="number"
-                value={formData.price}
-                onChange={(e) => setFormData(prev => ({ ...prev, price: parseInt(e.target.value) || 0 }))}
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="price">Original Price (₹)</Label>
+                <Input
+                  id="price"
+                  type="number"
+                  value={formData.price}
+                  onChange={(e) => setFormData(prev => ({ ...prev, price: parseInt(e.target.value) || 0 }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="offer_price">Offer Price (₹)</Label>
+                <div className="relative">
+                  <Input
+                    id="offer_price"
+                    type="number"
+                    value={formData.offer_price || ''}
+                    onChange={(e) => setFormData(prev => ({ 
+                      ...prev, 
+                      offer_price: e.target.value ? parseInt(e.target.value) : null 
+                    }))}
+                    placeholder="Leave empty for no offer"
+                    className={formData.offer_price ? 'border-green-500' : ''}
+                  />
+                  {formData.offer_price && formData.price > formData.offer_price && (
+                    <Badge className="absolute -top-2 -right-2 bg-green-500 text-white text-xs">
+                      {Math.round(((formData.price - formData.offer_price) / formData.price) * 100)}% OFF
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Set a discounted price to highlight offers
+                </p>
+              </div>
             </div>
 
             <div className="space-y-2">

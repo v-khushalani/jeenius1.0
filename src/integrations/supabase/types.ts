@@ -231,6 +231,7 @@ export type Database = {
           id: string
           is_active: boolean | null
           name: string
+          offer_price: number | null
           price: number
           slug: string
           updated_at: string | null
@@ -247,6 +248,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           name: string
+          offer_price?: number | null
           price?: number
           slug: string
           updated_at?: string | null
@@ -263,6 +265,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           name?: string
+          offer_price?: number | null
           price?: number
           slug?: string
           updated_at?: string | null

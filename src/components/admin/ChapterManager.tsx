@@ -3,24 +3,101 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { GripVertical, Lock, Unlock, BookOpen } from 'lucide-react';
+import { GripVertical, Lock, Unlock, BookOpen, GraduationCap, Plus, Edit, Trash2 } from 'lucide-react';
+import { logger } from '@/utils/logger';
+
+interface Batch {
+  id: string;
+  name: string;
+  exam_type: string;
+  grade: number;
+}
+
+interface Chapter {
+  id: string;
+  chapter_name: string;
+  chapter_number: number;
+  subject: string;
+  description: string | null;
+  is_free: boolean | null;
+  batch_id: string | null;
+}
 
 const ChapterManager = () => {
-  const [chapters, setChapters] = useState([]);
+  const [chapters, setChapters] = useState<Chapter[]>([]);
+  const [batches, setBatches] = useState<Batch[]>([]);
   const [selectedSubject, setSelectedSubject] = useState('Physics');
+  const [filterExam, setFilterExam] = useState('all');
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingChapter, setEditingChapter] = useState<Chapter | null>(null);
+  const [formData, setFormData] = useState({
+    chapter_name: '',
+    chapter_number: 1,
+    description: '',
+    is_free: true
+  });
+
+  useEffect(() => {
+    fetchBatches();
+  }, []);
 
   useEffect(() => {
     fetchChapters();
-  }, [selectedSubject]);
+  }, [selectedSubject, filterExam, batches]);
+
+  const fetchBatches = async () => {
+    const { data } = await supabase
+      .from('batches')
+      .select('id, name, exam_type, grade')
+      .order('grade');
+    setBatches(data || []);
+    logger.info('Fetched batches', { count: data?.length || 0 });
+  };
+
+  // Get batch_id for current filter
+  const getCurrentBatchId = (): string | null | 'NOT_FOUND' => {
+    if (filterExam === 'all' || filterExam === 'JEE' || filterExam === 'NEET') return null;
+    
+    if (filterExam.startsWith('Foundation-')) {
+      const grade = parseInt(filterExam.replace('Foundation-', ''));
+      const batch = batches.find(b => b.exam_type === 'Foundation' && b.grade === grade);
+      return batch?.id || 'NOT_FOUND';
+    }
+    
+    return null;
+  };
 
   const fetchChapters = async () => {
-    const { data } = await supabase
+    let query = supabase
       .from('chapters')
       .select('*')
       .eq('subject', selectedSubject)
       .order('chapter_number');
+
+    // Apply filter based on exam type
+    if (filterExam !== 'all') {
+      const batchId = getCurrentBatchId();
+      if (filterExam === 'JEE' || filterExam === 'NEET') {
+        // JEE/NEET: only show chapters with null batch_id
+        query = query.is('batch_id', null);
+      } else if (batchId && batchId !== 'NOT_FOUND') {
+        // Foundation: filter by specific batch_id
+        query = query.eq('batch_id', batchId);
+      } else if (batchId === 'NOT_FOUND') {
+        // Batch doesn't exist, return empty
+        setChapters([]);
+        return;
+      }
+    }
+
+    const { data } = await query;
     setChapters(data || []);
   };
 
@@ -32,7 +109,7 @@ const ChapterManager = () => {
     fetchChapters();
   };
 
-  const toggleFreeStatus = async (chapterId: string, currentStatus: boolean) => {
+  const toggleFreeStatus = async (chapterId: string, currentStatus: boolean | null) => {
     await supabase
       .from('chapters')
       .update({ is_free: !currentStatus })
@@ -40,36 +117,251 @@ const ChapterManager = () => {
     fetchChapters();
   };
 
-  const handleUpdateSuccess = () => {
-    toast.success('Chapter updated successfully');
+  const handleAddChapter = async () => {
+    if (!formData.chapter_name.trim()) {
+      toast.error('Please enter chapter name');
+      return;
+    }
+
+    const batchId = getCurrentBatchId();
+    const insertBatchId = (batchId && batchId !== 'NOT_FOUND') ? batchId : null;
+
+    const { error } = await supabase
+      .from('chapters')
+      .insert([{
+        chapter_name: formData.chapter_name,
+        chapter_number: formData.chapter_number,
+        description: formData.description || null,
+        subject: selectedSubject,
+        is_free: formData.is_free,
+        batch_id: insertBatchId
+      }]);
+
+    if (error) {
+      toast.error('Failed to add chapter');
+      logger.error('Failed to add chapter', error);
+      return;
+    }
+
+    toast.success('Chapter added successfully');
+    setIsAddDialogOpen(false);
+    resetForm();
     fetchChapters();
   };
 
-  const handleUpdateError = () => {
-    toast.error('Failed to update chapter');
+  const handleEditChapter = async () => {
+    if (!editingChapter || !formData.chapter_name.trim()) {
+      toast.error('Please fill in required fields');
+      return;
+    }
+
+    const { error } = await supabase
+      .from('chapters')
+      .update({
+        chapter_name: formData.chapter_name,
+        chapter_number: formData.chapter_number,
+        description: formData.description || null,
+        is_free: formData.is_free
+      })
+      .eq('id', editingChapter.id);
+
+    if (error) {
+      toast.error('Failed to update chapter');
+      logger.error('Failed to update chapter', error);
+      return;
+    }
+
+    toast.success('Chapter updated successfully');
+    setIsEditDialogOpen(false);
+    setEditingChapter(null);
+    resetForm();
+    fetchChapters();
+  };
+
+  const handleDeleteChapter = async (chapterId: string) => {
+    if (!confirm('Are you sure you want to delete this chapter?')) return;
+
+    const { error } = await supabase
+      .from('chapters')
+      .delete()
+      .eq('id', chapterId);
+
+    if (error) {
+      toast.error('Failed to delete chapter');
+      logger.error('Failed to delete chapter', error);
+      return;
+    }
+
+    toast.success('Chapter deleted successfully');
+    fetchChapters();
+  };
+
+  const openEditDialog = (chapter: Chapter) => {
+    setEditingChapter(chapter);
+    setFormData({
+      chapter_name: chapter.chapter_name,
+      chapter_number: chapter.chapter_number,
+      description: chapter.description || '',
+      is_free: chapter.is_free ?? true
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const resetForm = () => {
+    setFormData({
+      chapter_name: '',
+      chapter_number: 1,
+      description: '',
+      is_free: true
+    });
   };
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
+      {/* Course/Grade Selector Banner */}
+      <Card className={`border-2 ${filterExam !== 'all' ? 'border-primary bg-primary/5' : 'border-dashed border-muted-foreground/30'}`}>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-3">
+              <div className={`p-2 rounded-lg ${filterExam !== 'all' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                <GraduationCap className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">
+                  {filterExam !== 'all' ? `Viewing: ${filterExam} Chapters` : 'All Courses / Grades'}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {filterExam !== 'all' 
+                    ? 'Chapters are filtered for this course only'
+                    : 'Select a specific course to avoid mixing chapters from different grades'
+                  }
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                variant={filterExam === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFilterExam('all')}
+              >
+                All
+              </Button>
+              <Button
+                variant={filterExam === 'JEE' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFilterExam('JEE')}
+              >
+                JEE
+              </Button>
+              <Button
+                variant={filterExam === 'NEET' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFilterExam('NEET')}
+              >
+                NEET
+              </Button>
+              {[6, 7, 8, 9, 10].map(grade => (
+                <Button
+                  key={grade}
+                  variant={filterExam === `Foundation-${grade}` ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setFilterExam(`Foundation-${grade}`)}
+                >
+                  {grade}th
+                </Button>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BookOpen className="h-5 w-5" />
-            Chapter Management
-          </CardTitle>
-          <CardDescription>
-            Organize chapters and manage their availability
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <BookOpen className="h-5 w-5" />
+                Chapter Management
+              </CardTitle>
+              <CardDescription>
+                Organize chapters and manage their availability
+              </CardDescription>
+            </div>
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" onClick={resetForm}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Chapter
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>Add New Chapter</DialogTitle>
+                  <DialogDescription>
+                    Add a new chapter to {selectedSubject} {filterExam !== 'all' ? `for ${filterExam}` : ''}
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Chapter Number*</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={formData.chapter_number}
+                        onChange={(e) => setFormData({...formData, chapter_number: parseInt(e.target.value) || 1})}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Access</Label>
+                      <Select value={formData.is_free ? 'free' : 'premium'} onValueChange={(val) => setFormData({...formData, is_free: val === 'free'})}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="free">Free</SelectItem>
+                          <SelectItem value="premium">Premium</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Chapter Name*</Label>
+                    <Input
+                      value={formData.chapter_name}
+                      onChange={(e) => setFormData({...formData, chapter_name: e.target.value})}
+                      placeholder="e.g., Mechanics"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Description</Label>
+                    <Textarea
+                      value={formData.description}
+                      onChange={(e) => setFormData({...formData, description: e.target.value})}
+                      placeholder="Brief description of the chapter"
+                      rows={3}
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
+                  <Button onClick={handleAddChapter}>Add Chapter</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
         </CardHeader>
         <CardContent>
           {/* Subject Selector */}
-          <div className="flex gap-2 mb-6">
+          <div className="flex gap-2 mb-6 flex-wrap">
             {['Physics', 'Chemistry', 'Mathematics', 'Biology'].map(subject => (
               <Button
                 key={subject}
                 onClick={() => setSelectedSubject(subject)}
                 variant={selectedSubject === subject ? 'default' : 'outline'}
-                className={selectedSubject === subject ? 'bg-primary' : ''}
+                size="sm"
               >
                 {subject}
               </Button>
@@ -130,17 +422,96 @@ const ChapterManager = () => {
                     </div>
                   )}
                 </Badge>
+
+                {/* Edit/Delete Actions */}
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => openEditDialog(chapter)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => handleDeleteChapter(chapter.id)}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             ))}
             
             {chapters.length === 0 && (
               <div className="text-center py-8 text-muted-foreground">
-                No chapters found for {selectedSubject}
+                No chapters found for {selectedSubject} {filterExam !== 'all' ? `in ${filterExam}` : ''}
               </div>
             )}
           </div>
         </CardContent>
       </Card>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Chapter</DialogTitle>
+            <DialogDescription>
+              Update chapter details
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Chapter Number*</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={formData.chapter_number}
+                  onChange={(e) => setFormData({...formData, chapter_number: parseInt(e.target.value) || 1})}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Access</Label>
+                <Select value={formData.is_free ? 'free' : 'premium'} onValueChange={(val) => setFormData({...formData, is_free: val === 'free'})}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="free">Free</SelectItem>
+                    <SelectItem value="premium">Premium</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Chapter Name*</Label>
+              <Input
+                value={formData.chapter_name}
+                onChange={(e) => setFormData({...formData, chapter_name: e.target.value})}
+                placeholder="e.g., Mechanics"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Textarea
+                value={formData.description}
+                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                placeholder="Brief description of the chapter"
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleEditChapter}>Update Chapter</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

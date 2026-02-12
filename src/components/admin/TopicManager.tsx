@@ -9,13 +9,21 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { GripVertical, Lock, Unlock, BookOpen, Plus, Edit, Trash2, Layers } from 'lucide-react';
+import { GripVertical, Lock, Unlock, BookOpen, Plus, Edit, Trash2, Layers, GraduationCap } from 'lucide-react';
 import { logger } from '@/utils/logger';
+
+interface Batch {
+  id: string;
+  name: string;
+  exam_type: string;
+  grade: number;
+}
 
 interface Chapter {
   id: string;
   chapter_name: string;
   subject: string;
+  batch_id: string | null;
 }
 
 interface Topic {
@@ -33,8 +41,10 @@ interface Topic {
 const TopicManager = () => {
   const [topics, setTopics] = useState<Topic[]>([]);
   const [chapters, setChapters] = useState<Chapter[]>([]);
+  const [batches, setBatches] = useState<Batch[]>([]);
   const [selectedSubject, setSelectedSubject] = useState('Physics');
   const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
+  const [filterExam, setFilterExam] = useState('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingTopic, setEditingTopic] = useState<Topic | null>(null);
@@ -49,8 +59,12 @@ const TopicManager = () => {
   });
 
   useEffect(() => {
+    fetchBatches();
+  }, []);
+
+  useEffect(() => {
     fetchChapters();
-  }, [selectedSubject]);
+  }, [selectedSubject, filterExam, batches]);
 
   useEffect(() => {
     if (selectedChapter) {
@@ -58,12 +72,51 @@ const TopicManager = () => {
     }
   }, [selectedChapter]);
 
-  const fetchChapters = async () => {
+  const fetchBatches = async () => {
     const { data } = await supabase
+      .from('batches')
+      .select('id, name, exam_type, grade')
+      .order('grade');
+    setBatches(data || []);
+    logger.info('Fetched batches for topics', { count: data?.length || 0 });
+  };
+
+  // Get batch_id for current filter
+  const getCurrentBatchId = (): string | null | 'NOT_FOUND' => {
+    if (filterExam === 'all' || filterExam === 'JEE' || filterExam === 'NEET') return null;
+    
+    if (filterExam.startsWith('Foundation-')) {
+      const grade = parseInt(filterExam.replace('Foundation-', ''));
+      const batch = batches.find(b => b.exam_type === 'Foundation' && b.grade === grade);
+      return batch?.id || 'NOT_FOUND';
+    }
+    
+    return null;
+  };
+
+  const fetchChapters = async () => {
+    let query = supabase
       .from('chapters')
       .select('*')
       .eq('subject', selectedSubject)
       .order('chapter_number');
+
+    // Apply filter based on exam type
+    if (filterExam !== 'all') {
+      const batchId = getCurrentBatchId();
+      if (filterExam === 'JEE' || filterExam === 'NEET') {
+        query = query.is('batch_id', null);
+      } else if (batchId && batchId !== 'NOT_FOUND') {
+        query = query.eq('batch_id', batchId);
+      } else if (batchId === 'NOT_FOUND') {
+        setChapters([]);
+        setSelectedChapter(null);
+        setTopics([]);
+        return;
+      }
+    }
+
+    const { data } = await query;
     
     setChapters(data || []);
     if (data && data.length > 0) {
@@ -223,7 +276,64 @@ const TopicManager = () => {
   const selectedChapterData = chapters.find(c => c.id === selectedChapter);
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
+      {/* Course/Grade Selector Banner */}
+      <Card className={`border-2 ${filterExam !== 'all' ? 'border-primary bg-primary/5' : 'border-dashed border-muted-foreground/30'}`}>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-3">
+              <div className={`p-2 rounded-lg ${filterExam !== 'all' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                <GraduationCap className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">
+                  {filterExam !== 'all' ? `Viewing: ${filterExam} Topics` : 'All Courses / Grades'}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {filterExam !== 'all' 
+                    ? 'Topics are filtered for this course only'
+                    : 'Select a specific course to avoid mixing topics from different grades'
+                  }
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                variant={filterExam === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFilterExam('all')}
+              >
+                All
+              </Button>
+              <Button
+                variant={filterExam === 'JEE' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFilterExam('JEE')}
+              >
+                JEE
+              </Button>
+              <Button
+                variant={filterExam === 'NEET' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFilterExam('NEET')}
+              >
+                NEET
+              </Button>
+              {[6, 7, 8, 9, 10].map(grade => (
+                <Button
+                  key={grade}
+                  variant={filterExam === `Foundation-${grade}` ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setFilterExam(`Foundation-${grade}`)}
+                >
+                  {grade}th
+                </Button>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
