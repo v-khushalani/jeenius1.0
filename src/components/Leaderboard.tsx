@@ -1,5 +1,5 @@
 // src/components/Leaderboard.tsx
-// ✅ FIXED - Uses leaderboard_safe view for all users + profiles for current user
+// ✅ FIXED - Uses profiles table directly for leaderboard data
 
 import React, { useState, useEffect, useCallback } from "react";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
@@ -39,84 +39,65 @@ const Leaderboard: React.FC = () => {
       if (showLoader) setLoading(true);
       else setIsRefreshing(true);
 
-      // ✅ Use leaderboard_safe view which bypasses RLS for public leaderboard data
-      const { data: leaderboardData, error: leaderboardError } = await supabase
-        .from('leaderboard_safe')
-        .select('*')
+      // ✅ Fetch all profiles directly - this works with RLS for leaderboard display
+      const { data: profiles, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url, total_points, total_questions_answered, overall_accuracy, current_streak')
         .order('total_points', { ascending: false })
-        .limit(50);
+        .limit(100);
 
-      if (leaderboardError) {
-        logger.error('Leaderboard view fetch error:', leaderboardError);
-        // Fallback to profiles if view fails
-        const { data: profiles, error: profileError } = await supabase
-          .from('profiles')
-          .select('id, full_name, avatar_url, total_points, total_questions_answered, overall_accuracy, current_streak');
-        
-        if (profileError) {
-          logger.error('Profile fetch fallback error:', profileError);
-          return;
-        }
-        
-        // Process fallback data
-        processProfileData(profiles || []);
+      if (profileError) {
+        logger.error('Profile fetch error:', profileError);
+        setLoading(false);
         return;
       }
 
-      if (!leaderboardData || leaderboardData.length === 0) {
-        logger.info('No leaderboard data found');
+      if (!profiles || profiles.length === 0) {
+        logger.info('No profiles found');
         setTopUsers([]);
         setCurrentUser(null);
         setLoading(false);
         return;
       }
 
-      logger.info('Fetched leaderboard', { count: leaderboardData.length });
+      logger.info('Fetched profiles for leaderboard', { count: profiles.length });
 
-      // Also fetch additional stats for users (total_questions, accuracy)
-      const userIds = leaderboardData.map(u => u.id).filter(Boolean);
-      
-      // Fetch question counts from profiles (these columns exist)
-      const { data: profileStats } = await supabase
-        .from('profiles')
-        .select('id, total_questions_answered, overall_accuracy')
-        .in('id', userIds);
-
-      const statsMap = new Map(profileStats?.map(p => [p.id, p]) || []);
-
-      // Build user stats from leaderboard view + profile stats
+      // Build user stats from profile data
       const userStats: LeaderboardUser[] = [];
       
-      leaderboardData.forEach((entry, index) => {
-        if (!entry.id) return;
+      profiles.forEach((profile) => {
+        if (!profile.id) return;
         
-        const profileStat = statsMap.get(entry.id);
-        const points = entry.total_points || 0;
-        const streak = entry.current_streak || 0;
-        const totalQuestions = profileStat?.total_questions_answered || 0;
-        const accuracy = profileStat?.overall_accuracy || 0;
+        const points = profile.total_points || 0;
+        const streak = profile.current_streak || 0;
+        const totalQuestions = profile.total_questions_answered || 0;
+        const accuracy = profile.overall_accuracy || 0;
 
         // Filter based on activity for non-alltime filters
         if (timeFilter !== 'alltime' && points === 0 && totalQuestions === 0) {
           return;
         }
 
+        // Include all users with any activity
+        if (points === 0 && totalQuestions === 0) {
+          return;
+        }
+
         userStats.push({
-          id: entry.id,
-          full_name: entry.full_name || 'Anonymous User',
-          avatar_url: entry.avatar_url || undefined,
+          id: profile.id,
+          full_name: profile.full_name || 'Anonymous User',
+          avatar_url: profile.avatar_url || undefined,
           total_questions: totalQuestions,
           accuracy: Math.round(accuracy),
           total_points: points,
           streak: streak,
-          rank: entry.rank_position || (index + 1),
+          rank: 0,
           rank_change: Math.floor(Math.random() * 5) - 2,
-          questions_today: 0,
-          level: entry.level || undefined
+          questions_today: 0
         });
       });
 
-      // Re-sort by points to ensure consistency
+      // Sort by points first, then questions
       userStats.sort((a, b) => {
         if (b.total_points !== a.total_points) {
           return b.total_points - a.total_points;
@@ -124,7 +105,7 @@ const Leaderboard: React.FC = () => {
         return b.total_questions - a.total_questions;
       });
 
-      // Re-assign ranks after sorting
+      // Assign ranks after sorting
       userStats.forEach((user, index) => {
         user.rank = index + 1;
       });
@@ -147,43 +128,6 @@ const Leaderboard: React.FC = () => {
       else setIsRefreshing(false);
     }
   }, [timeFilter, user?.id]);
-
-  const processProfileData = (profiles: any[]) => {
-    const userStats: LeaderboardUser[] = [];
-    
-    profiles.forEach(profile => {
-      const totalQuestions = profile.total_questions_answered || 0;
-      const accuracy = profile.overall_accuracy || 0;
-      const points = profile.total_points || 0;
-      const streak = profile.current_streak || 0;
-
-      if (totalQuestions === 0 && points === 0) return;
-
-      userStats.push({
-        id: profile.id,
-        full_name: profile.full_name || 'Anonymous User',
-        avatar_url: profile.avatar_url,
-        total_questions: totalQuestions,
-        accuracy: Math.round(accuracy),
-        total_points: points,
-        streak: streak,
-        rank: 0,
-        rank_change: 0,
-        questions_today: 0
-      });
-    });
-
-    userStats.sort((a, b) => b.total_points - a.total_points || b.total_questions - a.total_questions);
-    userStats.forEach((user, index) => {
-      user.rank = index + 1;
-      user.rank_change = Math.floor(Math.random() * 5) - 2;
-    });
-
-    const current = userStats.find(u => u.id === user?.id);
-    setCurrentUser(current || null);
-    setTopUsers(userStats.slice(0, 10));
-    setLoading(false);
-  };
 
   useEffect(() => {
     fetchLeaderboard(true);

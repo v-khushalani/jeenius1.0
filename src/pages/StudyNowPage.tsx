@@ -314,6 +314,9 @@ const StudyNowPage = () => {
   };
 
   const loadChapters = async (subject) => {
+    // Prevent multiple clicks while loading
+    if (loading) return;
+    
     setLoading(true);
     setSelectedSubject(subject);
 
@@ -430,6 +433,9 @@ const StudyNowPage = () => {
   };
 
   const loadTopics = async (chapter) => {
+    // Prevent multiple clicks while loading
+    if (loading) return;
+    
     setLoading(true);
     setSelectedChapter(chapter);
 
@@ -510,6 +516,9 @@ const StudyNowPage = () => {
   };
 
   const startPractice = async (topic = null) => {
+    // Prevent multiple clicks while loading
+    if (loading) return;
+    
     setLoading(true);
     setSelectedTopic(topic);
     setQuestionStartTime(Date.now());

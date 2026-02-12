@@ -223,6 +223,9 @@ export class StreakService {
   }
 
   static async getStreakStatus(userId: string) {
+    // First check and reset streak if user missed a day
+    await this.checkAndResetStreak(userId);
+    
     const { data: profile } = await supabase
       .from('profiles')
       .select('current_streak, longest_streak, streak_freeze_available')
@@ -282,6 +285,70 @@ export class StreakService {
       .from('profiles')
       .update({ streak_freeze_available: true })
       .eq('streak_freeze_available', false);
+  }
+
+  /**
+   * Check if user missed a day and reset streak to 0 if they did.
+   * This should be called when user logs in or loads streak data.
+   */
+  static async checkAndResetStreak(userId: string) {
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('current_streak, last_activity_date, streak_freeze_available')
+        .eq('id', userId)
+        .single();
+
+      if (!profile || !profile.last_activity_date) return;
+
+      const today = new Date();
+      const todayString = today.toISOString().split('T')[0];
+      const lastActivityDate = profile.last_activity_date;
+
+      // If last activity was today, no need to reset
+      if (lastActivityDate === todayString) return;
+
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayString = yesterday.toISOString().split('T')[0];
+
+      // If last activity was yesterday, streak is still valid
+      if (lastActivityDate === yesterdayString) return;
+
+      // Calculate days since last activity
+      const lastActivity = new Date(lastActivityDate);
+      const daysSinceLastActivity = Math.floor(
+        (today.getTime() - lastActivity.getTime()) / (1000 * 60 * 60 * 24)
+      );
+
+      // If user has streak freeze and only missed 1 day (daysSinceLastActivity === 2), keep streak
+      if (daysSinceLastActivity === 2 && profile.streak_freeze_available) {
+        logger.info('Streak freeze available but not auto-used until user completes target');
+        return;
+      }
+
+      // User missed more than 1 day (or 2 days without freeze) - reset streak to 0
+      if (daysSinceLastActivity > 1) {
+        // Only reset if the current streak isn't already 0
+        if (profile.current_streak > 0) {
+          logger.info('Streak broken - resetting to 0', {
+            userId,
+            daysSinceLastActivity,
+            lastActivityDate,
+            previousStreak: profile.current_streak
+          });
+
+          await supabase
+            .from('profiles')
+            .update({
+              current_streak: 0
+            })
+            .eq('id', userId);
+        }
+      }
+    } catch (error) {
+      logger.error('Error checking streak reset:', error);
+    }
   }
 }
 

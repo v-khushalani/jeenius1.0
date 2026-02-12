@@ -164,22 +164,28 @@ export const BatchManager: React.FC = () => {
     setSaving(true);
     try {
       if (editingBatch) {
-        // Update batch
+        // Update batch - build update object dynamically to handle missing columns
+        const updateData: Record<string, any> = {
+          name: formData.name,
+          slug: formData.slug,
+          description: formData.description || null,
+          grade: formData.grade,
+          exam_type: formData.exam_type,
+          price: formData.price,
+          validity_days: formData.validity_days,
+          is_active: formData.is_active,
+          color: formData.color,
+          updated_at: new Date().toISOString()
+        };
+        
+        // Only include offer_price if column exists (migration applied)
+        if (formData.offer_price !== undefined) {
+          updateData.offer_price = formData.offer_price;
+        }
+        
         const { error: batchError } = await supabase
           .from('batches')
-          .update({
-            name: formData.name,
-            slug: formData.slug,
-            description: formData.description || null,
-            grade: formData.grade,
-            exam_type: formData.exam_type,
-            price: formData.price,
-            offer_price: formData.offer_price,
-            validity_days: formData.validity_days,
-            is_active: formData.is_active,
-            color: formData.color,
-            updated_at: new Date().toISOString()
-          })
+          .update(updateData)
           .eq('id', editingBatch.id);
 
         if (batchError) throw batchError;
@@ -206,22 +212,28 @@ export const BatchManager: React.FC = () => {
 
         toast.success('Batch updated successfully');
       } else {
-        // Create new batch
+        // Create new batch - build insert object dynamically
+        const insertData: Record<string, any> = {
+          name: formData.name,
+          slug: formData.slug,
+          description: formData.description || null,
+          grade: formData.grade,
+          exam_type: formData.exam_type,
+          price: formData.price,
+          validity_days: formData.validity_days,
+          is_active: formData.is_active,
+          color: formData.color,
+          display_order: batches.length + 1
+        };
+        
+        // Only include offer_price if set
+        if (formData.offer_price !== undefined && formData.offer_price !== null) {
+          insertData.offer_price = formData.offer_price;
+        }
+        
         const { data: newBatch, error: batchError } = await supabase
           .from('batches')
-          .insert({
-            name: formData.name,
-            slug: formData.slug,
-            description: formData.description || null,
-            grade: formData.grade,
-            exam_type: formData.exam_type,
-            price: formData.price,
-            offer_price: formData.offer_price,
-            validity_days: formData.validity_days,
-            is_active: formData.is_active,
-            color: formData.color,
-            display_order: batches.length + 1
-          })
+          .insert(insertData)
           .select()
           .single();
 

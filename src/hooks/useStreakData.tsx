@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { logger } from '@/utils/logger';
+import StreakService from '@/services/streakService';
 
 export const useStreakData = () => {
   const { user } = useAuth();
@@ -42,7 +43,10 @@ export const useStreakData = () => {
     if (!user?.id) return;
 
     try {
-    const { data } = await supabase
+      // First check and reset streak if broken
+      await StreakService.checkAndResetStreak(user.id);
+      
+      const { data } = await supabase
         .from('profiles')
         .select('current_streak')
         .eq('id', user.id)
