@@ -279,6 +279,51 @@ export class PointsService {
     const rank = allUsers.findIndex(u => u.id === userId) + 1;
     return rank;
   }
+
+  /**
+   * Update user's question stats (total_questions_answered, correct_answers, overall_accuracy)
+   * Call this after each question attempt to keep leaderboard stats up to date
+   */
+  static async updateUserQuestionStats(userId: string, isCorrect: boolean): Promise<boolean> {
+    try {
+      // Get current stats
+      const { data: profile, error: fetchError } = await supabase
+        .from('profiles')
+        .select('total_questions_answered, correct_answers, overall_accuracy')
+        .eq('id', userId)
+        .single();
+
+      if (fetchError || !profile) {
+        logger.error('Failed to fetch profile for stats update:', fetchError);
+        return false;
+      }
+
+      const totalQuestions = (profile.total_questions_answered || 0) + 1;
+      const correctAnswers = (profile.correct_answers || 0) + (isCorrect ? 1 : 0);
+      const accuracy = totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
+
+      // Update profile with new stats
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          total_questions_answered: totalQuestions,
+          correct_answers: correctAnswers,
+          overall_accuracy: Math.round(accuracy * 100) / 100 // Round to 2 decimal places
+        })
+        .eq('id', userId);
+
+      if (updateError) {
+        logger.error('Failed to update user question stats:', updateError);
+        return false;
+      }
+
+      logger.info('User question stats updated', { userId, totalQuestions, correctAnswers, accuracy });
+      return true;
+    } catch (error) {
+      logger.error('Error updating user question stats:', error);
+      return false;
+    }
+  }
 }
 
 export default PointsService;

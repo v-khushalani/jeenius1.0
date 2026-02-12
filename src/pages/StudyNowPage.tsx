@@ -748,7 +748,10 @@ const handleAnswer = async (answer: string) => {
         question.difficulty,
         isCorrect,
         timeSpent
-      )
+      ),
+      
+      // Update user question stats (total_questions_answered, accuracy) for leaderboard
+      PointsService.updateUserQuestionStats(user.id, isCorrect)
     ]);
 
     // Update adaptive level and topic mastery (NON-BLOCKING)

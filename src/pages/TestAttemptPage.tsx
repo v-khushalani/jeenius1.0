@@ -23,6 +23,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { logger } from "@/utils/logger";
 import { toast } from "sonner";
 import { MathDisplay } from "@/components/admin/MathDisplay";
+import PointsService from "@/services/pointsService";
 import 'katex/dist/katex.min.css';
 
 interface Question {
@@ -216,6 +217,9 @@ const TestAttemptPage = () => {
               _question_id: question.id,
               _user_answer: userAnswer.selectedOption
             });
+            
+            // Update user question stats (total_questions_answered, accuracy) for leaderboard
+            await PointsService.updateUserQuestionStats(user.id, isCorrect);
           } catch (validationError) {
             logger.error('Error saving answer:', validationError);
           }
