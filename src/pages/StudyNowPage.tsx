@@ -200,17 +200,16 @@ const StudyNowPage = () => {
           filtered: subjectsToShow
         });
       } else {
-        // For Foundation grades, require batch subscription - no fallback
+        // No batch configured - use static subjects from config
+        // Free users can access with daily limits (15 questions/day)
         if (isFoundationGrade(userGrade)) {
-          logger.warn('Foundation batch not configured/purchased', {
+          logger.info('Foundation - using static subjects (no batch)', {
             userId: user.id,
             userGrade,
             targetExam,
           });
-          toast.error('Please purchase Foundation batch to access content');
-          setShowUpgradeModal(true);
-          setLoading(false);
-          return;
+          // Use static subjects for Foundation (PCMB)
+          subjectsToShow = examSubjects;
         } else {
           // Non-Foundation fallback: derive subjects from JEE/NEET global chapters (batch_id is null)
           const { data: chaptersData, error: chaptersError } = await supabase
@@ -354,17 +353,14 @@ const StudyNowPage = () => {
           // Use batch-specific chapters
           chaptersQuery = chaptersQuery.eq('batch_id', batch.id);
         } else {
-          // Foundation requires batch subscription - show message instead of JEE fallback
-          logger.warn('Foundation batch not configured/purchased', {
+          // Foundation without batch: use global chapters (free tier with limits)
+          logger.info('Foundation - using global chapters (free tier)', {
             userId: user?.id,
             userGrade,
             targetExam,
             subject,
           });
-          toast.error('Please purchase Foundation batch to access content');
-          setShowUpgradeModal(true);
-          setLoading(false);
-          return;
+          chaptersQuery = chaptersQuery.is('batch_id', null);
         }
       } else {
         // For JEE/NEET etc: use global chapters only (batch_id is null)
