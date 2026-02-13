@@ -78,18 +78,25 @@ const ChapterManager = () => {
     logger.info('Fetched batches', { count: data?.length || 0 });
   };
 
-  // Get batch_id for current filter
-  const getCurrentBatchId = (): string | null | 'NOT_FOUND' => {
-    if (filterExam === 'JEE' || filterExam === 'NEET') return null;
+  // Get batch_id for current filter - ALL chapters must be linked to a batch
+  const getCurrentBatchId = (): string | 'NOT_FOUND' => {
+    if (filterExam === 'JEE') {
+      const batch = batches.find(b => b.exam_type.toLowerCase() === 'jee');
+      return batch?.id || 'NOT_FOUND';
+    }
+    
+    if (filterExam === 'NEET') {
+      const batch = batches.find(b => b.exam_type.toLowerCase() === 'neet');
+      return batch?.id || 'NOT_FOUND';
+    }
     
     if (filterExam.startsWith('Foundation-')) {
       const grade = parseInt(filterExam.replace('Foundation-', ''));
-      // Use lowercase 'foundation' to match DB
       const batch = batches.find(b => b.exam_type.toLowerCase() === 'foundation' && b.grade === grade);
       return batch?.id || 'NOT_FOUND';
     }
     
-    return null;
+    return 'NOT_FOUND';
   };
 
   // Get batch name for display
@@ -101,27 +108,20 @@ const ChapterManager = () => {
   };
 
   const fetchChapters = async () => {
-    let query = supabase
-      .from('chapters')
-      .select('*')
-      .eq('subject', selectedSubject)
-      .order('chapter_number');
-
-    // Apply filter based on exam type
     const batchId = getCurrentBatchId();
-    if (filterExam === 'JEE' || filterExam === 'NEET') {
-      // JEE/NEET: only show chapters with null batch_id
-      query = query.is('batch_id', null);
-    } else if (batchId && batchId !== 'NOT_FOUND') {
-      // Foundation: filter by specific batch_id
-      query = query.eq('batch_id', batchId);
-    } else if (batchId === 'NOT_FOUND') {
-      // Batch doesn't exist, return empty
+    
+    if (batchId === 'NOT_FOUND') {
       setChapters([]);
       return;
     }
+    
+    const { data } = await supabase
+      .from('chapters')
+      .select('*')
+      .eq('subject', selectedSubject)
+      .eq('batch_id', batchId)
+      .order('chapter_number');
 
-    const { data } = await query;
     setChapters(data || []);
   };
 
@@ -148,7 +148,11 @@ const ChapterManager = () => {
     }
 
     const batchId = getCurrentBatchId();
-    const insertBatchId = (batchId && batchId !== 'NOT_FOUND') ? batchId : null;
+    
+    if (batchId === 'NOT_FOUND') {
+      toast.error('Please select a valid course first');
+      return;
+    }
 
     const { error } = await supabase
       .from('chapters')
@@ -158,7 +162,7 @@ const ChapterManager = () => {
         description: formData.description || null,
         subject: selectedSubject,
         is_free: formData.is_free,
-        batch_id: insertBatchId
+        batch_id: batchId
       }]);
 
     if (error) {
