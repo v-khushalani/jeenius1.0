@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import LoadingScreen from '@/components/ui/LoadingScreen';
-import { ChevronRight, Calendar, BookOpen, Stethoscope, Calculator, Clock, Rocket, Trophy, Target, Sparkles, AlertTriangle, ArrowLeft } from 'lucide-react';
+import { ChevronRight, Calendar, BookOpen, Stethoscope, Calculator, Clock, Rocket, Trophy, Target, Sparkles, AlertTriangle, ArrowLeft, Lock } from 'lucide-react';
 import { logger } from '@/utils/logger';
 import { toast } from 'sonner';
 import GoalChangeWarning from '@/components/GoalChangeWarning';
@@ -28,10 +28,10 @@ const GoalSelectionPage = () => {
 
   // Calculate exam dates and days remaining (only JEE and NEET for 11-12)
   const examDates: Record<string, string | null> = {
-    'JEE Main': '2025-04-10',
-    'JEE Advanced': '2025-05-25',
-    'JEE': '2025-04-10',
-    'NEET': '2025-05-05',
+    'JEE Main': '2026-04-10',
+    'JEE Advanced': '2026-05-25',
+    'JEE': '2026-04-10',
+    'NEET': '2026-05-05',
     'Class': null // No fixed exam date for grades 6-10
   };
 
@@ -90,12 +90,19 @@ const GoalSelectionPage = () => {
 
   useEffect(() => {
     if (selectedGoal && examDates[selectedGoal]) {
-      const today = new Date();
-      const exam = new Date(examDates[selectedGoal]);
-      const timeDiff = exam.getTime() - today.getTime();
-      const days = Math.ceil(timeDiff / (1000 * 3600 * 24));
-      setDaysRemaining(days > 0 ? days : 0);
-      setExamDate(examDates[selectedGoal]);
+      const examDateStr = examDates[selectedGoal];
+      if (examDateStr) {
+        const today = new Date();
+        const exam = new Date(examDateStr);
+        const timeDiff = exam.getTime() - today.getTime();
+        const days = Math.ceil(timeDiff / (1000 * 3600 * 24));
+        setDaysRemaining(days > 0 ? days : 0);
+        setExamDate(examDateStr);
+      }
+    } else {
+      // Reset exam date info for goals without fixed dates (like Class)
+      setDaysRemaining(0);
+      setExamDate('');
     }
   }, [selectedGoal]);
 
@@ -381,12 +388,12 @@ const GoalSelectionPage = () => {
                       </div>
                       <h3 className="text-xl md:text-2xl font-bold mb-2" style={{color: '#013062'}}>{goal.name}</h3>
                       
-                      {examDates[goal.id] && selectedGoal === goal.id && (
+                      {examDate && examDates[goal.id] && selectedGoal === goal.id && (
                         <div className="mt-4 p-3 rounded-lg" style={{backgroundColor: '#f8fafc', border: '1px solid #e2e8f0'}}>
                           <div className="flex items-center justify-between text-sm">
                             <div className="flex items-center">
                               <Calendar className="w-4 h-4 mr-2" style={{color: '#013062'}} />
-                              <span style={{color: '#013062'}}>Exam Date: {new Date(examDate).toLocaleDateString()}</span>
+                              <span style={{color: '#013062'}}>Exam Date: {examDate ? new Date(examDate).toLocaleDateString() : 'Not set'}</span>
                             </div>
                             <div className="flex items-center font-bold" style={{color: '#dc2626'}}>
                               <Clock className="w-4 h-4 mr-1" />

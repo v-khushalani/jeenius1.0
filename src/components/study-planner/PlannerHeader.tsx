@@ -84,7 +84,7 @@ export function PlannerHeader({
               <p className="text-xs text-white/70 mb-1">Target Exam</p>
               <p className="text-lg font-bold">{targetExam}</p>
               <p className="text-xs text-white/60">
-                {new Date(examDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                {examDate ? new Date(examDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Not set'}
               </p>
             </div>
             <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm">

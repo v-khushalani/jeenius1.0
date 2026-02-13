@@ -55,9 +55,11 @@ export function useStudyPlanner() {
 
   // Calculate days to exam
   const calculateDaysToExam = useCallback((examDate: string) => {
+    if (!examDate) return 365; // Default 1 year if no exam date
     const exam = new Date(examDate);
     const today = new Date();
-    return Math.ceil((exam.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    const days = Math.ceil((exam.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    return days > 0 ? days : 0;
   }, []);
 
   // Generate plan from local algorithm (instant)
