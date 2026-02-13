@@ -847,6 +847,36 @@ const handleAnswer = async (answer: string) => {
             </div>
 
             {!isPro && (
+            {/* 80% Usage Interactive Nudge - Show when between 75%-95% usage */}
+            {!isPro && dailyQuestionsUsed >= Math.floor(dailyLimit * 0.75) && dailyQuestionsUsed < dailyLimit && (
+              <Card className="mb-3 sm:mb-4 bg-gradient-to-r from-amber-50 via-orange-50 to-red-50 border-2 border-amber-300 shadow-xl animate-pulse">
+                <CardContent className="p-3 sm:p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="shrink-0 w-12 h-12 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center animate-bounce">
+                      <span className="text-2xl">⚡</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-amber-900">
+                        🔥 You're on fire! {dailyQuestionsUsed}/{dailyLimit} questions done!
+                      </p>
+                      <p className="text-xs text-amber-700 mt-0.5">
+                        Only {dailyLimit - dailyQuestionsUsed} left today. Unlock unlimited for just ₹1.37/day!
+                      </p>
+                    </div>
+                    <Button
+                      onClick={() => setShowUpgradeModal(true)}
+                      className="shrink-0 bg-gradient-to-r from-amber-500 to-orange-600 text-white px-3 py-2 text-sm shadow-lg hover:shadow-xl transform hover:scale-105 transition-all"
+                    >
+                      <Zap className="w-4 h-4 mr-1" />
+                      Go Pro
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Daily Counter - Only show when not in 80% nudge range */}
+            {!isPro && dailyQuestionsUsed < Math.floor(dailyLimit * 0.75) && (
               <Card className="mb-3 sm:mb-4 bg-gradient-to-r from-orange-50 to-yellow-50 border-orange-200 shadow-lg">
                 <CardContent className="p-2 sm:p-3">
                   <div className="flex items-center justify-between gap-2 sm:gap-3">
@@ -864,11 +894,7 @@ const handleAnswer = async (answer: string) => {
                         />
                       </div>
                       <div className="text-[10px] sm:text-xs text-orange-700 mt-1 sm:mt-2 truncate">
-                        {dailyQuestionsUsed >= dailyLimit - 5 ? (
-                          <span className="font-semibold">⚠️ Almost at limit!</span>
-                        ) : (
-                          <span>Upgrade for unlimited!</span>
-                        )}
+                        <span>Upgrade for unlimited!</span>
                       </div>
                     </div>
 

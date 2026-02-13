@@ -1,6 +1,7 @@
-import React, { useEffect } from 'react';
-import { X, Crown, Check, Sparkles } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Crown, Check, Sparkles, Zap, MessageCircle, Flame, Share2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { FREE_LIMITS, SUBSCRIPTION_PLANS } from '@/config/subscriptionPlans';
 
 const PricingModal = ({ 
   isOpen, 
@@ -9,47 +10,55 @@ const PricingModal = ({
   userStats = {}
 }) => {
   const navigate = useNavigate();
+  const [billingCycle, setBillingCycle] = useState('yearly');
 
   const limitMessages = {
     daily_limit: {
-      title: "Daily Limit Reached! 🎯",
-      message: "You've used all 15 questions today. Come back tomorrow or upgrade to Pro for unlimited access!",
-      icon: "📚",
-      urgency: "medium"
+      badge: "🔥 STEAL DEAL",
+      title: "Upgrade to Pro",
+      subtitle: "Unlimited access to everything!"
     },
     daily_limit_reached: {
-      title: "Daily Limit Reached! 🎯",
-      message: "You've used all 15 questions today. Come back tomorrow or upgrade to Pro for unlimited access!",
-      icon: "📚",
-      urgency: "high"
+      badge: "⏰ LIMIT REACHED",
+      title: "Upgrade to Pro",
+      subtitle: "Continue practicing without limits!"
     },
     test_limit: {
-      title: "Test Limit Reached! 📝",
-      message: "You've taken 2 tests this month. Upgrade to Pro for unlimited tests!",
-      icon: "🧪",
-      urgency: "high"
+      badge: "📝 TEST LIMIT",
+      title: "Upgrade to Pro",
+      subtitle: "Unlimited mock tests await!"
     },
     ai_doubt_locked: {
-      title: "AI Doubt Solver - Pro Feature 🤖",
-      message: "Get instant doubt solving with AI assistant available 24/7!",
-      icon: "🤖",
-      urgency: "medium"
+      badge: "🤖 AI FEATURE",
+      title: "Unlock JEEnie AI",
+      subtitle: "Your personal AI tutor 24/7"
     },
     study_planner_blocked: {
-      title: "AI Study Planner - Pro Feature 📅",
-      message: "Get a smart study plan that adapts to your progress and exam date!",
-      icon: "📅",
-      urgency: "medium"
+      badge: "📅 AI FEATURE",
+      title: "Unlock Study Planner",
+      subtitle: "Smart planning for better results"
     },
     almost_there: {
-      title: "Almost at Your Limit! ⚡",
-      message: "Just 3 questions left today. Want unlimited practice? Upgrade now!",
-      icon: "⚡",
-      urgency: "low"
+      badge: "⚡ 80% USED",
+      title: "Running Low!",
+      subtitle: "Get unlimited access now"
     }
   };
 
   const message = limitMessages[limitType] || limitMessages.daily_limit;
+  
+  const pricing = {
+    monthly: { price: 99, originalPrice: 149, perDay: '₹3.3' },
+    yearly: { price: 499, originalPrice: 1188, perDay: '₹1.37', savings: 689 }
+  };
+
+  const comparison = [
+    { feature: 'Questions/Day', free: FREE_LIMITS.questionsPerDay.toString(), pro: '∞' },
+    { feature: 'Mock Tests', free: `${FREE_LIMITS.testsPerMonth}/mo`, pro: '∞' },
+    { feature: 'JEEnie AI', free: false, pro: true },
+    { feature: 'Study Planner', free: false, pro: true },
+    { feature: 'Analytics', free: false, pro: true },
+  ];
 
   useEffect(() => {
     if (isOpen) {
@@ -80,113 +89,159 @@ const PricingModal = ({
       onClick={onClose}
     >
       <div 
-        className="bg-white rounded-2xl w-full max-w-md shadow-2xl animate-in zoom-in duration-200 max-h-[90vh] overflow-y-auto"
+        className="bg-gradient-to-b from-slate-50 to-white rounded-2xl w-full max-w-md shadow-2xl animate-in zoom-in duration-200 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Close Button */}
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 transition p-2 rounded-full hover:bg-white/50 z-20"
+          aria-label="Close modal"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
         {/* Header */}
-        <div className="sticky top-0 bg-gradient-to-br from-green-50 to-emerald-50 p-4 sm:p-6 border-b border-gray-200 relative z-10">
-          <button
-            onClick={onClose}
-            className="absolute top-3 right-3 sm:top-4 sm:right-4 text-gray-400 hover:text-gray-600 transition p-1 rounded-full hover:bg-white/50"
-            aria-label="Close modal"
-          >
-            <X className="w-5 h-5" />
-          </button>
-          <div className="text-center pr-8">
-            <div className="text-4xl sm:text-5xl mb-2 sm:mb-3 animate-bounce">{message.icon}</div>
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 leading-tight">
-              {message.title}
-            </h2>
-          </div>
+        <div className="text-center pt-6 pb-4 px-6 relative">
+          <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 text-xs font-bold px-3 py-1 rounded-full mb-3">
+            <Flame className="w-3 h-3" />
+            {message.badge}
+          </span>
+          <h2 className="text-2xl font-bold text-gray-900 mb-1">
+            {message.title}
+          </h2>
+          <p className="text-gray-500 text-sm">
+            {billingCycle === 'yearly' 
+              ? `Just ${pricing.yearly.perDay}/day — Cheaper than a samosa!` 
+              : `Just ${pricing.monthly.perDay}/day — Less than a chai!`}
+          </p>
         </div>
 
-        {/* Body */}
-        <div className="p-4 sm:p-6">
-          <p className="text-gray-600 text-center mb-4 sm:mb-6 text-sm sm:text-base">
-            {message.message}
-          </p>
+        {/* Billing Toggle */}
+        <div className="flex justify-center gap-2 px-6 mb-4">
+          <button
+            onClick={() => setBillingCycle('monthly')}
+            className={`px-5 py-2 rounded-full text-sm font-medium transition-all ${
+              billingCycle === 'monthly'
+                ? 'bg-slate-800 text-white shadow-lg'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            Monthly
+          </button>
+          <button
+            onClick={() => setBillingCycle('yearly')}
+            className={`px-5 py-2 rounded-full text-sm font-medium transition-all relative ${
+              billingCycle === 'yearly'
+                ? 'bg-slate-800 text-white shadow-lg'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            Yearly
+            <span className="absolute -top-2 -right-2 bg-orange-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold animate-pulse">
+              58%
+            </span>
+          </button>
+        </div>
 
-          {/* Social Proof - High urgency only */}
-          {message.urgency === 'high' && (
-            <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-4 flex items-start gap-2">
-              <Sparkles className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" />
-              <p className="text-xs sm:text-sm text-orange-900">
-                <strong>500+ students</strong> upgraded this week to unlock unlimited practice!
-              </p>
-            </div>
-          )}
-
-          {/* User Stats */}
-          {userStats.questionsCompleted && userStats.questionsCompleted > 50 && (
-            <div className="bg-blue-50 rounded-lg p-3 sm:p-4 mb-4">
-              <p className="text-xs sm:text-sm text-blue-900 text-center">
-                🎯 You've completed <strong>{userStats.questionsCompleted} questions</strong>!
-                <br className="hidden sm:block" />
-                <span className="block sm:inline"> Imagine what you could do with unlimited access...</span>
-              </p>
-            </div>
-          )}
-
-          {/* Pro Features Preview */}
-          <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-3 sm:p-4 mb-4 sm:mb-6 border border-green-200">
-            <div className="flex items-center gap-2 mb-3">
-              <Crown className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
-              <span className="font-bold text-green-900 text-sm sm:text-base">Upgrade to Pro & Get:</span>
-            </div>
-            <ul className="space-y-2 text-xs sm:text-sm">
-              <li className="flex items-start gap-2 text-gray-700">
-                <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                <span><strong>Unlimited</strong> questions & mock tests</span>
-              </li>
-              <li className="flex items-start gap-2 text-gray-700">
-                <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                <span>Jeenie AI assistant 24/7</span>
-              </li>
-              <li className="flex items-start gap-2 text-gray-700">
-                <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                <span>AI-powered study planner</span>
-              </li>
-              <li className="flex items-start gap-2 text-gray-700">
-                <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                <span>Advanced performance analytics</span>
-              </li>
-            </ul>
+        {/* Price Display */}
+        <div className="text-center px-6 mb-4">
+          <div className="flex items-baseline justify-center gap-2">
+            <span className="text-gray-400 line-through text-lg">
+              ₹{pricing[billingCycle].originalPrice}
+            </span>
+            <span className="text-4xl font-bold text-slate-800">
+              ₹{pricing[billingCycle].price}
+            </span>
+            <span className="text-gray-500">
+              /{billingCycle === 'yearly' ? 'yr' : 'mo'}
+            </span>
           </div>
-
-          {/* Pricing */}
-          <div className="text-center mb-4 sm:mb-6">
-            <div className="flex items-baseline justify-center gap-2 mb-2">
-              <span className="text-3xl sm:text-4xl font-bold text-green-600">₹499</span>
-              <span className="text-gray-500 text-sm sm:text-base">/year</span>
-            </div>
-            <p className="text-xs sm:text-sm text-gray-600 mb-1">
-              <span className="line-through text-gray-400">₹588</span> • Save ₹89 annually!
+          {billingCycle === 'yearly' && (
+            <p className="text-green-600 text-sm font-medium mt-1">
+              Save ₹{pricing.yearly.savings}
             </p>
-            <p className="text-xs text-green-600 font-semibold">
-              ☕ Less than a samosa per day!
-            </p>
-          </div>
+          )}
+        </div>
 
-          {/* CTA Buttons */}
-          <div className="space-y-3">
-            <button
-              onClick={handleUpgrade}
-              className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold py-3 sm:py-3.5 rounded-lg text-base sm:text-lg shadow-lg hover:shadow-xl transition-all flex items-center justify-center"
-            >
-              <Crown className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-              Upgrade to Pro Now
-            </button>
-            <button
-              onClick={onClose}
-              className="w-full border-2 border-gray-300 hover:border-gray-400 py-3 sm:py-3.5 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-all"
-            >
-              Maybe Later
-            </button>
+        {/* Comparison Table */}
+        <div className="mx-6 mb-4 rounded-xl border border-gray-200 overflow-hidden bg-white">
+          <div className="grid grid-cols-3 bg-gray-50 border-b border-gray-200">
+            <div className="p-3 text-xs font-semibold text-gray-600">Feature</div>
+            <div className="p-3 text-xs font-semibold text-gray-600 text-center">Free</div>
+            <div className="p-3 text-xs font-semibold text-center flex items-center justify-center gap-1">
+              <Crown className="w-3 h-3 text-amber-500" />
+              <span className="text-slate-800">Pro</span>
+            </div>
           </div>
+          {comparison.map((item, idx) => (
+            <div key={idx} className="grid grid-cols-3 border-b border-gray-100 last:border-0">
+              <div className="p-3 text-sm text-gray-700">{item.feature}</div>
+              <div className="p-3 text-center">
+                {typeof item.free === 'boolean' ? (
+                  item.free ? (
+                    <Check className="w-4 h-4 text-green-500 mx-auto" />
+                  ) : (
+                    <X className="w-4 h-4 text-red-400 mx-auto" />
+                  )
+                ) : (
+                  <span className="text-sm text-gray-600">{item.free}</span>
+                )}
+              </div>
+              <div className="p-3 text-center">
+                {typeof item.pro === 'boolean' ? (
+                  <Check className="w-4 h-4 text-green-500 mx-auto" />
+                ) : (
+                  <span className="text-sm font-medium text-slate-800">{item.pro}</span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
 
-          <p className="text-center text-xs text-gray-500 mt-3 sm:mt-4">
-            💯 30-day money-back guarantee • Cancel anytime
-          </p>
+        {/* CTA Button */}
+        <div className="px-6 pb-4">
+          <button
+            onClick={handleUpgrade}
+            className="w-full bg-gradient-to-r from-slate-800 to-slate-700 hover:from-slate-900 hover:to-slate-800 text-white font-semibold py-3.5 rounded-xl text-base shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
+          >
+            <Zap className="w-5 h-5" />
+            Get Pro Now
+          </button>
+        </div>
+
+        {/* Referral Banner */}
+        <div className="mx-6 mb-4 bg-green-50 border border-green-200 rounded-xl p-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+              🎁
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-green-800">Get 1 week FREE!</p>
+              <p className="text-xs text-green-600">Refer friends & both get 1 week Pro free (max 4 referrals)</p>
+            </div>
+          </div>
+          <button 
+            onClick={() => {
+              const text = `Hey! Check out JEEnius - the best JEE/NEET prep app! Use my referral link for a FREE week of Pro! 🚀`;
+              const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+              window.open(url, '_blank');
+            }}
+            className="bg-green-500 hover:bg-green-600 text-white text-xs font-semibold px-3 py-2 rounded-lg flex items-center gap-1 whitespace-nowrap"
+          >
+            <Share2 className="w-3 h-3" />
+            Share on WhatsApp
+          </button>
+        </div>
+
+        {/* Continue Free */}
+        <div className="px-6 pb-6 text-center">
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700 text-sm underline transition-all"
+          >
+            Continue with Free Plan →
+          </button>
         </div>
       </div>
     </div>
