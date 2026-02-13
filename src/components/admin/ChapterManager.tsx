@@ -247,17 +247,17 @@ const ChapterManager = () => {
         <CardContent className="p-4">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-lg ${filterExam !== 'all' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+              <div className={`p-2 rounded-lg ${filterExam !== 'all' ? 'bg-primary text-primary-foreground' : 'bg-amber-500 text-white'}`}>
                 <GraduationCap className="w-5 h-5" />
               </div>
               <div>
                 <p className="text-sm font-medium">
-                  {filterExam !== 'all' ? `Viewing: ${filterExam} Chapters` : 'All Courses / Grades'}
+                  {filterExam !== 'all' ? `Viewing: ${filterExam} Chapters` : '⚠️ Select a Course First'}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {filterExam !== 'all' 
-                    ? 'Chapters are filtered for this course only'
-                    : 'Select a specific course to avoid mixing chapters from different grades'
+                    ? `Chapters for ${filterExam} only`
+                    : 'You must select a course (JEE/NEET/Class) to add or view chapters'
                   }
                 </p>
               </div>
@@ -284,7 +284,7 @@ const ChapterManager = () => {
                   size="sm"
                   onClick={() => setFilterExam(`Foundation-${grade}`)}
                 >
-                  {grade}th (PCMB)
+                  Class {grade}
                 </Button>
               ))}
             </div>
@@ -306,7 +306,7 @@ const ChapterManager = () => {
             </div>
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
               <DialogTrigger asChild>
-                <Button size="sm" onClick={resetForm}>
+                <Button size="sm" onClick={resetForm} disabled={filterExam === 'all'}>
                   <Plus className="w-4 h-4 mr-2" />
                   Add Chapter
                 </Button>
@@ -315,9 +315,23 @@ const ChapterManager = () => {
                 <DialogHeader>
                   <DialogTitle>Add New Chapter</DialogTitle>
                   <DialogDescription>
-                    Add a new chapter to {selectedSubject} {filterExam !== 'all' ? `for ${filterExam}` : ''}
+                    Add a new chapter to {selectedSubject}
                   </DialogDescription>
                 </DialogHeader>
+                
+                {/* Course/Grade Badge - Prominent */}
+                <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 flex items-center gap-3">
+                  <GraduationCap className="w-5 h-5 text-primary" />
+                  <div>
+                    <p className="text-sm font-medium text-primary">Adding to: {filterExam}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {filterExam === 'JEE' && 'PCM - Physics, Chemistry, Mathematics'}
+                      {filterExam === 'NEET' && 'PCB - Physics, Chemistry, Biology'}
+                      {filterExam.startsWith('Foundation-') && 'PCMB - All 4 subjects'}
+                    </p>
+                  </div>
+                </div>
+                
                 <div className="grid gap-4 py-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
