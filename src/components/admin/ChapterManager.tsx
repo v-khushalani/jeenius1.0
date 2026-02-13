@@ -33,7 +33,7 @@ const ChapterManager = () => {
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [batches, setBatches] = useState<Batch[]>([]);
   const [selectedSubject, setSelectedSubject] = useState('Physics');
-  const [filterExam, setFilterExam] = useState('all');
+  const [filterExam, setFilterExam] = useState('JEE'); // Default to JEE instead of 'all'
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingChapter, setEditingChapter] = useState<Chapter | null>(null);
@@ -44,9 +44,26 @@ const ChapterManager = () => {
     is_free: true
   });
 
+  // Get valid subjects based on exam type
+  const getSubjectsForExam = (exam: string): string[] => {
+    if (exam === 'JEE') return ['Physics', 'Chemistry', 'Mathematics'];
+    if (exam === 'NEET') return ['Physics', 'Chemistry', 'Biology'];
+    // Foundation (6-10) has all 4 subjects
+    return ['Physics', 'Chemistry', 'Mathematics', 'Biology'];
+  };
+
+  const validSubjects = getSubjectsForExam(filterExam);
+
+  // Reset subject if not valid for current exam
+  useEffect(() => {
+    if (!validSubjects.includes(selectedSubject)) {
+      setSelectedSubject(validSubjects[0] || 'Physics');
+    }
+  }, [filterExam]);
+
   useEffect(() => {
     fetchBatches();
-  }, []);
+  }, []);;
 
   useEffect(() => {
     fetchChapters();
@@ -63,15 +80,24 @@ const ChapterManager = () => {
 
   // Get batch_id for current filter
   const getCurrentBatchId = (): string | null | 'NOT_FOUND' => {
-    if (filterExam === 'all' || filterExam === 'JEE' || filterExam === 'NEET') return null;
+    if (filterExam === 'JEE' || filterExam === 'NEET') return null;
     
     if (filterExam.startsWith('Foundation-')) {
       const grade = parseInt(filterExam.replace('Foundation-', ''));
-      const batch = batches.find(b => b.exam_type === 'Foundation' && b.grade === grade);
+      // Use lowercase 'foundation' to match DB
+      const batch = batches.find(b => b.exam_type.toLowerCase() === 'foundation' && b.grade === grade);
       return batch?.id || 'NOT_FOUND';
     }
     
     return null;
+  };
+
+  // Get batch name for display
+  const getBatchName = (batchId: string): string => {
+    const batch = batches.find(b => b.id === batchId);
+    if (!batch) return 'Unknown';
+    if (batch.exam_type.toLowerCase() === 'foundation') return `${batch.grade}th Foundation`;
+    return batch.name || batch.exam_type;
   };
 
   const fetchChapters = async () => {
@@ -82,19 +108,17 @@ const ChapterManager = () => {
       .order('chapter_number');
 
     // Apply filter based on exam type
-    if (filterExam !== 'all') {
-      const batchId = getCurrentBatchId();
-      if (filterExam === 'JEE' || filterExam === 'NEET') {
-        // JEE/NEET: only show chapters with null batch_id
-        query = query.is('batch_id', null);
-      } else if (batchId && batchId !== 'NOT_FOUND') {
-        // Foundation: filter by specific batch_id
-        query = query.eq('batch_id', batchId);
-      } else if (batchId === 'NOT_FOUND') {
-        // Batch doesn't exist, return empty
-        setChapters([]);
-        return;
-      }
+    const batchId = getCurrentBatchId();
+    if (filterExam === 'JEE' || filterExam === 'NEET') {
+      // JEE/NEET: only show chapters with null batch_id
+      query = query.is('batch_id', null);
+    } else if (batchId && batchId !== 'NOT_FOUND') {
+      // Foundation: filter by specific batch_id
+      query = query.eq('batch_id', batchId);
+    } else if (batchId === 'NOT_FOUND') {
+      // Batch doesn't exist, return empty
+      setChapters([]);
+      return;
     }
 
     const { data } = await query;
@@ -240,25 +264,18 @@ const ChapterManager = () => {
             </div>
             <div className="flex gap-2 flex-wrap">
               <Button
-                variant={filterExam === 'all' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setFilterExam('all')}
-              >
-                All
-              </Button>
-              <Button
                 variant={filterExam === 'JEE' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setFilterExam('JEE')}
               >
-                JEE
+                JEE (PCM)
               </Button>
               <Button
                 variant={filterExam === 'NEET' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setFilterExam('NEET')}
               >
-                NEET
+                NEET (PCB)
               </Button>
               {[6, 7, 8, 9, 10].map(grade => (
                 <Button
@@ -267,7 +284,7 @@ const ChapterManager = () => {
                   size="sm"
                   onClick={() => setFilterExam(`Foundation-${grade}`)}
                 >
-                  {grade}th
+                  {grade}th (PCMB)
                 </Button>
               ))}
             </div>
@@ -354,9 +371,9 @@ const ChapterManager = () => {
           </div>
         </CardHeader>
         <CardContent>
-          {/* Subject Selector */}
+          {/* Subject Selector - filtered by exam type */}
           <div className="flex gap-2 mb-6 flex-wrap">
-            {['Physics', 'Chemistry', 'Mathematics', 'Biology'].map(subject => (
+            {validSubjects.map(subject => (
               <Button
                 key={subject}
                 onClick={() => setSelectedSubject(subject)}
@@ -394,7 +411,12 @@ const ChapterManager = () => {
                 
                 {/* Chapter Info */}
                 <div className="flex-1">
-                  <p className="font-medium">{chapter.chapter_name}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium">{chapter.chapter_name}</p>
+                    <Badge variant="outline" className="text-xs">
+                      {chapter.batch_id ? getBatchName(chapter.batch_id) : 'JEE/NEET'}
+                    </Badge>
+                  </div>
                   {chapter.description && (
                     <p className="text-sm text-muted-foreground">{chapter.description}</p>
                   )}

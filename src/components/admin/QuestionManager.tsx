@@ -126,16 +126,27 @@ export const QuestionManager = () => {
   const selectedChapter = chapters.find(c => c.chapter_name === formData.chapter && c.subject === formData.subject);
   const filteredTopics = selectedChapter ? topics.filter(t => t.chapter_id === selectedChapter.id) : [];
 
+  // Get valid subjects based on exam type
+  const getValidSubjectsForExam = (exam: string): string[] => {
+    if (exam === 'JEE') return ['Physics', 'Chemistry', 'Mathematics'];
+    if (exam === 'NEET') return ['Physics', 'Chemistry', 'Biology'];
+    // Foundation (6-10) has all 4 subjects
+    return ['Physics', 'Chemistry', 'Mathematics', 'Biology'];
+  };
+
   // Get unique subjects from chapters (filtered by current exam type)
   const availableSubjects = (() => {
+    const validSubjects = getValidSubjectsForExam(formData.exam);
     const isFoundation = formData.exam.startsWith('Foundation-');
     
     if (isFoundation) {
       const batchId = getCurrentBatchId();
-      if (batchId === 'NOT_FOUND' || batchId === null) return [];
-      return [...new Set(chapters.filter(c => c.batch_id === batchId).map(c => c.subject))];
+      if (batchId === 'NOT_FOUND' || batchId === null) return validSubjects;
+      const chaptersSubjects = [...new Set(chapters.filter(c => c.batch_id === batchId).map(c => c.subject))];
+      return chaptersSubjects.length > 0 ? chaptersSubjects.filter(s => validSubjects.includes(s)) : validSubjects;
     } else {
-      return [...new Set(chapters.filter(c => c.batch_id === null).map(c => c.subject))];
+      const chaptersSubjects = [...new Set(chapters.filter(c => c.batch_id === null).map(c => c.subject))];
+      return chaptersSubjects.length > 0 ? chaptersSubjects.filter(s => validSubjects.includes(s)) : validSubjects;
     }
   })();
 
@@ -623,18 +634,9 @@ export const QuestionManager = () => {
                 <SelectValue placeholder="Select subject" />
               </SelectTrigger>
               <SelectContent>
-                {availableSubjects.length > 0 ? (
-                  availableSubjects.map(subject => (
-                    <SelectItem key={subject} value={subject}>{subject}</SelectItem>
-                  ))
-                ) : (
-                  <>
-                    <SelectItem value="Physics">Physics</SelectItem>
-                    <SelectItem value="Chemistry">Chemistry</SelectItem>
-                    <SelectItem value="Mathematics">Mathematics</SelectItem>
-                    <SelectItem value="Biology">Biology</SelectItem>
-                  </>
-                )}
+                {availableSubjects.map(subject => (
+                  <SelectItem key={subject} value={subject}>{subject}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
