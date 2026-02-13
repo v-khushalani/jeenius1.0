@@ -200,16 +200,17 @@ const StudyNowPage = () => {
           filtered: subjectsToShow
         });
       } else {
-        // For Foundation grades, use static subjects from config as fallback
-        // This prevents "BATCH NOT CONFIGURED" errors when batch_subjects table isn't populated
+        // For Foundation grades, require batch subscription - no fallback
         if (isFoundationGrade(userGrade)) {
-          logger.warn('Foundation batch missing/misconfigured - using static subjects', {
+          logger.warn('Foundation batch not configured/purchased', {
             userId: user.id,
             userGrade,
             targetExam,
           });
-          // Use static subjects from SUBJECT_CONFIG (PCMB for Foundation)
-          subjectsToShow = examSubjects;
+          toast.error('Please purchase Foundation batch to access content');
+          setShowUpgradeModal(true);
+          setLoading(false);
+          return;
         } else {
           // Non-Foundation fallback: derive subjects from JEE/NEET global chapters (batch_id is null)
           const { data: chaptersData, error: chaptersError } = await supabase
@@ -353,14 +354,17 @@ const StudyNowPage = () => {
           // Use batch-specific chapters
           chaptersQuery = chaptersQuery.eq('batch_id', batch.id);
         } else {
-          // Fallback: use global chapters when Foundation batch isn't configured
-          logger.warn('Foundation batch missing - falling back to global chapters', {
+          // Foundation requires batch subscription - show message instead of JEE fallback
+          logger.warn('Foundation batch not configured/purchased', {
             userId: user?.id,
             userGrade,
             targetExam,
             subject,
           });
-          chaptersQuery = chaptersQuery.is('batch_id', null);
+          toast.error('Please purchase Foundation batch to access content');
+          setShowUpgradeModal(true);
+          setLoading(false);
+          return;
         }
       } else {
         // For JEE/NEET etc: use global chapters only (batch_id is null)

@@ -75,7 +75,7 @@ export const GoalChangeWarning: React.FC<GoalChangeWarningProps> = ({
 
       if (error) {
         console.error('Goal change error:', error);
-        toast.error('Failed to change goal. Please try again.');
+        toast.error(`Failed to change goal: ${error.message || 'Please try again'}`);
         return;
       }
 

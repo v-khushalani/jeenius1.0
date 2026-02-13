@@ -109,14 +109,17 @@ const TestPage = () => {
         // Use intersection of allowed subjects (by target_exam) and batch subjects
         subjectsToShow = getFilteredSubjects(targetExam, batch.subjects);
       } else {
-        // For Foundation grades, use static subjects from config as fallback
+        // For Foundation grades, require batch subscription - no fallback
         if (isFoundationGrade(userGrade)) {
-          logger.warn('Foundation batch missing - using static subjects', {
+          logger.warn('Foundation batch not configured/purchased', {
             userId: user.id,
             userGrade,
             targetExam,
           });
-          subjectsToShow = examSubjects;
+          toast.error('Please purchase Foundation batch to access tests');
+          setShowUpgradeModal(true);
+          setLoading(false);
+          return;
         } else {
           // Fallback: Get subjects from chapters table
           let chaptersQuery = supabase
@@ -147,8 +150,12 @@ const TestPage = () => {
         if (batch && batch.id) {
           chaptersQuery = chaptersQuery.eq('batch_id', batch.id);
         } else {
-          // Fallback: use global chapters when Foundation batch isn't configured
-          chaptersQuery = chaptersQuery.is('batch_id', null);
+          // Foundation requires batch - should have returned above
+          // This is a safeguard
+          toast.error('Please purchase Foundation batch to access tests');
+          setShowUpgradeModal(true);
+          setLoading(false);
+          return;
         }
       } else {
         // For JEE/NEET etc: use global chapters only
