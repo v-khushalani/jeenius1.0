@@ -56,7 +56,7 @@ interface UserSubscription {
   expiresAt: Date;
 }
 
-type FilterType = 'all' | 'jee' | 'neet' | 'cet' | 'foundation' | 'scholarship' | 'olympiad';
+type FilterType = 'all' | 'jee' | 'neet' | 'foundation' | 'scholarship' | 'olympiad';
 
 export const BatchExplorer: React.FC = () => {
   const { user } = useAuth();
@@ -160,7 +160,6 @@ export const BatchExplorer: React.FC = () => {
       const examTypeLower = batch.exam_type.toLowerCase();
       if (filterType === 'jee') matchesFilter = examTypeLower === 'jee';
       else if (filterType === 'neet') matchesFilter = examTypeLower === 'neet';
-      else if (filterType === 'cet') matchesFilter = examTypeLower === 'cet' || examTypeLower === 'mht-cet';
       else if (filterType === 'foundation') matchesFilter = examTypeLower === 'foundation' || examTypeLower.startsWith('foundation');
       else if (filterType === 'scholarship') matchesFilter = examTypeLower === 'scholarship';
       else if (filterType === 'olympiad') matchesFilter = examTypeLower === 'olympiad';
@@ -236,11 +235,10 @@ export const BatchExplorer: React.FC = () => {
           <SelectContent>
             <SelectItem value="all">All Batches</SelectItem>
             <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-              HIGHER EDUCATION
+              COMPETITIVE EXAMS
             </div>
             <SelectItem value="jee">JEE Preparation</SelectItem>
             <SelectItem value="neet">NEET Preparation</SelectItem>
-            <SelectItem value="cet">MHT-CET Preparation</SelectItem>
             <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">
               FOUNDATION
             </div>

@@ -67,7 +67,7 @@ const Settings = () => {
 
   const foundationGrades = new Set(['6th', '7th', '8th', '9th', '10th']);
   const isFoundationGrade = (gradeValue: string) => foundationGrades.has(gradeValue);
-  const isCompetitiveExam = (examValue: string) => ['JEE', 'NEET', 'CET'].includes(examValue);
+  const isCompetitiveExam = (examValue: string) => ['JEE', 'NEET'].includes(examValue);
   const normalizeGradeExamPair = (
     nextProfile: typeof profile,
     changedField: 'grade' | 'target_exam'
@@ -258,12 +258,12 @@ const Settings = () => {
 
       const isFoundationExam = targetExamValue.startsWith('Foundation');
       const isScholarshipExam = targetExamValue === 'Scholarship';
-      const isCompetitive = ['JEE', 'NEET', 'CET'].includes(targetExamValue);
+      const isCompetitive = ['JEE', 'NEET'].includes(targetExamValue);
 
       if (isCompetitive && gradeNumber < 11) {
         toast({
           title: "Grade Mismatch",
-          description: "JEE/NEET/CET is only for Class 11 or higher",
+          description: "JEE/NEET is only for Class 11 or higher",
           variant: "destructive"
         });
         setSaving(false);
@@ -301,8 +301,6 @@ const Settings = () => {
           newGoal = 'jee';
         } else if (targetExamValue === 'NEET' || targetExamValue.includes('NEET')) {
           newGoal = 'neet';
-        } else if (targetExamValue === 'CET' || targetExamValue.includes('CET')) {
-          newGoal = 'cet';
         } else if (targetExamValue === 'Scholarship') {
           newGoal = 'scholarship';
         }
@@ -341,7 +339,6 @@ const Settings = () => {
       targetExamValue.startsWith('Foundation') ? 'foundation' :
       targetExamValue === 'JEE' ? 'jee' :
       targetExamValue === 'NEET' ? 'neet' :
-      targetExamValue === 'CET' ? 'cet' :
       targetExamValue === 'Scholarship' ? 'scholarship' :
       'foundation';
 
@@ -668,10 +665,9 @@ const Settings = () => {
                       onChange={(e) => handleInputChange('target_exam', e.target.value)}
                       className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
                     >
-                      <optgroup label="Higher Education">
+                      <optgroup label="Competitive Exams">
                         <option value="JEE">JEE (PCM)</option>
                         <option value="NEET">NEET (PCB)</option>
-                        <option value="CET">MHT-CET (PCMB)</option>
                       </optgroup>
                       <optgroup label="Foundation Courses">
                         <option value="Foundation">Foundation (Class 6-10)</option>
@@ -682,8 +678,7 @@ const Settings = () => {
                     </select>
                     <p className="text-xs text-gray-500">
                       {profile.target_exam === 'JEE' ? 'Physics, Chemistry, Mathematics' : 
-                       profile.target_exam === 'NEET' ? 'Physics, Chemistry, Biology' : 
-                       profile.target_exam === 'CET' ? 'Physics, Chemistry, Mathematics, Biology' :
+                       profile.target_exam === 'NEET' ? 'Physics, Chemistry, Biology' :
                        profile.target_exam === 'Scholarship' ? 'Maths, Science, Mental Ability, English' :
                        profile.target_exam?.startsWith('Foundation') ? 'Physics, Chemistry, Mathematics, Biology' :
                        'All subjects'}

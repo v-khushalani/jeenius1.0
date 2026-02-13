@@ -7,8 +7,7 @@
  * ARCHITECTURE:
  * - Class 6-10: Foundation batches → Questions with exam field matching batch
  * - Class 7: Scholarship batch → Questions with exam="Scholarship"
- * - Class 11: JEE/NEET/CET batches → Questions with exam matching batch
- * - Class 12: JEE/NEET/CET batches → Questions with exam matching batch
+ * - Class 11-12: JEE/NEET batches → Questions with exam matching batch
  */
 
 import { supabase } from '@/integrations/supabase/client';
@@ -16,7 +15,7 @@ import { logger } from './logger';
 
 export interface BatchQueryFilters {
   batchId: string;           // Unique batch identifier
-  examType: string;          // 'Foundation-6', 'JEE', 'NEET', 'CET', 'Scholarship'
+  examType: string;          // 'Foundation-6', 'JEE', 'NEET', 'Scholarship'
   grade: number;             // 6-12
   subject?: string;
   chapter?: string;
@@ -31,12 +30,8 @@ export interface BatchQueryFilters {
  * CRITICAL LOGIC:
  * - Foundation-6 to Foundation-10 → exam='Foundation-6', 'Foundation-7', etc.
  * - 7th Scholarship → exam='Scholarship'
- * - 11th JEE → exam='JEE'
- * - 11th NEET → exam='NEET'
- * - 11th CET → exam='CET'
- * - 12th JEE → exam='JEE' (shares with 11th)
- * - 12th NEET → exam='NEET' (shares with 11th)
- * - 12th CET → exam='CET' (shares with 11th)
+ * - 11th/12th JEE → exam='JEE'
+ * - 11th/12th NEET → exam='NEET'
  */
 export const mapBatchToExamField = (examType: string, grade?: number): string => {
   if (examType.startsWith('Foundation')) {
@@ -57,7 +52,7 @@ export const mapBatchToExamField = (examType: string, grade?: number): string =>
     return 'Scholarship';
   }
   
-  // JEE, NEET, CET for both grades 11 and 12
+  // JEE, NEET for grades 11 and 12
   return examType;
 };
 
@@ -65,7 +60,7 @@ export const mapBatchToExamField = (examType: string, grade?: number): string =>
  * Get all chapters for a batch with proper filtering
  * 
  * Foundation students: Only chapters from their grade batch
- * 11-12 students: Chapters from their exam (JEE/NEET/CET)
+ * 11-12 students: Chapters from their exam (JEE/NEET)
  */
 export const getChaptersForBatch = async (filters: {
   batchId: string;

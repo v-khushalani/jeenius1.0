@@ -104,7 +104,7 @@ export const QuestionManager = () => {
       return batch?.id || (batches.length === 0 ? 'NOT_FOUND' : 'NOT_FOUND');
     }
     
-    // For JEE/NEET/CET - chapters have batch_id = null
+    // For JEE/NEET - chapters have batch_id = null
     return null;
   };
 
@@ -119,7 +119,7 @@ export const QuestionManager = () => {
       if (batchId === 'NOT_FOUND' || batchId === null) return [];
       return chapters.filter(c => c.subject === formData.subject && c.batch_id === batchId);
     } else {
-      // JEE/NEET/CET: only show chapters with null batch_id (global chapters)
+      // JEE/NEET: only show chapters with null batch_id (global chapters)
       return chapters.filter(c => c.subject === formData.subject && c.batch_id === null);
     }
   })();
@@ -422,7 +422,7 @@ export const QuestionManager = () => {
     a.click();
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
-    toast.success('Template downloaded - Exam values: JEE, NEET, MHT-CET, Foundation-6/7/8/9/10 | Difficulty: Easy, Medium, Hard');
+    toast.success('Template downloaded - Exam values: JEE, NEET, Foundation-6/7/8/9/10 | Difficulty: Easy, Medium, Hard');
   };
 
   const parseCSV = (text: string): any[] => {
@@ -591,12 +591,10 @@ export const QuestionManager = () => {
               </SelectTrigger>
               <SelectContent>
                 <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                  HIGHER EDUCATION
+                  COMPETITIVE EXAMS
                 </div>
                 <SelectItem value="JEE">JEE Main & Advanced</SelectItem>
                 <SelectItem value="NEET">NEET Medical</SelectItem>
-                <SelectItem value="MHT-CET">MHT CET Engineering</SelectItem>
-                <SelectItem value="CET">CET (Generic)</SelectItem>
                 <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">
                   FOUNDATION COURSES
                 </div>
@@ -969,12 +967,10 @@ export const QuestionManager = () => {
               <SelectContent>
                 <SelectItem value="all">All Courses</SelectItem>
                 <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                  HIGHER EDUCATION
+                  COMPETITIVE EXAMS
                 </div>
                 <SelectItem value="JEE">JEE</SelectItem>
                 <SelectItem value="NEET">NEET</SelectItem>
-                <SelectItem value="MHT-CET">MHT-CET</SelectItem>
-                <SelectItem value="CET">CET</SelectItem>
                 <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">
                   FOUNDATION
                 </div>
@@ -1057,7 +1053,6 @@ export const QuestionManager = () => {
                         <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                           q.exam === 'JEE' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
                           q.exam === 'NEET' ? 'bg-green-50 text-green-700 border border-green-200' :
-                          q.exam === 'CET' || q.exam === 'MHT-CET' ? 'bg-purple-50 text-purple-700 border border-purple-200' :
                           q.exam === 'Scholarship' ? 'bg-yellow-50 text-yellow-700 border border-yellow-200' :
                           q.exam === 'Olympiad' ? 'bg-pink-50 text-pink-700 border border-pink-200' :
                           q.exam?.startsWith('Foundation') ? 'bg-slate-50 text-slate-700 border border-slate-200' :

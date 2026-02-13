@@ -26,16 +26,13 @@ const GoalSelectionPage = () => {
   const [isChangingGoal, setIsChangingGoal] = useState(false);
   const [showGoalChangeWarning, setShowGoalChangeWarning] = useState(false);
 
-  // Calculate exam dates and days remaining
-  const examDates = {
+  // Calculate exam dates and days remaining (only JEE and NEET for 11-12)
+  const examDates: Record<string, string | null> = {
     'JEE Main': '2025-04-10',
     'JEE Advanced': '2025-05-25',
     'JEE': '2025-04-10',
     'NEET': '2025-05-05',
-    'CET': '2025-05-20',
-    'MHT-CET': '2025-05-20',
-    'Class': null,
-    'Boards': '2025-03-01'
+    'Class': null // No fixed exam date for grades 6-10
   };
 
   // Check if user has already completed goal selection
@@ -113,7 +110,7 @@ const GoalSelectionPage = () => {
   ];
 
   // For grades 6-10: Single "Class" option (auto-selected)
-  // For grades 11-12: JEE/NEET/CET/Boards selection
+  // For grades 11-12: JEE/NEET selection
   const goals = {
     '6': [
       { id: 'Class', name: 'Class 6 Course', icon: <BookOpen className="w-6 h-6" />, color: 'bg-blue-500', desc: 'Complete PCMB syllabus' }
@@ -132,26 +129,19 @@ const GoalSelectionPage = () => {
     ],
     '11': [
       { id: 'JEE', name: 'JEE Preparation', icon: <Calculator className="w-6 h-6" />, color: 'bg-red-500', desc: 'IIT-JEE Main + Advanced' },
-      { id: 'NEET', name: 'NEET Preparation', icon: <Stethoscope className="w-6 h-6" />, color: 'bg-green-500', desc: 'Medical entrance' },
-      { id: 'CET', name: 'MHT-CET Preparation', icon: <Target className="w-6 h-6" />, color: 'bg-purple-500', desc: 'State engineering entrance' },
-      { id: 'Boards', name: 'Board Exams', icon: <BookOpen className="w-6 h-6" />, color: 'bg-slate-600', desc: 'Focus on board exams' }
+      { id: 'NEET', name: 'NEET Preparation', icon: <Stethoscope className="w-6 h-6" />, color: 'bg-green-500', desc: 'Medical entrance' }
     ],
     '12': [
       { id: 'JEE', name: 'JEE Preparation', icon: <Calculator className="w-6 h-6" />, color: 'bg-red-500', desc: 'IIT-JEE Main + Advanced' },
-      { id: 'NEET', name: 'NEET Preparation', icon: <Stethoscope className="w-6 h-6" />, color: 'bg-green-500', desc: 'Medical entrance' },
-      { id: 'CET', name: 'MHT-CET Preparation', icon: <Target className="w-6 h-6" />, color: 'bg-purple-500', desc: 'State engineering entrance' },
-      { id: 'Boards', name: 'Board Exams', icon: <BookOpen className="w-6 h-6" />, color: 'bg-slate-600', desc: 'Focus on board exams' }
+      { id: 'NEET', name: 'NEET Preparation', icon: <Stethoscope className="w-6 h-6" />, color: 'bg-green-500', desc: 'Medical entrance' }
     ]
   };
   
-  // Auto-select all subjects based on goal
-  const subjects = {
+  // Auto-select all subjects based on goal (only JEE and NEET for 11-12)
+  const subjects: Record<string, string[]> = {
     'JEE': ['Physics', 'Chemistry', 'Mathematics'],
     'NEET': ['Physics', 'Chemistry', 'Biology'],
-    'CET': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
-    'MHT-CET': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
-    'Class': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
-    'Boards': ['Physics', 'Chemistry', 'Mathematics', 'Biology']
+    'Class': ['Physics', 'Chemistry', 'Mathematics', 'Biology']
   };
 
   const handleNext = () => {

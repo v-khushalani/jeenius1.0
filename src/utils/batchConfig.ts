@@ -3,7 +3,7 @@
  * 
  * ARCHITECTURE:
  * - Grade 6-10: ONE course per grade (PCMB subjects)
- * - Grade 11-12: JEE/NEET/CET/Boards batches (exam-specific subjects)
+ * - Grade 11-12: JEE/NEET batches (exam-specific subjects)
  * 
  * DATABASE COMPATIBILITY:
  * - Still uses Foundation-X exam_type in DB for grades 6-10
@@ -34,8 +34,6 @@ export interface SubjectConfig {
  * GRADES 6-10: PCMB (Physics, Chemistry, Mathematics, Biology)
  * JEE:          PCM (Physics, Chemistry, Mathematics)
  * NEET:         PCB (Physics, Chemistry, Biology)
- * CET:          PCMB
- * Boards:       PCMB
  */
 export const SUBJECT_CONFIG: SubjectConfig = {
   // Grade-based courses (6-10) - still use Foundation-X in DB
@@ -45,13 +43,11 @@ export const SUBJECT_CONFIG: SubjectConfig = {
   'Foundation-9': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
   'Foundation-10': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
   
-  // Competitive exams (11-12)
+  // Competitive exams (11-12) - Only JEE and NEET
   'JEE': ['Physics', 'Chemistry', 'Mathematics'],
   'JEE Main': ['Physics', 'Chemistry', 'Mathematics'],
   'JEE Advanced': ['Physics', 'Chemistry', 'Mathematics'],
   'NEET': ['Physics', 'Chemistry', 'Biology'],
-  'CET': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
-  'Boards': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
   
   // Legacy support (maps to PCMB)
   'Foundation': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],

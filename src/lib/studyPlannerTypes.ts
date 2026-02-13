@@ -74,7 +74,7 @@ export interface AIInsights {
   motivationalMessage: string;
 }
 
-export type TargetExamType = 'JEE' | 'NEET' | 'CET' | 'MHT-CET' | 'Scholarship' | 'Foundation' | 
+export type TargetExamType = 'JEE' | 'NEET' | 'Scholarship' | 'Foundation' | 
   'Foundation-6' | 'Foundation-7' | 'Foundation-8' | 'Foundation-9' | 'Foundation-10';
 
 export interface StudyPlannerData {

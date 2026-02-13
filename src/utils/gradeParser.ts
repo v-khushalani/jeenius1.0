@@ -96,7 +96,7 @@ export const extractGradeFromExamType = (examType: any): number => {
   }
 
   // For JEE/NEET (higher education)
-  if (examType === 'JEE' || examType === 'JEE Main' || examType === 'JEE Advanced' || examType === 'NEET' || examType === 'MHT-CET') {
+  if (examType === 'JEE' || examType === 'JEE Main' || examType === 'JEE Advanced' || examType === 'NEET') {
     return 12; // These are for 11th-12th grades
   }
 
@@ -136,7 +136,7 @@ export const areGradeAndExamCompatible = (grade: any, examType: string): boolean
   }
 
   // Higher education exams: grades 11-12
-  if (examType === 'JEE' || examType === 'NEET' || examType === 'MHT-CET') {
+  if (examType === 'JEE' || examType === 'NEET') {
     return numGrade === 11 || numGrade === 12;
   }
 

@@ -276,8 +276,6 @@ const EXAM_CANDIDATES: Record<string, number> = {
   'JEE Main': 1200000,
   'JEE Advanced': 200000,
   'NEET': 1800000,
-  'CET': 400000,
-  'MHT-CET': 400000,
   'Scholarship': 100000,
   'Foundation': 500000,
   'Foundation-6': 500000,

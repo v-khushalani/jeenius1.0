@@ -4,7 +4,7 @@
  * FLOW:
  * 1. Student selects Grade (6-12)
  * 2. For Grades 6-10: ONE COURSE per grade (no program selection)
- * 3. For Grades 11-12: Student selects exam (JEE/NEET/CET/Boards)
+ * 3. For Grades 11-12: Student selects exam (JEE/NEET)
  * 4. Content is filtered by: grade (6-10) OR grade + exam (11-12)
  * 
  * GRADE COURSES (6-10):
@@ -14,8 +14,6 @@
  * EXAMS (11-12):
  * - JEE: IIT-JEE Main + Advanced (PCM)
  * - NEET: Medical entrance (PCB)
- * - CET: State level engineering (PCMB)
- * - Boards: Board exam prep only (PCMB)
  */
 
 import { logger } from './logger';
@@ -27,9 +25,7 @@ import { logger } from './logger';
 export type Program = 
   | 'Class' // Generic for grades 6-10
   | 'JEE' 
-  | 'NEET' 
-  | 'CET' 
-  | 'Boards';
+  | 'NEET';
 
 export type Grade = 6 | 7 | 8 | 9 | 10 | 11 | 12;
 
@@ -58,8 +54,8 @@ export const GRADE_PROGRAMS: Record<number, Program[]> = {
   8: ['Class'],
   9: ['Class'],
   10: ['Class'],
-  11: ['JEE', 'NEET', 'CET', 'Boards'],
-  12: ['JEE', 'NEET', 'CET', 'Boards'],
+  11: ['JEE', 'NEET'],
+  12: ['JEE', 'NEET'],
 };
 
 // ============================================
@@ -73,8 +69,6 @@ export const PROGRAM_SUBJECTS: Record<Program, string[]> = {
   'Class': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
   'JEE': ['Physics', 'Chemistry', 'Mathematics'],
   'NEET': ['Physics', 'Chemistry', 'Biology'],
-  'CET': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
-  'Boards': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
 };
 
 // ============================================
@@ -112,24 +106,6 @@ export const PROGRAM_INFO: Record<Program, ProgramInfo> = {
     color: 'green',
     isFreeAvailable: true,
   },
-  'CET': {
-    name: 'CET',
-    displayName: 'CET',
-    description: 'State level engineering entrance',
-    subjects: ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
-    icon: '🏛️',
-    color: 'indigo',
-    isFreeAvailable: true,
-  },
-  'Boards': {
-    name: 'Boards',
-    displayName: 'Boards',
-    description: 'Board exam preparation',
-    subjects: ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
-    icon: '📝',
-    color: 'gray',
-    isFreeAvailable: true,
-  },
 };
 
 // ============================================
@@ -139,7 +115,7 @@ export const PROGRAM_INFO: Record<Program, ProgramInfo> = {
 /**
  * Get available programs for a grade
  * Grades 6-10: Just 'Class' (one course)
- * Grades 11-12: JEE/NEET/CET/Boards
+ * Grades 11-12: JEE/NEET only
  */
 export const getProgramsForGrade = (grade: number): Program[] => {
   const programs = GRADE_PROGRAMS[grade];
@@ -216,7 +192,7 @@ export const isSchoolGrade = (grade: number): boolean => {
 
 /**
  * Check if grade is Higher Education level (11-12)
- * Program selection needed (JEE/NEET/CET/Boards)
+ * Program selection needed (JEE/NEET)
  */
 export const isHigherEdLevel = (grade: number): boolean => {
   return grade === 11 || grade === 12;

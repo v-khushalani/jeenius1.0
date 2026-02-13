@@ -49,8 +49,8 @@ interface Batch {
 }
 
 const GRADE_OPTIONS = [6, 7, 8, 9, 10, 11, 12];
-// Foundation = School courses (grades 6-10), rest are competitive exams (11-12)
-const EXAM_TYPES = ['Foundation', 'JEE', 'NEET', 'CET', 'Boards'];
+// Foundation = School courses (grades 6-10), JEE/NEET for competitive exams (11-12)
+const EXAM_TYPES = ['Foundation', 'JEE', 'NEET'];
 const SUBJECT_OPTIONS = ['Physics', 'Chemistry', 'Mathematics', 'Biology'];
 
 export const BatchManager: React.FC = () => {

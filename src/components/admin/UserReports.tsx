@@ -296,7 +296,6 @@ export const UserReports: React.FC = () => {
                 </div>
                 <SelectItem value="JEE">JEE</SelectItem>
                 <SelectItem value="NEET">NEET</SelectItem>
-                <SelectItem value="CET">MHT-CET</SelectItem>
                 <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">
                   SCHOOL COURSES (6-10)
                 </div>

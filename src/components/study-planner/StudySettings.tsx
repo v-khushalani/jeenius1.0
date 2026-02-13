@@ -105,14 +105,6 @@ export function StudySettings({
                     NEET
                   </Button>
                   <Button
-                    variant={exam === 'CET' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setExam('CET')}
-                    className={exam === 'CET' ? 'bg-[#013062] hover:bg-[#013062]/90' : ''}
-                  >
-                    CET
-                  </Button>
-                  <Button
                     variant={exam?.toString().startsWith('Foundation') ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => setExam('Foundation')}

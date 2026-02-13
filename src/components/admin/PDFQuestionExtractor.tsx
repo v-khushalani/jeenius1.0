@@ -58,8 +58,6 @@ export function PDFQuestionExtractor() {
   const CURRICULUM_SUBJECTS: Record<string, string[]> = {
     'JEE': ['Physics', 'Chemistry', 'Mathematics'],
     'NEET': ['Physics', 'Chemistry', 'Biology'],
-    'MHT-CET': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
-    'CET': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
     'Foundation-6': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
     'Foundation-7': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
     'Foundation-8': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
@@ -120,7 +118,7 @@ export function PDFQuestionExtractor() {
           return;
         }
       } else {
-        // JEE/NEET/CET: only show chapters with null batch_id
+        // JEE/NEET: only show chapters with null batch_id
         query = query.is("batch_id", null);
       }
 
@@ -342,12 +340,10 @@ export function PDFQuestionExtractor() {
                 <SelectContent>
                   {/* Higher Education */}
                   <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                    HIGHER EDUCATION
+                    COMPETITIVE EXAMS
                   </div>
                   <SelectItem value="JEE">JEE Main & Advanced</SelectItem>
                   <SelectItem value="NEET">NEET Medical</SelectItem>
-                  <SelectItem value="MHT-CET">MHT CET Engineering</SelectItem>
-                  <SelectItem value="CET">CET (Generic)</SelectItem>
                   
                   {/* Foundation Courses */}
                   <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">

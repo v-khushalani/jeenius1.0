@@ -254,7 +254,7 @@ export function ExtractionReviewQueue() {
       return batch?.id || (batches.length === 0 ? 'NOT_FOUND' : 'NOT_FOUND');
     }
     
-    // JEE/NEET/CET - chapters have batch_id = null
+    // JEE/NEET - chapters have batch_id = null
     return null;
   };
 
@@ -270,7 +270,7 @@ export function ExtractionReviewQueue() {
       if (batchId === 'NOT_FOUND' || batchId === null) return [];
       return chapters.filter(c => c.subject === subject && c.batch_id === batchId);
     } else {
-      // JEE/NEET/CET: only show chapters with null batch_id
+      // JEE/NEET: only show chapters with null batch_id
       return chapters.filter(c => c.subject === subject && c.batch_id === null);
     }
   };
@@ -1127,10 +1127,9 @@ export function ExtractionReviewQueue() {
                           >
                             <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
-                              <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">HIGHER EDUCATION</div>
+                              <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">COMPETITIVE EXAMS</div>
                               <SelectItem value="JEE">JEE Main & Advanced</SelectItem>
                               <SelectItem value="NEET">NEET Medical</SelectItem>
-                              <SelectItem value="MHT-CET">MHT CET</SelectItem>
                               <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">FOUNDATION</div>
                               <SelectItem value="Foundation-6">6th Foundation</SelectItem>
                               <SelectItem value="Foundation-7">7th Foundation</SelectItem>
@@ -1467,10 +1466,9 @@ export function ExtractionReviewQueue() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">HIGHER EDUCATION</div>
+                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">COMPETITIVE EXAMS</div>
                             <SelectItem value="JEE">JEE Main & Advanced</SelectItem>
                             <SelectItem value="NEET">NEET Medical</SelectItem>
-                            <SelectItem value="MHT-CET">MHT CET</SelectItem>
                             <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground mt-2">FOUNDATION</div>
                             <SelectItem value="Foundation-6">6th Foundation</SelectItem>
                             <SelectItem value="Foundation-7">7th Foundation</SelectItem>
