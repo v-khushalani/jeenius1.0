@@ -13,37 +13,37 @@ const PricingModal = ({
   const limitMessages = {
     daily_limit: {
       title: "Daily Limit Reached! 🎯",
-      message: "You've used all 25 questions today. Come back tomorrow or upgrade to Pro for unlimited access!",
+      message: "You've used all 15 questions today. Come back tomorrow or upgrade to Pro for unlimited access!",
       icon: "📚",
       urgency: "medium"
     },
-    monthly_limit: {
-      title: "Monthly Cap Reached! 📊",
-      message: "You've completed 150 questions this month. Upgrade to Pro for unlimited questions!",
-      icon: "📈",
+    daily_limit_reached: {
+      title: "Daily Limit Reached! 🎯",
+      message: "You've used all 15 questions today. Come back tomorrow or upgrade to Pro for unlimited access!",
+      icon: "📚",
       urgency: "high"
     },
     test_limit: {
       title: "Test Limit Reached! 📝",
-      message: "You've taken 2 tests this month. Upgrade to Pro for unlimited mock tests!",
+      message: "You've taken 2 tests this month. Upgrade to Pro for unlimited tests!",
       icon: "🧪",
       urgency: "high"
     },
-    jeenie_blocked: {
-      title: "Jeenie AI - Pro Feature 🤖",
-      message: "Get instant doubt solving with Jeenie AI assistant available 24/7!",
+    ai_doubt_locked: {
+      title: "AI Doubt Solver - Pro Feature 🤖",
+      message: "Get instant doubt solving with AI assistant available 24/7!",
       icon: "🤖",
       urgency: "medium"
     },
     study_planner_blocked: {
       title: "AI Study Planner - Pro Feature 📅",
-      message: "Get a dynamic study plan that adapts to your progress and exam date!",
+      message: "Get a smart study plan that adapts to your progress and exam date!",
       icon: "📅",
       urgency: "medium"
     },
     almost_there: {
       title: "Almost at Your Limit! ⚡",
-      message: "Just 5 questions left today. Want unlimited practice? Upgrade now!",
+      message: "Just 3 questions left today. Want unlimited practice? Upgrade now!",
       icon: "⚡",
       urgency: "low"
     }

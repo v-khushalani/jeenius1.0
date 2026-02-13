@@ -27,14 +27,13 @@ export const SUBSCRIPTION_PLANS: Record<string, SubscriptionPlan> = {
     originalPrice: null,
     features: [
       '✨ Unlimited Practice Questions',
-      '📊 Unlimited Mock Tests',
-      '🤖 JEEnie AI Assistant (24/7)',
-      '🎯 AI-Powered Study Planner',
-      '📈 Advanced Performance Analytics',
+      '📊 Unlimited Tests',
+      '🤖 AI Doubt Solver (24/7)',
+      '🎯 AI Study Planner',
       '🏆 Full Leaderboard Access',
       '⚡ Priority Support'
     ],
-    tagline: '☕ Less than a Pizza — but can change your rank!',
+    tagline: '☕ Less than a Coffee — but can change your rank!',
     razorpayPlanId: 'plan_monthly_99'
   },
 
@@ -50,9 +49,8 @@ export const SUBSCRIPTION_PLANS: Record<string, SubscriptionPlan> = {
     features: [
       '✨ Everything in Pro Monthly',
       '🎁 Save ₹689 (58% OFF!)',
-      '🤖 Unlimited JEEnie AI Assistant',
-      '🎯 Advanced AI Study Planner',
-      '📊 Deep Performance Analytics',
+      '🤖 Unlimited AI Doubt Solver',
+      '🎯 AI Study Planner',
       '🏆 Premium Leaderboard Badges',
       '⚡ Priority Support 24/7',
       '🚀 Early Access to New Features'
@@ -64,22 +62,20 @@ export const SUBSCRIPTION_PLANS: Record<string, SubscriptionPlan> = {
 
 // Free Plan Limits - Synced across app
 export const FREE_LIMITS = {
-  questionsPerDay: 20,
-  questionsPerMonth: 300,
-  mockTestsPerMonth: 2,
-  jeenieAccess: false,
-  studyPlanner: false,
-  analytics: false
+  questionsPerDay: 15,
+  testsPerMonth: 2,
+  aiDoubtSolver: false,
+  aiStudyPlanner: false,
+  analyticsAdvanced: false
 };
 
 // Pro Plan Features
 export const PRO_FEATURES = {
   questionsPerDay: Infinity,
-  questionsPerMonth: Infinity,
-  mockTestsPerMonth: Infinity,
-  jeenieAccess: true,
-  studyPlanner: true,
-  analytics: true,
+  testsPerMonth: Infinity,
+  aiDoubtSolver: true,
+  aiStudyPlanner: true,
+  analyticsAdvanced: true,
   prioritySupport: true
 };
 
@@ -95,26 +91,20 @@ export const REFERRAL_CONFIG = {
 export const CONVERSION_MESSAGES = {
   dailyLimit: {
     title: '🚀 Daily Limit Reached!',
-    message: "You've crushed 20 questions today! Come back tomorrow or unlock UNLIMITED practice.",
+    message: "You've crushed 15 questions today! Come back tomorrow or unlock UNLIMITED practice.",
     cta: 'Go Unlimited — ₹499/year',
     subtitle: '🔥 Just ₹1.37/day — Less than a samosa!'
   },
-  monthlyLimit: {
-    title: '📊 Monthly Cap Reached!',
-    message: "You've completed 300 questions this month. Serious learner! Upgrade for unlimited.",
-    cta: 'Get Unlimited Access',
-    subtitle: '💪 Join thousands crushing their JEE prep'
-  },
   testLimit: {
     title: '📝 Test Limit Reached',
-    message: "You've taken 2 free tests this month. Get unlimited mock tests with Pro!",
+    message: "You've taken 2 free tests this month. Get unlimited tests with Pro!",
     cta: 'Unlock Unlimited Tests',
     subtitle: '🎯 Practice makes perfect!'
   },
-  jeenieBlocked: {
-    title: '🤖 JEEnie AI — Pro Feature',
+  aiDoubtBlocked: {
+    title: '🤖 AI Doubt Solver — Pro Feature',
     message: 'Get instant doubt solving 24/7 with your personal AI tutor!',
-    cta: 'Unlock JEEnie AI',
+    cta: 'Unlock AI Doubt Solver',
     subtitle: '⚡ Your doubts, solved in seconds'
   },
   studyPlannerBlocked: {
@@ -122,12 +112,6 @@ export const CONVERSION_MESSAGES = {
     message: 'Get a smart study plan that adapts to YOUR progress and exam date!',
     cta: 'Get Smart Study Plan',
     subtitle: '🧠 Plan smarter, not harder'
-  },
-  analyticsBlocked: {
-    title: '📈 Advanced Analytics — Pro Feature',
-    message: 'Unlock detailed insights, weak area analysis, and rank predictions!',
-    cta: 'View Full Analytics',
-    subtitle: '📊 Know exactly where you stand'
   }
 };
 

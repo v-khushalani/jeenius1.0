@@ -11,18 +11,18 @@ const PricingPage = () => {
   const navigate = useNavigate();
 
   const comparison = [
-    { feature: 'Questions/Day', free: '20', pro: 'Unlimited' },
-    { feature: 'Mock Tests/Month', free: '2', pro: 'Unlimited' },
-    { feature: 'JEEnie AI Assistant', free: false, pro: true },
+    { feature: 'Questions/Day', free: '15', pro: 'Unlimited' },
+    { feature: 'Tests/Month', free: '2', pro: 'Unlimited' },
+    { feature: 'AI Doubt Solver', free: false, pro: true },
     { feature: 'AI Study Planner', free: false, pro: true },
-    { feature: 'Performance Analytics', free: false, pro: true },
+    { feature: 'Jeenius Points', free: true, pro: true },
     { feature: 'Priority Support', free: false, pro: true },
   ];
 
   const proFeatures = [
     { text: 'Unlimited questions', icon: Zap },
-    { text: 'Unlimited mock tests', icon: TrendingUp },
-    { text: 'JEEnie AI 24/7', icon: Bot },
+    { text: 'Unlimited tests', icon: TrendingUp },
+    { text: 'AI Doubt Solver 24/7', icon: Bot },
     { text: 'AI Study Planner', icon: Calendar },
   ];
 
@@ -97,15 +97,15 @@ const PricingPage = () => {
                   <ul className="space-y-2 mb-6 text-sm">
                     <li className="flex items-center gap-2">
                       <Check className="w-4 h-4 text-green-500" />
-                      <span>20 questions/day</span>
+                      <span>15 questions/day</span>
                     </li>
                     <li className="flex items-center gap-2">
                       <Check className="w-4 h-4 text-green-500" />
-                      <span>2 mock tests/month</span>
+                      <span>2 tests/month</span>
                     </li>
                     <li className="flex items-center gap-2">
                       <Check className="w-4 h-4 text-green-500" />
-                      <span>Basic dashboard</span>
+                      <span>Jeenius Points</span>
                     </li>
                     <li className="flex items-center gap-2 text-muted-foreground">
                       <X className="w-4 h-4" />

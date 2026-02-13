@@ -194,9 +194,28 @@ const TestPage = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Test attempts tracking removed - no longer needed
+      // Get start of current month
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      
+      // Count test attempts this month
+      const { count, error } = await supabase
+        .from('test_attempts')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .gte('created_at', startOfMonth.toISOString());
+      
+      if (error) {
+        logger.error('Error counting test attempts:', error);
+        setMonthlyTestsUsed(0);
+        return;
+      }
+      
+      setMonthlyTestsUsed(count || 0);
+      logger.info('Monthly test usage:', { count, limit: MONTHLY_LIMIT_FREE });
     } catch (error) {
-      logger.error('Error while checking monthly usage:', error);
+      logger.error('Error checking monthly usage:', error);
+      setMonthlyTestsUsed(0);
     }
   };
   

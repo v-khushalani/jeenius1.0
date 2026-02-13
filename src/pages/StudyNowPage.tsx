@@ -69,7 +69,7 @@ const StudyNowPage = () => {
   const [dailyQuestionsUsed, setDailyQuestionsUsed] = useState(0);
   
   // Gamification states
-  const [dailyLimit, setDailyLimit] = useState(20);
+  const [dailyLimit, setDailyLimit] = useState(15);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradePromptType, setUpgradePromptType] = useState('');
   const [upgradePromptData, setUpgradePromptData] = useState(null);
@@ -995,11 +995,19 @@ const handleAnswer = async (answer: string) => {
 
                 <div className="mt-3 sm:mt-4 flex justify-center">
                   <Button 
-                    onClick={() => setShowAIModal(true)} 
-                    className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm shadow-lg"
+                    onClick={() => {
+                      if (isPremium) {
+                        setShowAIModal(true);
+                      } else {
+                        setUpgradePromptType('ai_doubt_locked');
+                        setShowUpgradeModal(true);
+                        toast.error('AI Doubt Solver is a Pro feature');
+                      }
+                    }} 
+                    className={`${isPremium ? 'bg-gradient-to-r from-purple-600 to-pink-600' : 'bg-gray-400'} text-white px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm shadow-lg`}
                   >
                     <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 inline" />
-                    Ask AI
+                    {isPremium ? 'Ask AI' : '🔒 Ask AI (Pro)'}
                   </Button>
                 </div>
 

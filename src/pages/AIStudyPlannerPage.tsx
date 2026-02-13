@@ -20,7 +20,7 @@ const AIStudyPlannerPage = () => {
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-2 sm:mb-4">Pro Feature 🔒</h2>
             <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6">Upgrade to unlock AI Study Planner!</p>
             <Button onClick={() => navigate('/subscription-plans')} className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 sm:px-8 py-2 sm:py-3 text-sm sm:text-base">
-              Upgrade to Pro - ₹49/month
+              Upgrade to Pro - ₹99/month
             </Button>
           </div>
         </div>

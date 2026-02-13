@@ -78,22 +78,18 @@ export const SUBSCRIPTION_PLANS = {
 
 // Updated Free Plan Limits
 export const FREE_PLAN_LIMITS = {
-  questionsPerDay: 20,
-  questionsPerMonth: 300,
-  mockTestsPerMonth: 2,
-  jeenieAccess: false,
-  studyPlanner: false,
-  analytics: false
+  questionsPerDay: 15,
+  testsPerMonth: 2,
+  aiDoubtSolver: false,
+  aiStudyPlanner: false
 };
 
 // Pro Plan Features
 export const PRO_PLAN_FEATURES = {
   questionsPerDay: 'unlimited',
-  questionsPerMonth: 'unlimited',
-  mockTestsPerMonth: 'unlimited',
-  jeenieAccess: true,
-  studyPlanner: true,
-  analytics: true,
+  testsPerMonth: 'unlimited',
+  aiDoubtSolver: true,
+  aiStudyPlanner: true,
   prioritySupport: true
 };
 
@@ -101,26 +97,20 @@ export const PRO_PLAN_FEATURES = {
 export const CONVERSION_MESSAGES = {
   dailyLimit: {
     title: '🚀 Daily Limit Reached!',
-    message: "You've crushed 20 questions today! Come back tomorrow or unlock UNLIMITED practice.",
+    message: "You've crushed 15 questions today! Come back tomorrow or unlock UNLIMITED practice.",
     cta: 'Go Unlimited — ₹499/year',
     subtitle: '🔥 Just ₹1.37/day — Less than a samosa!'
   },
-  monthlyLimit: {
-    title: '📊 Monthly Cap Reached!',
-    message: "You've completed 300 questions this month. Serious learner! Upgrade for unlimited.",
-    cta: 'Get Unlimited Access',
-    subtitle: '💪 Join thousands crushing their JEE prep'
-  },
   testLimit: {
     title: '📝 Test Limit Reached',
-    message: "You've taken 2 free tests this month. Get unlimited mock tests with Pro!",
+    message: "You've taken 2 free tests this month. Get unlimited tests with Pro!",
     cta: 'Unlock Unlimited Tests',
     subtitle: '🎯 Practice makes perfect!'
   },
-  jeenieBlocked: {
-    title: '🤖 JEEnie AI — Pro Feature',
+  aiDoubtBlocked: {
+    title: '🤖 AI Doubt Solver — Pro Feature',
     message: 'Get instant doubt solving 24/7 with your personal AI tutor!',
-    cta: 'Unlock JEEnie AI',
+    cta: 'Unlock AI Doubt Solver',
     subtitle: '⚡ Your doubts, solved in seconds'
   },
   studyPlannerBlocked: {
@@ -128,12 +118,6 @@ export const CONVERSION_MESSAGES = {
     message: 'Get a smart study plan that adapts to YOUR progress and exam date!',
     cta: 'Get Smart Study Plan',
     subtitle: '🧠 Plan smarter, not harder'
-  },
-  analyticsBlocked: {
-    title: '📈 Advanced Analytics — Pro Feature',
-    message: 'Unlock detailed insights, weak area analysis, and rank predictions!',
-    cta: 'View Full Analytics',
-    subtitle: '📊 Know exactly where you stand'
   },
   chapterLocked: {
     title: '🔒 Premium Chapter',

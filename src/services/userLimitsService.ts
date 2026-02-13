@@ -6,7 +6,7 @@ import { logger } from '@/utils/logger';
 
 export class UserLimitsService {
   
-  // Daily limit: 20 for free, unlimited for pro
+  // Daily limit: 15 for free, unlimited for pro
   static async getDailyLimit(userId: string): Promise<number> {
     const { data: profile } = await supabase
       .from('profiles')
@@ -106,8 +106,8 @@ export class UserLimitsService {
       };
     }
 
-    // Show soft prompt at 12-15 questions (60-75% of limit)
-    if (used >= 12 && used <= 15) {
+    // Show soft prompt at 10-12 questions (66-80% of 15 limit)
+    if (used >= 10 && used <= 12) {
       return {
         show: true,
         promptType: 'momentum_prompt',
@@ -115,7 +115,7 @@ export class UserLimitsService {
       };
     }
 
-    if (remaining <= 5) {
+    if (remaining <= 3) {
       return {
         show: true,
         promptType: 'approaching_limit',
