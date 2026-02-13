@@ -48,7 +48,7 @@ const Leaderboard: React.FC = () => {
         // Fallback to profiles-only fetch if RPC fails (migration not applied)
         const { data: profiles, error: profileError } = await supabase
           .from('profiles')
-          .select('id, full_name, avatar_url, total_points, current_streak, total_questions_answered, overall_accuracy')
+          .select('id, full_name, avatar_url, total_points, current_streak, total_questions_answered, overall_accuracy, previous_rank')
           .order('total_points', { ascending: false })
           .limit(100);
 
@@ -61,18 +61,25 @@ const Leaderboard: React.FC = () => {
         // Build user stats from profile data (fallback)
         const userStats: LeaderboardUser[] = profiles
           .filter(p => p.id && ((p.total_points || 0) > 0 || (p.total_questions_answered || 0) > 0))
-          .map((profile, index) => ({
-            id: profile.id,
-            full_name: profile.full_name || 'Anonymous User',
-            avatar_url: profile.avatar_url || undefined,
-            total_questions: profile.total_questions_answered || 0,
-            accuracy: Math.round(profile.overall_accuracy || 0),
-            total_points: profile.total_points || 0,
-            streak: profile.current_streak || 0,
-            rank: index + 1,
-            rank_change: Math.floor(Math.random() * 5) - 2,
-            questions_today: 0
-          }));
+          .map((profile, index) => {
+            const currentRank = index + 1;
+            // Calculate real rank change: previous_rank - current_rank
+            // Positive = moved up (was 5, now 3 = +2)
+            const rankChange = profile.previous_rank ? profile.previous_rank - currentRank : 0;
+            
+            return {
+              id: profile.id,
+              full_name: profile.full_name || 'Anonymous User',
+              avatar_url: profile.avatar_url || undefined,
+              total_questions: profile.total_questions_answered || 0,
+              accuracy: Math.round(profile.overall_accuracy || 0),
+              total_points: profile.total_points || 0,
+              streak: profile.current_streak || 0,
+              rank: currentRank,
+              rank_change: rankChange,
+              questions_today: 0
+            };
+          });
 
         setTopUsers(userStats.slice(0, 10));
         const current = userStats.find(u => u.id === user?.id);
@@ -92,18 +99,25 @@ const Leaderboard: React.FC = () => {
       logger.info('Fetched leaderboard data', { count: leaderboardData.length });
 
       // Build user stats from RPC result
-      const userStats: LeaderboardUser[] = leaderboardData.map((entry: any, index: number) => ({
-        id: entry.id,
-        full_name: entry.full_name || 'Anonymous User',
-        avatar_url: entry.avatar_url || undefined,
-        total_questions: Number(entry.total_questions) || 0,
-        accuracy: Math.round(Number(entry.accuracy) || 0),
-        total_points: entry.total_points || 0,
-        streak: entry.current_streak || 0,
-        rank: index + 1,
-        rank_change: Math.floor(Math.random() * 5) - 2,
-        questions_today: 0
-      }));
+      const userStats: LeaderboardUser[] = leaderboardData.map((entry: any, index: number) => {
+        const currentRank = index + 1;
+        // Calculate real rank change: previous_rank - current_rank
+        // Positive = moved up (was 5, now 3 = +2)
+        const rankChange = entry.previous_rank ? entry.previous_rank - currentRank : 0;
+        
+        return {
+          id: entry.id,
+          full_name: entry.full_name || 'Anonymous User',
+          avatar_url: entry.avatar_url || undefined,
+          total_questions: Number(entry.total_questions) || 0,
+          accuracy: Math.round(Number(entry.accuracy) || 0),
+          total_points: entry.total_points || 0,
+          streak: entry.current_streak || 0,
+          rank: currentRank,
+          rank_change: rankChange,
+          questions_today: 0
+        };
+      });
 
       // Find current user
       const current = userStats.find(u => u.id === user?.id);

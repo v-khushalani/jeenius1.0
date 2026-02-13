@@ -24,6 +24,8 @@ import Header from "@/components/Header";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { logger } from "@/utils/logger";
+import { parseGrade } from "@/utils/gradeParser";
+import { normalizeProgram, mapProgramToExamField } from "@/utils/programConfig";
 
 const AnalyticsPage = () => {
   const { user } = useAuth();
@@ -35,10 +37,26 @@ const AnalyticsPage = () => {
     try {
       setLoading(true);
       
+      // Get user's profile to determine grade and target exam
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('grade, target_exam')
+        .eq('id', user?.id)
+        .single();
+      
+      const userGrade = parseGrade(profile?.grade || 12);
+      const targetExam = profile?.target_exam || 'JEE';
+      const program = normalizeProgram(targetExam);
+      const examField = mapProgramToExamField(program, userGrade);
+      
+      logger.info('Loading analytics for exam field', { userGrade, targetExam, examField });
+      
+      // Filter attempts by user's grade/exam - only show their class's progress
       const { data: attempts } = await supabase
         .from('question_attempts')
-        .select('*, questions(subject, chapter, topic, difficulty)')
-        .eq('user_id', user?.id);
+        .select('*, questions!inner(subject, chapter, topic, difficulty, exam)')
+        .eq('user_id', user?.id)
+        .eq('questions.exam', examField);
 
       const stats = calculateAnalytics(attempts || []);
       setAnalytics(stats);

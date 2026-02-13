@@ -3,6 +3,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import PointsService from '@/services/pointsService';
 import { logger } from '@/utils/logger';
+import { parseGrade, isFoundationGrade } from '@/utils/gradeParser';
+import { normalizeProgram, mapProgramToExamField } from '@/utils/programConfig';
 
 export interface UserStats {
   totalQuestions: number;
@@ -58,11 +60,23 @@ export const useUserStats = () => {
       }
       setProfile(profileData);
 
-      // Fetch Attempts
+      // Get user's grade and target exam for filtering
+      const userGrade = parseGrade(profileData?.grade || 12);
+      const targetExam = profileData?.target_exam || 'JEE';
+      const program = normalizeProgram(targetExam);
+      
+      // Get the exam field to filter questions by (e.g., "Foundation-9", "JEE", "NEET")
+      const examField = mapProgramToExamField(program, userGrade);
+      
+      logger.info('Filtering stats by exam field', { userGrade, targetExam, program, examField });
+
+      // Fetch Attempts - FILTERED BY USER'S GRADE/EXAM
+      // Join with questions to filter by exam field
       const { data: allAttempts, error: attemptsError } = await supabase
         .from("question_attempts")
-        .select("*, questions(subject, chapter, topic)")
+        .select("*, questions!inner(subject, chapter, topic, exam)")
         .eq("user_id", user.id)
+        .eq("questions.exam", examField)
         .neq("mode", "test")
         .neq("mode", "battle");
 
