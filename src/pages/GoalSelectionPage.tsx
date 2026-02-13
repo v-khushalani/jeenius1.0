@@ -30,11 +30,14 @@ const GoalSelectionPage = () => {
   const examDates = {
     'JEE Main': '2025-04-10',
     'JEE Advanced': '2025-05-25',
+    'JEE': '2025-04-10',
     'NEET': '2025-05-05',
     'CET': '2025-05-20',
     'MHT-CET': '2025-05-20',
     'Scholarship': '2025-02-15',
-    'Foundation': null
+    'Olympiad': '2025-01-15',
+    'Foundation': null,
+    'Boards': '2025-03-01'
   };
 
   // Check if user has already completed goal selection
@@ -112,23 +115,42 @@ const GoalSelectionPage = () => {
   ];
 
   const goals = {
-    '6': [{ id: 'Foundation', name: 'Foundation Building', icon: <BookOpen className="w-6 h-6" />, color: 'bg-slate-600' }],
-    '7': [
-      { id: 'Foundation', name: 'Foundation Building', icon: <BookOpen className="w-6 h-6" />, color: 'bg-slate-600' },
-      { id: 'Scholarship', name: 'Scholarship Exam', icon: <Trophy className="w-6 h-6" />, color: 'bg-yellow-500' }
+    '6': [
+      { id: 'Foundation', name: 'Foundation Building', icon: <BookOpen className="w-6 h-6" />, color: 'bg-blue-500', desc: 'School syllabus + competitive prep' },
+      { id: 'Scholarship', name: 'Scholarship Exam', icon: <Trophy className="w-6 h-6" />, color: 'bg-yellow-500', desc: 'NTSE, State Scholarships' },
+      { id: 'Olympiad', name: 'Olympiad Prep', icon: <Rocket className="w-6 h-6" />, color: 'bg-orange-500', desc: 'NSO, IMO, IEO' }
     ],
-    '8': [{ id: 'Foundation', name: 'Foundation Building', icon: <BookOpen className="w-6 h-6" />, color: 'bg-slate-600' }],
-    '9': [{ id: 'Foundation', name: 'Foundation Building', icon: <BookOpen className="w-6 h-6" />, color: 'bg-slate-600' }],
-    '10': [{ id: 'Foundation', name: 'Foundation Building', icon: <BookOpen className="w-6 h-6" />, color: 'bg-slate-600' }],
+    '7': [
+      { id: 'Foundation', name: 'Foundation Building', icon: <BookOpen className="w-6 h-6" />, color: 'bg-blue-500', desc: 'School syllabus + competitive prep' },
+      { id: 'Scholarship', name: 'Scholarship Exam', icon: <Trophy className="w-6 h-6" />, color: 'bg-yellow-500', desc: 'NTSE, State Scholarships' },
+      { id: 'Olympiad', name: 'Olympiad Prep', icon: <Rocket className="w-6 h-6" />, color: 'bg-orange-500', desc: 'NSO, IMO, IEO' }
+    ],
+    '8': [
+      { id: 'Foundation', name: 'Foundation Building', icon: <BookOpen className="w-6 h-6" />, color: 'bg-blue-500', desc: 'School syllabus + competitive prep' },
+      { id: 'Scholarship', name: 'Scholarship Exam', icon: <Trophy className="w-6 h-6" />, color: 'bg-yellow-500', desc: 'NTSE, State Scholarships' },
+      { id: 'Olympiad', name: 'Olympiad Prep', icon: <Rocket className="w-6 h-6" />, color: 'bg-orange-500', desc: 'NSO, IMO, IEO' }
+    ],
+    '9': [
+      { id: 'Foundation', name: 'Foundation Building', icon: <BookOpen className="w-6 h-6" />, color: 'bg-blue-500', desc: 'School syllabus + competitive prep' },
+      { id: 'Scholarship', name: 'Scholarship Exam', icon: <Trophy className="w-6 h-6" />, color: 'bg-yellow-500', desc: 'NTSE, State Scholarships' },
+      { id: 'Olympiad', name: 'Olympiad Prep', icon: <Rocket className="w-6 h-6" />, color: 'bg-orange-500', desc: 'NSO, IMO, IEO' }
+    ],
+    '10': [
+      { id: 'Foundation', name: 'Foundation Building', icon: <BookOpen className="w-6 h-6" />, color: 'bg-blue-500', desc: 'School syllabus + competitive prep' },
+      { id: 'Scholarship', name: 'Scholarship Exam', icon: <Trophy className="w-6 h-6" />, color: 'bg-yellow-500', desc: 'NTSE, State Scholarships' },
+      { id: 'Olympiad', name: 'Olympiad Prep', icon: <Rocket className="w-6 h-6" />, color: 'bg-orange-500', desc: 'NSO, IMO, IEO' }
+    ],
     '11': [
-      { id: 'JEE', name: 'JEE Preparation', icon: <Calculator className="w-6 h-6" />, color: 'bg-red-500' },
-      { id: 'NEET', name: 'NEET Preparation', icon: <Stethoscope className="w-6 h-6" />, color: 'bg-green-500' },
-      { id: 'CET', name: 'MHT-CET Preparation', icon: <Target className="w-6 h-6" />, color: 'bg-purple-500' }
+      { id: 'JEE', name: 'JEE Preparation', icon: <Calculator className="w-6 h-6" />, color: 'bg-red-500', desc: 'IIT-JEE Main + Advanced' },
+      { id: 'NEET', name: 'NEET Preparation', icon: <Stethoscope className="w-6 h-6" />, color: 'bg-green-500', desc: 'Medical entrance' },
+      { id: 'CET', name: 'MHT-CET Preparation', icon: <Target className="w-6 h-6" />, color: 'bg-purple-500', desc: 'State engineering entrance' },
+      { id: 'Boards', name: 'Board Exams', icon: <BookOpen className="w-6 h-6" />, color: 'bg-slate-600', desc: 'Focus on board exams' }
     ],
     '12': [
-      { id: 'JEE', name: 'JEE Preparation', icon: <Calculator className="w-6 h-6" />, color: 'bg-red-500' },
-      { id: 'NEET', name: 'NEET Preparation', icon: <Stethoscope className="w-6 h-6" />, color: 'bg-green-500' },
-      { id: 'CET', name: 'MHT-CET Preparation', icon: <Target className="w-6 h-6" />, color: 'bg-purple-500' }
+      { id: 'JEE', name: 'JEE Preparation', icon: <Calculator className="w-6 h-6" />, color: 'bg-red-500', desc: 'IIT-JEE Main + Advanced' },
+      { id: 'NEET', name: 'NEET Preparation', icon: <Stethoscope className="w-6 h-6" />, color: 'bg-green-500', desc: 'Medical entrance' },
+      { id: 'CET', name: 'MHT-CET Preparation', icon: <Target className="w-6 h-6" />, color: 'bg-purple-500', desc: 'State engineering entrance' },
+      { id: 'Boards', name: 'Board Exams', icon: <BookOpen className="w-6 h-6" />, color: 'bg-slate-600', desc: 'Focus on board exams' }
     ]
   };
   
@@ -139,7 +161,9 @@ const GoalSelectionPage = () => {
     'CET': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
     'MHT-CET': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
     'Scholarship': ['Mathematics', 'Science', 'Mental Ability', 'English'],
-    'Foundation': ['Physics', 'Chemistry', 'Mathematics', 'Biology']
+    'Foundation': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
+    'Olympiad': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
+    'Boards': ['Physics', 'Chemistry', 'Mathematics', 'Biology']
   };
 
   const handleNext = () => {

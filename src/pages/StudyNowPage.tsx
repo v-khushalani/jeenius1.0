@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import Header from '@/components/Header';
+import ProgramSwitcher from '@/components/ProgramSwitcher';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 import PricingModal from '@/components/PricingModal';
 import { MathDisplay } from '@/components/admin/MathDisplay';
@@ -1038,6 +1039,20 @@ const handleAnswer = async (answer: string) => {
         <Header />
         <div className="pt-16 sm:pt-20 pb-6 md:pb-10">
           <div className="container mx-auto px-3 sm:px-4 max-w-7xl">
+            {/* Program Selector Header */}
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
+              <div>
+                <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Study Now</h1>
+                <p className="text-xs sm:text-sm text-slate-500">Select a subject to practice</p>
+              </div>
+              <ProgramSwitcher 
+                onProgramChange={() => {
+                  // Reload subjects when program changes
+                  fetchSubjects();
+                }}
+              />
+            </div>
+            
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
               {subjects.map((subject) => (
                 <Card

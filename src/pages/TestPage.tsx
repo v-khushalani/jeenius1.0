@@ -109,24 +109,30 @@ const TestPage = () => {
         // Use intersection of allowed subjects (by target_exam) and batch subjects
         subjectsToShow = getFilteredSubjects(targetExam, batch.subjects);
       } else {
-        // Fallback: Get subjects from chapters table
-        let chaptersQuery = supabase
-          .from('chapters')
-          .select('id, subject, chapter_name, chapter_number, batch_id')
-          .order('chapter_number');
+        // For Foundation grades, use static subjects from config as fallback
+        if (isFoundationGrade(userGrade)) {
+          logger.warn('Foundation batch missing - using static subjects', {
+            userId: user.id,
+            userGrade,
+            targetExam,
+          });
+          subjectsToShow = examSubjects;
+        } else {
+          // Fallback: Get subjects from chapters table
+          let chaptersQuery = supabase
+            .from('chapters')
+            .select('id, subject, chapter_name, chapter_number, batch_id')
+            .is('batch_id', null)
+            .order('chapter_number');
 
-        // For Foundation students, filter chapters by their batch
-        if (batch && batch.id) {
-          chaptersQuery = chaptersQuery.eq('batch_id', batch.id);
+          const { data: chaptersData, error: chaptersError } = await chaptersQuery;
+          
+          if (chaptersError) throw chaptersError;
+
+          // Filter subjects based on target exam
+          subjectsToShow = [...new Set(chaptersData?.map(c => c.subject) || [])]
+            .filter(subject => examSubjects.includes(subject));
         }
-
-        const { data: chaptersData, error: chaptersError } = await chaptersQuery;
-        
-        if (chaptersError) throw chaptersError;
-
-        // Filter subjects based on target exam
-        subjectsToShow = [...new Set(chaptersData?.map(c => c.subject) || [])]
-          .filter(subject => examSubjects.includes(subject));
       }
 
       // Get all chapters for the selected subjects
@@ -137,8 +143,16 @@ const TestPage = () => {
         .order('chapter_number');
 
       // For Foundation students, filter chapters by their batch
-      if (batch && batch.id) {
-        chaptersQuery = chaptersQuery.eq('batch_id', batch.id);
+      if (isFoundationGrade(userGrade)) {
+        if (batch && batch.id) {
+          chaptersQuery = chaptersQuery.eq('batch_id', batch.id);
+        } else {
+          // Fallback: use global chapters when Foundation batch isn't configured
+          chaptersQuery = chaptersQuery.is('batch_id', null);
+        }
+      } else {
+        // For JEE/NEET etc: use global chapters only
+        chaptersQuery = chaptersQuery.is('batch_id', null);
       }
 
       const { data: chaptersData, error: chaptersError } = await chaptersQuery;
