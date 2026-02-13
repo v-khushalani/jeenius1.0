@@ -48,17 +48,10 @@ BEGIN
   DELETE FROM public.user_batch_subscriptions WHERE user_id = p_user_id;
   GET DIAGNOSTICS v_batch_subs_count = ROW_COUNT;
   
-  -- Reset profile stats to zero
+  -- NOTE: We preserve points and streaks - user keeps their rewards!
+  -- Only reset questions_completed for the new goal
   UPDATE public.profiles
   SET 
-    total_points = 0,
-    current_streak = 0,
-    longest_streak = 0,
-    daily_streak = 0,
-    answer_streak = 0,
-    longest_answer_streak = 0,
-    total_streak_days = 0,
-    streak_freeze_available = true,
     questions_completed = 0,
     last_activity = now(),
     updated_at = now()

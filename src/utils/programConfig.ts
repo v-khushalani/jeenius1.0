@@ -1,20 +1,21 @@
 /**
- * PROGRAM CONFIGURATION - Simple & Strong Architecture
+ * PROGRAM CONFIGURATION - SIMPLIFIED ARCHITECTURE
  * 
  * FLOW:
  * 1. Student selects Grade (6-12)
- * 2. Student sees available Programs for that grade
- * 3. Student selects ONE program to practice at a time
- * 4. Content is filtered by: grade + active_program
+ * 2. For Grades 6-10: ONE COURSE per grade (no program selection)
+ * 3. For Grades 11-12: Student selects exam (JEE/NEET/CET/Boards)
+ * 4. Content is filtered by: grade (6-10) OR grade + exam (11-12)
  * 
- * PROGRAMS:
- * - Foundation: School syllabus + basic competitive (Grades 6-10)
- * - Scholarship: NTSE, Scholarship exams (Grades 6-10)
- * - Olympiad: NSO, IMO, IEO, etc. (Grades 6-10)
- * - JEE: IIT-JEE Main + Advanced (Grades 11-12)
- * - NEET: Medical entrance (Grades 11-12)
- * - CET: State level engineering (Grades 11-12)
- * - Boards: Board exam prep only (Grades 11-12)
+ * GRADE COURSES (6-10):
+ * - Each grade is ONE course with PCMB subjects
+ * - No Foundation/Scholarship/Olympiad distinction
+ * 
+ * EXAMS (11-12):
+ * - JEE: IIT-JEE Main + Advanced (PCM)
+ * - NEET: Medical entrance (PCB)
+ * - CET: State level engineering (PCMB)
+ * - Boards: Board exam prep only (PCMB)
  */
 
 import { logger } from './logger';
@@ -24,9 +25,7 @@ import { logger } from './logger';
 // ============================================
 
 export type Program = 
-  | 'Foundation' 
-  | 'Scholarship' 
-  | 'Olympiad' 
+  | 'Class' // Generic for grades 6-10
   | 'JEE' 
   | 'NEET' 
   | 'CET' 
@@ -50,13 +49,15 @@ export interface ProgramInfo {
 
 /**
  * Which programs are available for each grade
+ * Grades 6-10: Just 'Class' (one course per grade)
+ * Grades 11-12: Competitive exams
  */
 export const GRADE_PROGRAMS: Record<number, Program[]> = {
-  6: ['Foundation', 'Scholarship', 'Olympiad'],
-  7: ['Foundation', 'Scholarship', 'Olympiad'],
-  8: ['Foundation', 'Scholarship', 'Olympiad'],
-  9: ['Foundation', 'Scholarship', 'Olympiad'],
-  10: ['Foundation', 'Scholarship', 'Olympiad'],
+  6: ['Class'],
+  7: ['Class'],
+  8: ['Class'],
+  9: ['Class'],
+  10: ['Class'],
   11: ['JEE', 'NEET', 'CET', 'Boards'],
   12: ['JEE', 'NEET', 'CET', 'Boards'],
 };
@@ -69,9 +70,7 @@ export const GRADE_PROGRAMS: Record<number, Program[]> = {
  * Which subjects are included in each program
  */
 export const PROGRAM_SUBJECTS: Record<Program, string[]> = {
-  'Foundation': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
-  'Scholarship': ['Mathematics', 'Science', 'Mental Ability', 'English'],
-  'Olympiad': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
+  'Class': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
   'JEE': ['Physics', 'Chemistry', 'Mathematics'],
   'NEET': ['Physics', 'Chemistry', 'Biology'],
   'CET': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
@@ -86,32 +85,14 @@ export const PROGRAM_SUBJECTS: Record<Program, string[]> = {
  * Full details for each program (for UI display)
  */
 export const PROGRAM_INFO: Record<Program, ProgramInfo> = {
-  'Foundation': {
-    name: 'Foundation',
-    displayName: 'Foundation',
-    description: 'School syllabus + basic competitive prep',
+  'Class': {
+    name: 'Class',
+    displayName: 'School Course',
+    description: 'Complete PCMB syllabus practice',
     subjects: ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
     icon: '📚',
     color: 'blue',
     isFreeAvailable: true,
-  },
-  'Scholarship': {
-    name: 'Scholarship',
-    displayName: 'Scholarship',
-    description: 'NTSE, State Scholarship exams',
-    subjects: ['Mathematics', 'Science', 'Mental Ability', 'English'],
-    icon: '🏆',
-    color: 'yellow',
-    isFreeAvailable: false,
-  },
-  'Olympiad': {
-    name: 'Olympiad',
-    displayName: 'Olympiad',
-    description: 'NSO, IMO, IEO, SOF Olympiads',
-    subjects: ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
-    icon: '🥇',
-    color: 'orange',
-    isFreeAvailable: false,
   },
   'JEE': {
     name: 'JEE',
@@ -138,7 +119,7 @@ export const PROGRAM_INFO: Record<Program, ProgramInfo> = {
     subjects: ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
     icon: '🏛️',
     color: 'indigo',
-    isFreeAvailable: false,
+    isFreeAvailable: true,
   },
   'Boards': {
     name: 'Boards',
@@ -157,12 +138,14 @@ export const PROGRAM_INFO: Record<Program, ProgramInfo> = {
 
 /**
  * Get available programs for a grade
+ * Grades 6-10: Just 'Class' (one course)
+ * Grades 11-12: JEE/NEET/CET/Boards
  */
 export const getProgramsForGrade = (grade: number): Program[] => {
   const programs = GRADE_PROGRAMS[grade];
   if (!programs) {
-    logger.warn('Unknown grade, defaulting to Foundation', { grade });
-    return ['Foundation'];
+    logger.warn('Unknown grade, defaulting to Class', { grade });
+    return ['Class'];
   }
   return programs;
 };
@@ -171,10 +154,14 @@ export const getProgramsForGrade = (grade: number): Program[] => {
  * Get subjects for a program
  */
 export const getSubjectsForProgram = (program: Program | string): string[] => {
+  // Handle legacy Foundation-X format
+  if (typeof program === 'string' && program.startsWith('Foundation')) {
+    return PROGRAM_SUBJECTS['Class'];
+  }
   const subjects = PROGRAM_SUBJECTS[program as Program];
   if (!subjects) {
-    logger.warn('Unknown program, defaulting to Foundation subjects', { program });
-    return PROGRAM_SUBJECTS['Foundation'];
+    logger.warn('Unknown program, defaulting to Class subjects', { program });
+    return PROGRAM_SUBJECTS['Class'];
   }
   return subjects;
 };
@@ -183,22 +170,26 @@ export const getSubjectsForProgram = (program: Program | string): string[] => {
  * Get program info for display
  */
 export const getProgramInfo = (program: Program | string): ProgramInfo => {
+  // Handle legacy Foundation-X format
+  if (typeof program === 'string' && program.startsWith('Foundation')) {
+    return PROGRAM_INFO['Class'];
+  }
   const info = PROGRAM_INFO[program as Program];
   if (!info) {
-    logger.warn('Unknown program, defaulting to Foundation info', { program });
-    return PROGRAM_INFO['Foundation'];
+    logger.warn('Unknown program, defaulting to Class info', { program });
+    return PROGRAM_INFO['Class'];
   }
   return info;
 };
 
 /**
  * Get default program for a grade
- * - Grades 6-10: Foundation
+ * - Grades 6-10: Class
  * - Grades 11-12: JEE (most common)
  */
 export const getDefaultProgram = (grade: number): Program => {
   if (grade >= 6 && grade <= 10) {
-    return 'Foundation';
+    return 'Class';
   }
   return 'JEE';
 };
@@ -208,21 +199,37 @@ export const getDefaultProgram = (grade: number): Program => {
  */
 export const isProgramValidForGrade = (program: string, grade: number): boolean => {
   const validPrograms = getProgramsForGrade(grade);
+  // Handle legacy Foundation-X format
+  if (program.startsWith('Foundation') && grade >= 6 && grade <= 10) {
+    return true;
+  }
   return validPrograms.includes(program as Program);
 };
 
 /**
- * Check if grade is Foundation level (6-10)
+ * Check if grade is School level (6-10)
+ * No program selection needed - just ONE course per grade
  */
-export const isFoundationLevel = (grade: number): boolean => {
+export const isSchoolGrade = (grade: number): boolean => {
   return grade >= 6 && grade <= 10;
 };
 
 /**
  * Check if grade is Higher Education level (11-12)
+ * Program selection needed (JEE/NEET/CET/Boards)
  */
 export const isHigherEdLevel = (grade: number): boolean => {
   return grade === 11 || grade === 12;
+};
+
+/**
+ * Get display name for a grade/program combo
+ */
+export const getCourseDisplayName = (grade: number, program?: string): string => {
+  if (isSchoolGrade(grade)) {
+    return `Class ${grade}`;
+  }
+  return program || 'JEE';
 };
 
 // ============================================
@@ -231,15 +238,17 @@ export const isHigherEdLevel = (grade: number): boolean => {
 
 /**
  * Convert old target_exam format to new program format
- * Old: 'Foundation-9', 'JEE Main', 'NEET'
- * New: 'Foundation', 'JEE', 'NEET'
+ * Old: 'Foundation-9', 'JEE Main', 'NEET', 'Scholarship', 'Olympiad'
+ * New: 'Class' (for 6-10), 'JEE', 'NEET', etc.
  */
 export const normalizeProgram = (targetExam: string | null | undefined): Program => {
-  if (!targetExam) return 'Foundation';
+  if (!targetExam) return 'Class';
   
-  // Handle Foundation-X format
-  if (targetExam.startsWith('Foundation')) {
-    return 'Foundation';
+  // Handle Foundation/Scholarship/Olympiad → Class (legacy)
+  if (targetExam.startsWith('Foundation') || 
+      targetExam === 'Scholarship' || 
+      targetExam === 'Olympiad') {
+    return 'Class';
   }
   
   // Handle JEE variants
@@ -253,21 +262,21 @@ export const normalizeProgram = (targetExam: string | null | undefined): Program
   }
   
   // Default
-  return 'Foundation';
+  return 'Class';
 };
 
 /**
  * Map program to exam field for database queries
  * Used for filtering questions by exam field
  */
-export const mapProgramToExamField = (program: Program, grade: number): string => {
-  // For Foundation grades, use Foundation-X format for backward compatibility
-  if (isFoundationLevel(grade) && program === 'Foundation') {
+export const mapProgramToExamField = (program: Program | string, grade: number): string => {
+  // For School grades (6-10), use Foundation-X for backward compatibility with DB
+  if (isSchoolGrade(grade)) {
     return `Foundation-${grade}`;
   }
   
-  // For other programs, use the program name directly
-  return program;
+  // For 11-12, use the program name directly
+  return program === 'Class' ? 'JEE' : program;
 };
 
 // ============================================

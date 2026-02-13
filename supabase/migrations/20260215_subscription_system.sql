@@ -101,10 +101,9 @@ BEGIN
   DELETE FROM public.user_batch_subscriptions WHERE user_id = p_user_id;
   GET DIAGNOSTICS v_batch_count = ROW_COUNT;
   
-  -- Reset profile stats
+  -- NOTE: We do NOT reset points and streak - user keeps their rewards!
+  -- Only update last_activity
   UPDATE public.profiles SET
-    total_points = 0,
-    current_streak = 0,
     updated_at = now()
   WHERE id = p_user_id;
   
@@ -112,7 +111,8 @@ BEGIN
     'question_attempts', v_question_count,
     'test_attempts', v_test_count,
     'batch_subscriptions', v_batch_count,
-    'profile_reset', true
+    'points_preserved', true,
+    'streak_preserved', true
   );
 END;
 $$;

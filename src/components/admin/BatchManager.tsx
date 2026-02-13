@@ -49,8 +49,9 @@ interface Batch {
 }
 
 const GRADE_OPTIONS = [6, 7, 8, 9, 10, 11, 12];
-const EXAM_TYPES = ['Foundation', 'Scholarship', 'Homi Bhabha', 'JEE', 'NEET', 'CET', 'MHT-CET', 'Olympiad'];
-const SUBJECT_OPTIONS = ['Math', 'Science', 'Physics', 'Chemistry', 'Biology', 'Mental Ability', 'English', 'Social Studies', 'Mathematics'];
+// Foundation = School courses (grades 6-10), rest are competitive exams (11-12)
+const EXAM_TYPES = ['Foundation', 'JEE', 'NEET', 'CET', 'Boards'];
+const SUBJECT_OPTIONS = ['Physics', 'Chemistry', 'Mathematics', 'Biology'];
 
 export const BatchManager: React.FC = () => {
   const [batches, setBatches] = useState<Batch[]>([]);

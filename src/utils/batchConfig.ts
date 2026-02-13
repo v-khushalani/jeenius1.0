@@ -1,17 +1,13 @@
 /**
- * BATCH CONFIGURATION UTILITY - CLEAN ARCHITECTURE
- * 
- * Links together: Grade → Batch → Subjects → Questions
+ * BATCH CONFIGURATION UTILITY - SIMPLIFIED ARCHITECTURE
  * 
  * ARCHITECTURE:
- * - Grade 6-10: Foundation-X batches (PCMB subjects only, MCQ questions only)
- * - Grade 7: Scholarship batch option (SMAT subjects)
- * - Grade 11: JEE/NEET/CET batches (exam-specific subjects)
- * - Grade 12: JEE/NEET/CET batches (exam-specific subjects, shared curriculum with 11th)
+ * - Grade 6-10: ONE course per grade (PCMB subjects)
+ * - Grade 11-12: JEE/NEET/CET/Boards batches (exam-specific subjects)
  * 
- * CRITICAL RULE:
- * Each student belongs to EXACTLY ONE BATCH
- * Each student solves questions ONLY from their batch's exam field
+ * DATABASE COMPATIBILITY:
+ * - Still uses Foundation-X exam_type in DB for grades 6-10
+ * - This file maps grade to correct batch/subjects
  */
 
 import { supabase } from '@/integrations/supabase/client';
@@ -29,44 +25,37 @@ export interface BatchInfo {
 }
 
 export interface SubjectConfig {
-  [key: string]: string[]; // exam_type -> allowed subjects for UI
+  [key: string]: string[];
 }
 
 /**
  * Subject configuration - determines what subjects appear in UI
  * 
- * PCMB:       Physics, Chemistry, Mathematics, Biology (Grades 6-10)
- * Scholarship: Mathematics, Science, Mental Ability, English (Grade 7 optional)
- * JEE:        Physics, Chemistry, Mathematics (Grades 11-12)
- * NEET:       Physics, Chemistry, Biology (Grades 11-12)
- * CET:        Physics, Chemistry, Biology, Mathematics (Grades 11-12, State exams)
+ * GRADES 6-10: PCMB (Physics, Chemistry, Mathematics, Biology)
+ * JEE:          PCM (Physics, Chemistry, Mathematics)
+ * NEET:         PCB (Physics, Chemistry, Biology)
+ * CET:          PCMB
+ * Boards:       PCMB
  */
 export const SUBJECT_CONFIG: SubjectConfig = {
-  // Foundation: Grades 6-10 (PCMB only)
+  // Grade-based courses (6-10) - still use Foundation-X in DB
   'Foundation-6': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
   'Foundation-7': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
   'Foundation-8': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
   'Foundation-9': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
   'Foundation-10': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
   
-  // Scholarship: Grade 7 (SMAT)
-  'Scholarship': ['Mathematics', 'Science', 'Mental Ability', 'English'],
-  
-  // JEE: Grades 11-12 (PCM)
+  // Competitive exams (11-12)
   'JEE': ['Physics', 'Chemistry', 'Mathematics'],
   'JEE Main': ['Physics', 'Chemistry', 'Mathematics'],
   'JEE Advanced': ['Physics', 'Chemistry', 'Mathematics'],
-  
-  // NEET: Grades 11-12 (PCB)
   'NEET': ['Physics', 'Chemistry', 'Biology'],
-  
-  // CET: Grades 11-12 (PCMB)
   'CET': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
+  'Boards': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
   
-  // Legacy/Other
+  // Legacy support (maps to PCMB)
   'Foundation': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
-  'Olympiad': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
-  'Homi Bhabha': ['Science', 'Mathematics']
+  'Class': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
 };
 
 /**

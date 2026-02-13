@@ -34,9 +34,7 @@ const GoalSelectionPage = () => {
     'NEET': '2025-05-05',
     'CET': '2025-05-20',
     'MHT-CET': '2025-05-20',
-    'Scholarship': '2025-02-15',
-    'Olympiad': '2025-01-15',
-    'Foundation': null,
+    'Class': null,
     'Boards': '2025-03-01'
   };
 
@@ -105,40 +103,32 @@ const GoalSelectionPage = () => {
   }, [selectedGoal]);
 
   const grades = [
-    { id: '6', name: 'Class 6', icon: '🌱', desc: 'Foundation Building' },
+    { id: '6', name: 'Class 6', icon: '🌱', desc: 'Building Basics' },
     { id: '7', name: 'Class 7', icon: '🌿', desc: 'Concept Development' },
     { id: '8', name: 'Class 8', icon: '🌳', desc: 'Skill Enhancement' },
-    { id: '9', name: 'Class 9', icon: '🏗️', desc: 'Pre-Foundation' },
-    { id: '10', name: 'Class 10', icon: '📚', desc: 'Foundation Mastery' },
+    { id: '9', name: 'Class 9', icon: '🏗️', desc: 'Pre-Board Prep' },
+    { id: '10', name: 'Class 10', icon: '📚', desc: 'Board Mastery' },
     { id: '11', name: 'Class 11', icon: '🎯', desc: 'Competitive Edge' },
     { id: '12', name: 'Class 12', icon: '🚀', desc: 'Final Sprint' }
   ];
 
+  // For grades 6-10: Single "Class" option (auto-selected)
+  // For grades 11-12: JEE/NEET/CET/Boards selection
   const goals = {
     '6': [
-      { id: 'Foundation', name: 'Foundation Building', icon: <BookOpen className="w-6 h-6" />, color: 'bg-blue-500', desc: 'School syllabus + competitive prep' },
-      { id: 'Scholarship', name: 'Scholarship Exam', icon: <Trophy className="w-6 h-6" />, color: 'bg-yellow-500', desc: 'NTSE, State Scholarships' },
-      { id: 'Olympiad', name: 'Olympiad Prep', icon: <Rocket className="w-6 h-6" />, color: 'bg-orange-500', desc: 'NSO, IMO, IEO' }
+      { id: 'Class', name: 'Class 6 Course', icon: <BookOpen className="w-6 h-6" />, color: 'bg-blue-500', desc: 'Complete PCMB syllabus' }
     ],
     '7': [
-      { id: 'Foundation', name: 'Foundation Building', icon: <BookOpen className="w-6 h-6" />, color: 'bg-blue-500', desc: 'School syllabus + competitive prep' },
-      { id: 'Scholarship', name: 'Scholarship Exam', icon: <Trophy className="w-6 h-6" />, color: 'bg-yellow-500', desc: 'NTSE, State Scholarships' },
-      { id: 'Olympiad', name: 'Olympiad Prep', icon: <Rocket className="w-6 h-6" />, color: 'bg-orange-500', desc: 'NSO, IMO, IEO' }
+      { id: 'Class', name: 'Class 7 Course', icon: <BookOpen className="w-6 h-6" />, color: 'bg-blue-500', desc: 'Complete PCMB syllabus' }
     ],
     '8': [
-      { id: 'Foundation', name: 'Foundation Building', icon: <BookOpen className="w-6 h-6" />, color: 'bg-blue-500', desc: 'School syllabus + competitive prep' },
-      { id: 'Scholarship', name: 'Scholarship Exam', icon: <Trophy className="w-6 h-6" />, color: 'bg-yellow-500', desc: 'NTSE, State Scholarships' },
-      { id: 'Olympiad', name: 'Olympiad Prep', icon: <Rocket className="w-6 h-6" />, color: 'bg-orange-500', desc: 'NSO, IMO, IEO' }
+      { id: 'Class', name: 'Class 8 Course', icon: <BookOpen className="w-6 h-6" />, color: 'bg-blue-500', desc: 'Complete PCMB syllabus' }
     ],
     '9': [
-      { id: 'Foundation', name: 'Foundation Building', icon: <BookOpen className="w-6 h-6" />, color: 'bg-blue-500', desc: 'School syllabus + competitive prep' },
-      { id: 'Scholarship', name: 'Scholarship Exam', icon: <Trophy className="w-6 h-6" />, color: 'bg-yellow-500', desc: 'NTSE, State Scholarships' },
-      { id: 'Olympiad', name: 'Olympiad Prep', icon: <Rocket className="w-6 h-6" />, color: 'bg-orange-500', desc: 'NSO, IMO, IEO' }
+      { id: 'Class', name: 'Class 9 Course', icon: <BookOpen className="w-6 h-6" />, color: 'bg-blue-500', desc: 'Complete PCMB syllabus' }
     ],
     '10': [
-      { id: 'Foundation', name: 'Foundation Building', icon: <BookOpen className="w-6 h-6" />, color: 'bg-blue-500', desc: 'School syllabus + competitive prep' },
-      { id: 'Scholarship', name: 'Scholarship Exam', icon: <Trophy className="w-6 h-6" />, color: 'bg-yellow-500', desc: 'NTSE, State Scholarships' },
-      { id: 'Olympiad', name: 'Olympiad Prep', icon: <Rocket className="w-6 h-6" />, color: 'bg-orange-500', desc: 'NSO, IMO, IEO' }
+      { id: 'Class', name: 'Class 10 Course', icon: <BookOpen className="w-6 h-6" />, color: 'bg-blue-500', desc: 'Complete PCMB syllabus' }
     ],
     '11': [
       { id: 'JEE', name: 'JEE Preparation', icon: <Calculator className="w-6 h-6" />, color: 'bg-red-500', desc: 'IIT-JEE Main + Advanced' },
@@ -160,9 +150,7 @@ const GoalSelectionPage = () => {
     'NEET': ['Physics', 'Chemistry', 'Biology'],
     'CET': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
     'MHT-CET': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
-    'Scholarship': ['Mathematics', 'Science', 'Mental Ability', 'English'],
-    'Foundation': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
-    'Olympiad': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
+    'Class': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
     'Boards': ['Physics', 'Chemistry', 'Mathematics', 'Biology']
   };
 
@@ -215,8 +203,9 @@ const GoalSelectionPage = () => {
       const gradeNumber = parseInt(selectedGrade, 10) || 11;
       
       // Map goal to specific course type
+      // For grades 6-10, 'Class' goal maps to 'Foundation-X' in DB for backward compatibility
       let targetExamValue = selectedGoal;
-      if (selectedGoal === 'Foundation') {
+      if (selectedGoal === 'Class') {
         targetExamValue = `Foundation-${gradeNumber}`;
       }
       
@@ -562,7 +551,7 @@ const GoalSelectionPage = () => {
           currentGoal={existingGoal || ''}
           newGoal={selectedGoal.toLowerCase()}
           newGrade={parseInt(selectedGrade, 10) || 11}
-          newTargetExam={selectedGoal === 'Foundation' ? `Foundation-${selectedGrade}` : selectedGoal}
+          newTargetExam={selectedGoal === 'Class' ? `Foundation-${selectedGrade}` : selectedGoal}
           userId={user.id}
           onSuccess={() => {
             toast.success('Goal changed! Starting fresh 🎯');

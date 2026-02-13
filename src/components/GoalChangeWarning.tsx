@@ -42,14 +42,18 @@ export const GoalChangeWarning: React.FC<GoalChangeWarningProps> = ({
   const [isResetting, setIsResetting] = useState(false);
   const [step, setStep] = useState<'warning' | 'confirm'>('warning');
 
-  const CONFIRM_TEXT = 'RESET MY DATA';
+  const CONFIRM_TEXT = 'CHANGE GOAL';
 
+  // Points and streaks are PRESERVED! Only question/test history is cleared
   const dataToBeDeleted = [
-    { icon: <Flame className="w-4 h-4" />, label: 'All streaks (current & longest)', color: 'text-orange-600' },
-    { icon: <Trophy className="w-4 h-4" />, label: 'Total points earned', color: 'text-yellow-600' },
-    { icon: <Target className="w-4 h-4" />, label: 'All question attempts & history', color: 'text-blue-600' },
+    { icon: <Target className="w-4 h-4" />, label: 'Question attempts & history', color: 'text-blue-600' },
     { icon: <BookOpen className="w-4 h-4" />, label: 'Test attempts & scores', color: 'text-purple-600' },
     { icon: <RotateCcw className="w-4 h-4" />, label: 'Batch subscriptions', color: 'text-green-600' },
+  ];
+  
+  const dataPreserved = [
+    { icon: <Flame className="w-4 h-4" />, label: 'Your streaks (current & longest)', color: 'text-orange-500' },
+    { icon: <Trophy className="w-4 h-4" />, label: 'Jeenius Points earned', color: 'text-yellow-500' },
   ];
 
   const handleProceedToConfirm = () => {
@@ -135,10 +139,24 @@ export const GoalChangeWarning: React.FC<GoalChangeWarningProps> = ({
                   <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-left">
                     <p className="text-red-800 font-bold text-sm mb-3 flex items-center gap-2">
                       <Trash2 className="w-4 h-4" />
-                      The following data will be PERMANENTLY DELETED:
+                      The following will be cleared:
                     </p>
                     <ul className="space-y-2">
                       {dataToBeDeleted.map((item, i) => (
+                        <li key={i} className={`flex items-center gap-2 text-sm ${item.color}`}>
+                          {item.icon}
+                          <span>{item.label}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-left">
+                    <p className="text-green-800 font-bold text-sm mb-3 flex items-center gap-2">
+                      ✅ Good news! These will be PRESERVED:
+                    </p>
+                    <ul className="space-y-2">
+                      {dataPreserved.map((item, i) => (
                         <li key={i} className={`flex items-center gap-2 text-sm ${item.color}`}>
                           {item.icon}
                           <span>{item.label}</span>
@@ -170,20 +188,20 @@ export const GoalChangeWarning: React.FC<GoalChangeWarningProps> = ({
           <>
             <AlertDialogHeader>
               <div className="flex items-center justify-center mb-4">
-                <div className="w-16 h-16 rounded-full bg-red-600 flex items-center justify-center animate-pulse">
-                  <Trash2 className="w-8 h-8 text-white" />
+                <div className="w-16 h-16 rounded-full bg-blue-600 flex items-center justify-center">
+                  <Target className="w-8 h-8 text-white" />
                 </div>
               </div>
-              <AlertDialogTitle className="text-center text-xl text-red-600">
-                Final Confirmation
+              <AlertDialogTitle className="text-center text-xl text-blue-600">
+                Confirm Goal Change
               </AlertDialogTitle>
               <AlertDialogDescription className="text-center">
                 <div className="space-y-4 mt-4">
                   <p className="text-gray-700 font-medium">
-                    This action is <strong className="text-red-600">IRREVERSIBLE</strong>.
+                    Your question/test history will be cleared for accurate tracking.
                   </p>
-                  <p className="text-gray-600 text-sm">
-                    All your progress, points, streaks, and history will be permanently deleted.
+                  <p className="text-green-600 text-sm font-medium">
+                    ✅ Your points and streaks will be preserved!
                   </p>
                   
                   <div className="bg-gray-100 rounded-lg p-4">
