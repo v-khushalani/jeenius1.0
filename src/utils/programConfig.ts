@@ -54,8 +54,8 @@ export const GRADE_PROGRAMS: Record<number, Program[]> = {
   8: ['Class'],
   9: ['Class'],
   10: ['Class'],
-  11: ['JEE', 'NEET'], // 11+12 are combined for JEE/NEET, not separate
-  12: ['JEE', 'NEET'], // 11+12 are combined for JEE/NEET, not separate
+  11: ['JEE', 'NEET'],
+  12: ['JEE', 'NEET'],
 };
 
 // ============================================
@@ -118,10 +118,12 @@ export const PROGRAM_INFO: Record<Program, ProgramInfo> = {
  * Grades 11-12: JEE/NEET only
  */
 export const getProgramsForGrade = (grade: number): Program[] => {
-  if (grade >= 11) return ['JEE', 'NEET'];
-  if (GRADE_PROGRAMS[grade]) return GRADE_PROGRAMS[grade];
-  logger.warn('Unknown grade, defaulting to Class', { grade });
-  return ['Class'];
+  const programs = GRADE_PROGRAMS[grade];
+  if (!programs) {
+    logger.warn('Unknown grade, defaulting to Class', { grade });
+    return ['Class'];
+  }
+  return programs;
 };
 
 /**
