@@ -92,6 +92,8 @@ export const BatchExplorer: React.FC = () => {
           is_active,
           color,
           icon,
+          free_mode_enabled,
+          pro_mode_enabled,
           batch_subjects (id, subject)
         `)
         .eq('is_active', true)
@@ -107,7 +109,7 @@ export const BatchExplorer: React.FC = () => {
         }
         throw error;
       }
-      setBatches((data || []) as unknown as Batch[]);
+      setBatches((data || []) as Batch[]);
     } catch (error: any) {
       console.error('Error fetching batches:', error);
       // Silently handle table not found errors

@@ -69,7 +69,7 @@ export const GoalChangeWarning: React.FC<GoalChangeWarningProps> = ({
     setIsResetting(true);
     try {
       // Call the database function to change goal with reset
-      const { data, error } = await (supabase.rpc as any)('change_user_goal', {
+      const { data, error } = await supabase.rpc('change_user_goal', {
         p_user_id: userId,
         p_new_goal: newGoal.toLowerCase(),
         p_new_grade: newGrade,
@@ -83,8 +83,7 @@ export const GoalChangeWarning: React.FC<GoalChangeWarningProps> = ({
         return;
       }
 
-      const result = data as any;
-      if (result?.success) {
+      if (data?.success) {
         toast.success('Goal changed successfully! Starting fresh 🎯');
         
         // Clear local storage
@@ -99,7 +98,7 @@ export const GoalChangeWarning: React.FC<GoalChangeWarningProps> = ({
         
         onClose();
       } else {
-        toast.error(result?.reason || 'Failed to change goal');
+        toast.error(data?.reason || 'Failed to change goal');
       }
     } catch (error) {
       console.error('Error changing goal:', error);

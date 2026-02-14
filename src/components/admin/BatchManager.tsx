@@ -234,7 +234,7 @@ export const BatchManager: React.FC = () => {
         
         const { data: newBatch, error: batchError } = await supabase
           .from('batches')
-          .insert(insertData as any)
+          .insert(insertData)
           .select()
           .single();
 
