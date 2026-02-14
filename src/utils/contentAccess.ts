@@ -568,16 +568,11 @@ export const checkBatchTierAccess = async (
     // Get user's subscription with tier info
     const { data: subscription, error } = await supabase
       .from('user_batch_subscriptions')
-      .select(`
-        tier,
-        expires_at,
-        features_unlocked,
-        status
-      `)
+      .select('expires_at, status')
       .eq('user_id', userId)
       .eq('batch_id', batchId)
       .eq('status', 'active')
-      .single();
+      .maybeSingle();
 
     if (error || !subscription) {
       return noAccess;
@@ -595,23 +590,20 @@ export const checkBatchTierAccess = async (
       (expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
     );
 
-    // Get tier details for content limit
-    const { data: tierInfo } = await supabase
-      .from('batch_access_tiers')
-      .select('content_limit, features')
-      .eq('batch_id', batchId)
-      .eq('tier_name', subscription.tier)
-      .single();
-
-    const features = subscription.features_unlocked || tierInfo?.features || noAccess.features;
-
     return {
       hasAccess: true,
-      tier: subscription.tier as 'free' | 'pro',
-      features: features as TierFeatures,
+      tier: 'pro' as 'free' | 'pro',
+      features: {
+        videos: true,
+        pdfs: true,
+        tests: true,
+        solutions: true,
+        liveClasses: true,
+        doubtSupport: true
+      } as TierFeatures,
       expiresAt,
       daysRemaining,
-      contentLimit: tierInfo?.content_limit
+      contentLimit: undefined
     };
   } catch (error) {
     logger.error('Error checking batch tier access:', error);
@@ -638,11 +630,11 @@ export const getUserGoal = async (userId: string): Promise<string | null> => {
   try {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('selected_goal, goal_locked')
+      .select('target_exam, goal_locked')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
 
-    return profile?.selected_goal || null;
+    return profile?.target_exam || null;
   } catch (error) {
     logger.error('Error fetching user goal:', error);
     return null;
@@ -688,13 +680,9 @@ export const getGoalAlignedBatches = async (userId: string) => {
         offer_price,
         validity_days,
         is_active,
-        goal_aligned,
-        free_mode_enabled,
-        pro_mode_enabled,
         batch_subjects (subject)
       `)
       .eq('is_active', true)
-      .eq('goal_aligned', goal)
       .order('grade');
 
     if (error) {

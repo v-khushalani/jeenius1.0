@@ -46,7 +46,7 @@ const GoalSelectionPage = () => {
       try {
         const { data: profile, error } = await supabase
           .from('profiles')
-          .select('full_name, target_exam, grade, goals_set, selected_goal')
+          .select('full_name, target_exam, grade, goals_set')
           .eq('id', user.id)
           .single();
   
@@ -64,7 +64,7 @@ const GoalSelectionPage = () => {
           
           if (isChangeMode) {
             // User wants to change their goal
-            setExistingGoal(profile.selected_goal || profile.target_exam);
+            setExistingGoal(profile.target_exam);
             setExistingGrade(profile.grade);
             setIsChangingGoal(true);
             setIsLoading(false);

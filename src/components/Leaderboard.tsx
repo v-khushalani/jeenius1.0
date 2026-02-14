@@ -40,15 +40,14 @@ const Leaderboard: React.FC = () => {
       else setIsRefreshing(true);
 
       // Use RPC function to get leaderboard with aggregated stats (bypasses RLS)
-      const { data: leaderboardData, error: rpcError } = await supabase
-        .rpc('get_leaderboard_with_stats', { limit_count: 100 });
+      const { data: leaderboardData, error: rpcError } = await (supabase.rpc as any)('get_leaderboard_with_stats', { limit_count: 100 });
 
       if (rpcError) {
         logger.error('Leaderboard RPC error:', rpcError);
         // Fallback to profiles-only fetch if RPC fails (migration not applied)
         const { data: profiles, error: profileError } = await supabase
           .from('profiles')
-          .select('id, full_name, avatar_url, total_points, current_streak, total_questions_answered, overall_accuracy, previous_rank')
+          .select('id, full_name, avatar_url, total_points, current_streak, total_questions_answered, overall_accuracy')
           .order('total_points', { ascending: false })
           .limit(100);
 
@@ -59,14 +58,10 @@ const Leaderboard: React.FC = () => {
         }
 
         // Build user stats from profile data (fallback)
-        const userStats: LeaderboardUser[] = profiles
-          .filter(p => p.id && ((p.total_points || 0) > 0 || (p.total_questions_answered || 0) > 0))
-          .map((profile, index) => {
+        const userStats: LeaderboardUser[] = (profiles as any[])
+          .filter((p: any) => p.id && ((p.total_points || 0) > 0 || (p.total_questions_answered || 0) > 0))
+          .map((profile: any, index: number) => {
             const currentRank = index + 1;
-            // Calculate real rank change: previous_rank - current_rank
-            // Positive = moved up (was 5, now 3 = +2)
-            const rankChange = profile.previous_rank ? profile.previous_rank - currentRank : 0;
-            
             return {
               id: profile.id,
               full_name: profile.full_name || 'Anonymous User',
@@ -76,7 +71,7 @@ const Leaderboard: React.FC = () => {
               total_points: profile.total_points || 0,
               streak: profile.current_streak || 0,
               rank: currentRank,
-              rank_change: rankChange,
+              rank_change: 0,
               questions_today: 0
             };
           });
@@ -88,7 +83,7 @@ const Leaderboard: React.FC = () => {
         return;
       }
 
-      if (!leaderboardData || leaderboardData.length === 0) {
+      if (!leaderboardData || !Array.isArray(leaderboardData) || leaderboardData.length === 0) {
         logger.info('No leaderboard data found');
         setTopUsers([]);
         setCurrentUser(null);
@@ -96,10 +91,10 @@ const Leaderboard: React.FC = () => {
         return;
       }
 
-      logger.info('Fetched leaderboard data', { count: leaderboardData.length });
+      logger.info('Fetched leaderboard data', { count: (leaderboardData as any[]).length });
 
       // Build user stats from RPC result
-      const userStats: LeaderboardUser[] = leaderboardData.map((entry: any, index: number) => {
+      const userStats: LeaderboardUser[] = (leaderboardData as any[]).map((entry: any, index: number) => {
         const currentRank = index + 1;
         // Calculate real rank change: previous_rank - current_rank
         // Positive = moved up (was 5, now 3 = +2)
