@@ -44,10 +44,7 @@ export const SUBJECT_CONFIG: SubjectConfig = {
   'Foundation-10': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
   
   // Competitive exams (11-12) - Only JEE and NEET
-  'JEE': ['Physics', 'Chemistry', 'Mathematics'],
-  'JEE Main': ['Physics', 'Chemistry', 'Mathematics'],
-  'JEE Advanced': ['Physics', 'Chemistry', 'Mathematics'],
-  'NEET': ['Physics', 'Chemistry', 'Biology'],
+    // Removed legacy references
   
   // Legacy support (maps to PCMB)
   'Foundation': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
@@ -69,6 +66,7 @@ export const getAllowedSubjects = (targetExam: string): string[] => {
  * @param targetExam - Student's target exam (e.g., "Foundation-9", "JEE")
  * @returns Batch info with subjects from batch_subjects table
  */
+
 export const getBatchForStudent = async (
   userId: string,
   grade: number,
@@ -76,7 +74,6 @@ export const getBatchForStudent = async (
 ): Promise<BatchInfo | null> => {
   try {
     const parsedGrade = parseGrade(grade);
-    
     logger.info('getBatchForStudent', {
       userId,
       parsedGrade,
@@ -242,13 +239,9 @@ export const getExamTypeForGrade = (
   }
   
   // Grades 11-12: Determine from target_exam
-  if (parsedGrade >= 11 && parsedGrade <= 12) {
-    if (targetExam?.includes('NEET')) {
-      return 'NEET';
-    }
-    return 'JEE';
+  if (parsedGrade >= 11) {
+    return targetExam?.includes('NEET') ? 'NEET' : 'JEE';
   }
-  
   return 'JEE'; // Default fallback
 };
 
