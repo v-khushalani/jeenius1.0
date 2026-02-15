@@ -5,8 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
-import FloatingAIButton from '@/components/FloatingAIButton';
-import LoadingScreen from "@/components/ui/LoadingScreen";
+import  LoadingScreen from "@/components/ui/LoadingScreen";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 // Eagerly loaded pages (critical for initial load)
@@ -26,14 +25,15 @@ const TestResultsPage = lazy(() => import("./pages/TestResultsPage"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Profile = lazy(() => import("./pages/Profile"));
 const NotFound = lazy(() => import("./pages/NotFound"));
-const GoalSelectionPage = lazy(() => import('@/pages/GoalSelectionPage'));
+const GoalSelectionClean = lazy(() => import('@/pages/GoalSelectionClean'));
+const StudyHub = lazy(() => import('@/pages/StudyHub'));
 const AIStudyPlannerPage = lazy(() => import('./pages/AIStudyPlannerPage'));
 const EnhancedDashboard = lazy(() => import("./pages/EnhancedDashboard"));
 const AnalyticsPage = lazy(() => import("@/pages/AnalyticsPage"));
 const AdminDashboard = lazy(() => import("@/pages/AdminDashboard"));
 const SubscriptionPlans = lazy(() => import('@/pages/SubscriptionPlans'));
 const PricingPage = lazy(() => import('@/components/Pricing'));
-const BatchesPage = lazy(() => import('@/pages/BatchesPage'));
+
 
 // Components
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -77,9 +77,9 @@ function App() {
             <ErrorBoundary>
               <Toaster />
               <Sonner />
-              <Suspense fallback={<LoadingScreen />}>
+              <Suspense>
                 <Routes>
-                  {/* Public Routes */}
+                {/* Public Route*/}
                   <Route path="/" element={<Index />} />
                   <Route path="/why-us" element={<WhyUsPage />} />
                   
@@ -91,7 +91,17 @@ function App() {
                   <Route path="/auth/callback" element={<AuthCallback />} />
                   
                   {/* Goal Selection */}
-                  <Route path="/goal-selection" element={<GoalSelectionPage />} />
+                  <Route path="/goal-selection" element={<GoalSelectionClean />} />
+                  
+                  {/* Study Hub */}
+                  <Route
+                    path="/study-hub"
+                    element={
+                      <ProtectedRoute>
+                        <StudyHub />
+                      </ProtectedRoute>
+                    }
+                  />
                 
                 {/* Dashboard */}
                 <Route
@@ -109,7 +119,7 @@ function App() {
                 <Route path="/test-results" element={<TestResultsPage />} />
                 <Route path="/analytics" element={<AnalyticsPage />} />
                 <Route path="/subscription-plans" element={<SubscriptionPlans />} />
-                <Route path="/batches" element={<BatchesPage />} />
+
               
                 {/* AI Study Planner */}
                 <Route
@@ -137,16 +147,6 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <TestPage />
-                    </ProtectedRoute>
-                  }
-                />
-                
-                {/* Settings */}
-                <Route
-                  path="/settings"
-                  element={
-                    <ProtectedRoute>
-                      <Settings />
                     </ProtectedRoute>
                   }
                 />
@@ -258,14 +258,7 @@ function App() {
                     </AdminRoute>
                   }
                 />
-                <Route
-                  path="/admin/batches"
-                  element={
-                    <AdminRoute>
-                      <AdminDashboard />
-                    </AdminRoute>
-                  }
-                />
+
                 
                 {/* 404 - Not Found */}
                 <Route path="*" element={<NotFound />} />
