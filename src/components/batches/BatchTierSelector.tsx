@@ -58,8 +58,7 @@ export const BatchTierSelector: React.FC<BatchTierSelectorProps> = ({
 
   const fetchTiers = async () => {
     try {
-      const { data, error } = await supabase
-        .from('batch_access_tiers')
+      const { data, error } = await (supabase.from as any)('batch_access_tiers')
         .select('*')
         .eq('batch_id', batchId)
         .order('price_paise');
@@ -67,7 +66,7 @@ export const BatchTierSelector: React.FC<BatchTierSelectorProps> = ({
       if (error) throw error;
       
       // Parse features from JSONB
-      const parsedTiers = (data || []).map(tier => ({
+      const parsedTiers = (data || []).map((tier: any) => ({
         ...tier,
         features: typeof tier.features === 'string' 
           ? JSON.parse(tier.features) 
@@ -102,15 +101,14 @@ export const BatchTierSelector: React.FC<BatchTierSelectorProps> = ({
       expiresAt.setDate(expiresAt.getDate() + freeTier.duration_days);
 
       // Check if already enrolled
-      const { data: existing } = await supabase
-        .from('user_batch_subscriptions')
+      const { data: existing } = await (supabase.from as any)('user_batch_subscriptions')
         .select('id, tier')
         .eq('user_id', user.id)
         .eq('batch_id', batchId)
         .single();
 
       if (existing) {
-        if (existing.tier === 'pro') {
+        if ((existing as any).tier === 'pro') {
           toast.info('You already have Pro access to this batch!');
         } else {
           toast.info('You already have a free trial for this batch');
@@ -120,8 +118,7 @@ export const BatchTierSelector: React.FC<BatchTierSelectorProps> = ({
       }
 
       // Create subscription
-      const { error } = await supabase
-        .from('user_batch_subscriptions')
+      const { error } = await (supabase.from as any)('user_batch_subscriptions')
         .insert({
           user_id: user.id,
           batch_id: batchId,
