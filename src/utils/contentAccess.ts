@@ -566,8 +566,7 @@ export const checkBatchTierAccess = async (
 
   try {
     // Get user's subscription with tier info
-    const { data: subscription, error } = await supabase
-      .from('user_batch_subscriptions')
+    const { data: subscription, error } = await (supabase.from as any)('user_batch_subscriptions')
       .select(`
         tier,
         expires_at,
@@ -584,7 +583,7 @@ export const checkBatchTierAccess = async (
     }
 
     // Check expiry
-    const expiresAt = new Date(subscription.expires_at);
+    const expiresAt = new Date((subscription as any).expires_at);
     const now = new Date();
 
     if (expiresAt < now) {
@@ -596,22 +595,21 @@ export const checkBatchTierAccess = async (
     );
 
     // Get tier details for content limit
-    const { data: tierInfo } = await supabase
-      .from('batch_access_tiers')
+    const { data: tierInfo } = await (supabase.from as any)('batch_access_tiers')
       .select('content_limit, features')
       .eq('batch_id', batchId)
-      .eq('tier_name', subscription.tier)
+      .eq('tier_name', (subscription as any).tier)
       .single();
 
-    const features = subscription.features_unlocked || tierInfo?.features || noAccess.features;
+    const features = (subscription as any).features_unlocked || (tierInfo as any)?.features || noAccess.features;
 
     return {
       hasAccess: true,
-      tier: subscription.tier as 'free' | 'pro',
+      tier: (subscription as any).tier as 'free' | 'pro',
       features: features as TierFeatures,
       expiresAt,
       daysRemaining,
-      contentLimit: tierInfo?.content_limit
+      contentLimit: (tierInfo as any)?.content_limit
     };
   } catch (error) {
     logger.error('Error checking batch tier access:', error);
@@ -688,13 +686,9 @@ export const getGoalAlignedBatches = async (userId: string) => {
         offer_price,
         validity_days,
         is_active,
-        goal_aligned,
-        free_mode_enabled,
-        pro_mode_enabled,
         batch_subjects (subject)
       `)
       .eq('is_active', true)
-      .eq('goal_aligned', goal)
       .order('grade');
 
     if (error) {

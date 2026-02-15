@@ -278,6 +278,7 @@ export type Database = {
           batch_id: string | null
           chapter_name: string
           chapter_number: number
+          course: string | null
           created_at: string | null
           description: string | null
           difficulty_level: string | null
@@ -285,12 +286,15 @@ export type Database = {
           id: string
           is_free: boolean | null
           is_premium: boolean | null
+          name: string | null
           subject: string
+          updated_at: string | null
         }
         Insert: {
           batch_id?: string | null
           chapter_name: string
           chapter_number: number
+          course?: string | null
           created_at?: string | null
           description?: string | null
           difficulty_level?: string | null
@@ -298,12 +302,15 @@ export type Database = {
           id?: string
           is_free?: boolean | null
           is_premium?: boolean | null
+          name?: string | null
           subject: string
+          updated_at?: string | null
         }
         Update: {
           batch_id?: string | null
           chapter_name?: string
           chapter_number?: number
+          course?: string | null
           created_at?: string | null
           description?: string | null
           difficulty_level?: string | null
@@ -311,7 +318,9 @@ export type Database = {
           id?: string
           is_free?: boolean | null
           is_premium?: boolean | null
+          name?: string | null
           subject?: string
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -647,6 +656,36 @@ export type Database = {
         }
         Relationships: []
       }
+      goal_change_audit: {
+        Row: {
+          created_at: string | null
+          id: string
+          new_goal: string | null
+          old_goal: string | null
+          reason: string | null
+          status: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          new_goal?: string | null
+          old_goal?: string | null
+          reason?: string | null
+          status?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          new_goal?: string | null
+          old_goal?: string | null
+          reason?: string | null
+          status?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       mock_test_schedule: {
         Row: {
           completed: boolean | null
@@ -853,6 +892,8 @@ export type Database = {
           email: string
           exam_mode: boolean | null
           full_name: string | null
+          goal_locked: boolean | null
+          goal_locked_at: string | null
           goals_set: boolean | null
           grade: number | null
           id: string
@@ -868,8 +909,11 @@ export type Database = {
           overall_accuracy: number | null
           phone: string | null
           premium_until: string | null
+          previous_rank: number | null
           rank_position: number | null
+          rank_updated_at: string | null
           role: Database["public"]["Enums"]["app_role"] | null
+          selected_goal: string | null
           state: string | null
           streak_freeze_available: boolean | null
           study_planner_enabled: boolean | null
@@ -901,6 +945,8 @@ export type Database = {
           email: string
           exam_mode?: boolean | null
           full_name?: string | null
+          goal_locked?: boolean | null
+          goal_locked_at?: string | null
           goals_set?: boolean | null
           grade?: number | null
           id: string
@@ -916,8 +962,11 @@ export type Database = {
           overall_accuracy?: number | null
           phone?: string | null
           premium_until?: string | null
+          previous_rank?: number | null
           rank_position?: number | null
+          rank_updated_at?: string | null
           role?: Database["public"]["Enums"]["app_role"] | null
+          selected_goal?: string | null
           state?: string | null
           streak_freeze_available?: boolean | null
           study_planner_enabled?: boolean | null
@@ -949,6 +998,8 @@ export type Database = {
           email?: string
           exam_mode?: boolean | null
           full_name?: string | null
+          goal_locked?: boolean | null
+          goal_locked_at?: string | null
           goals_set?: boolean | null
           grade?: number | null
           id?: string
@@ -964,8 +1015,11 @@ export type Database = {
           overall_accuracy?: number | null
           phone?: string | null
           premium_until?: string | null
+          previous_rank?: number | null
           rank_position?: number | null
+          rank_updated_at?: string | null
           role?: Database["public"]["Enums"]["app_role"] | null
+          selected_goal?: string | null
           state?: string | null
           streak_freeze_available?: boolean | null
           study_planner_enabled?: boolean | null
@@ -1141,7 +1195,7 @@ export type Database = {
           reasoning_text: string | null
           subject: string
           subtopic: string | null
-          topic: string
+          topic: string | null
           topic_id: string | null
           year: number | null
         }
@@ -1171,7 +1225,7 @@ export type Database = {
           reasoning_text?: string | null
           subject: string
           subtopic?: string | null
-          topic: string
+          topic?: string | null
           topic_id?: string | null
           year?: number | null
         }
@@ -1201,7 +1255,7 @@ export type Database = {
           reasoning_text?: string | null
           subject?: string
           subtopic?: string | null
-          topic?: string
+          topic?: string | null
           topic_id?: string | null
           year?: number | null
         }
@@ -1568,6 +1622,39 @@ export type Database = {
           subject?: string
           topic?: string
           weightage?: number | null
+        }
+        Relationships: []
+      }
+      test_attempts: {
+        Row: {
+          correct_answers: number | null
+          created_at: string | null
+          id: string
+          score: number | null
+          test_id: string | null
+          time_taken: number | null
+          total_questions: number | null
+          user_id: string | null
+        }
+        Insert: {
+          correct_answers?: number | null
+          created_at?: string | null
+          id?: string
+          score?: number | null
+          test_id?: string | null
+          time_taken?: number | null
+          total_questions?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          correct_answers?: number | null
+          created_at?: string | null
+          id?: string
+          score?: number | null
+          test_id?: string | null
+          time_taken?: number | null
+          total_questions?: number | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -2169,44 +2256,45 @@ export type Database = {
       }
       user_subscriptions: {
         Row: {
+          amount: number | null
           created_at: string | null
-          expires_at: string | null
+          expires_at: string
+          grade: number
           id: string
-          is_active: boolean | null
           payment_id: string | null
-          plan_id: string | null
-          started_at: string | null
+          plan_type: string | null
+          starts_at: string | null
+          status: string | null
+          updated_at: string | null
           user_id: string | null
         }
         Insert: {
+          amount?: number | null
           created_at?: string | null
-          expires_at?: string | null
+          expires_at: string
+          grade: number
           id?: string
-          is_active?: boolean | null
           payment_id?: string | null
-          plan_id?: string | null
-          started_at?: string | null
+          plan_type?: string | null
+          starts_at?: string | null
+          status?: string | null
+          updated_at?: string | null
           user_id?: string | null
         }
         Update: {
+          amount?: number | null
           created_at?: string | null
-          expires_at?: string | null
+          expires_at?: string
+          grade?: number
           id?: string
-          is_active?: boolean | null
           payment_id?: string | null
-          plan_id?: string | null
-          started_at?: string | null
+          plan_type?: string | null
+          starts_at?: string | null
+          status?: string | null
+          updated_at?: string | null
           user_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "user_subscriptions_plan_id_fkey"
-            columns: ["plan_id"]
-            isOneToOne: false
-            referencedRelation: "subscription_plans"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       user_topic_progress: {
         Row: {
@@ -2382,10 +2470,34 @@ export type Database = {
         }
         Returns: undefined
       }
+      change_user_goal: {
+        Args: {
+          p_confirm_reset?: boolean
+          p_new_goal: string
+          p_new_grade: number
+          p_new_target_exam: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       check_ai_rate_limit: { Args: { p_user_id: string }; Returns: boolean }
       check_and_award_badges: {
         Args: { p_user_id: string }
         Returns: undefined
+      }
+      get_leaderboard_with_stats: {
+        Args: { limit_count?: number }
+        Returns: {
+          accuracy: number
+          avatar_url: string
+          correct_answers: number
+          current_streak: number
+          full_name: string
+          id: string
+          previous_rank: number
+          total_points: number
+          total_questions: number
+        }[]
       }
       has_batch_access: {
         Args: { p_batch_id: string; p_user_id: string }
@@ -2401,6 +2513,8 @@ export type Database = {
       increment_ai_usage: { Args: { p_user_id: string }; Returns: undefined }
       is_admin: { Args: never; Returns: boolean }
       is_user_premium: { Args: { p_user_id: string }; Returns: boolean }
+      reset_user_progress: { Args: { p_user_id: string }; Returns: Json }
+      snapshot_daily_ranks: { Args: never; Returns: undefined }
       validate_question_answer:
         | {
             Args: { _question_id: string; _user_answer: string }

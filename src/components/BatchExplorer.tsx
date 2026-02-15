@@ -92,8 +92,6 @@ export const BatchExplorer: React.FC = () => {
           is_active,
           color,
           icon,
-          free_mode_enabled,
-          pro_mode_enabled,
           batch_subjects (id, subject)
         `)
         .eq('is_active', true)
@@ -109,7 +107,7 @@ export const BatchExplorer: React.FC = () => {
         }
         throw error;
       }
-      setBatches((data || []) as Batch[]);
+      setBatches((data || []) as unknown as Batch[]);
     } catch (error: any) {
       console.error('Error fetching batches:', error);
       // Silently handle table not found errors
@@ -342,7 +340,7 @@ export const BatchExplorer: React.FC = () => {
                   {/* Price Display */}
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-sm font-medium text-muted-foreground">
-                      {batch.free_mode_enabled ? 'Free Trial + Pro' : 'Price'}
+                      Price
                     </span>
                     <div className="flex items-center gap-2">
                       {originalPrice && (
@@ -357,14 +355,6 @@ export const BatchExplorer: React.FC = () => {
                   </div>
 
                   {/* Free Trial Badge */}
-                  {batch.free_mode_enabled && !hasAccess && (
-                    <div className="flex items-center justify-center gap-2 p-2 bg-green-50 rounded-lg">
-                      <Zap className="w-4 h-4 text-green-600" />
-                      <span className="text-xs font-medium text-green-600">
-                        7-day Free Trial Available
-                      </span>
-                    </div>
-                  )}
 
                   {/* Action Button */}
                   {hasAccess ? (
@@ -393,7 +383,7 @@ export const BatchExplorer: React.FC = () => {
                       className="w-full gap-2"
                     >
                       <Zap className="w-4 h-4" />
-                      {batch.free_mode_enabled ? 'Start Free Trial' : 'Get Access'}
+                      Get Access
                     </Button>
                   )}
                 </div>
