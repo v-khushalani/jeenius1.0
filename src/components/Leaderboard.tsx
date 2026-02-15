@@ -48,12 +48,14 @@ const Leaderboard: React.FC = () => {
         // Fallback to profiles-only fetch if RPC fails (migration not applied)
         const { data: profiles, error: profileError } = await supabase
           .from('profiles')
-          .select('id, full_name, avatar_url, total_points, current_streak, total_questions_answered, overall_accuracy, previous_rank')
+          .select('id, full_name, avatar_url, total_points, current_streak, total_questions_answered, correct_answers, overall_accuracy, previous_rank')
           .order('total_points', { ascending: false })
           .limit(100);
 
         if (profileError || !profiles) {
           logger.error('Profile fetch error:', profileError);
+          setTopUsers([]);
+          setCurrentUser(null);
           setLoading(false);
           return;
         }
@@ -72,7 +74,7 @@ const Leaderboard: React.FC = () => {
               full_name: profile.full_name || 'Anonymous User',
               avatar_url: profile.avatar_url || undefined,
               total_questions: profile.total_questions_answered || 0,
-              accuracy: Math.round(profile.overall_accuracy || 0),
+              accuracy: profile.overall_accuracy ? Math.round(Number(profile.overall_accuracy)) : 0,
               total_points: profile.total_points || 0,
               streak: profile.current_streak || 0,
               rank: currentRank,
@@ -96,28 +98,30 @@ const Leaderboard: React.FC = () => {
         return;
       }
 
-      logger.info('Fetched leaderboard data', { count: leaderboardData.length });
+      logger.info('Fetched leaderboard data', { count: leaderboardData.length, sample: leaderboardData[0] });
 
       // Build user stats from RPC result
-      const userStats: LeaderboardUser[] = leaderboardData.map((entry: any, index: number) => {
-        const currentRank = index + 1;
-        // Calculate real rank change: previous_rank - current_rank
-        // Positive = moved up (was 5, now 3 = +2)
-        const rankChange = entry.previous_rank ? entry.previous_rank - currentRank : 0;
-        
-        return {
-          id: entry.id,
-          full_name: entry.full_name || 'Anonymous User',
-          avatar_url: entry.avatar_url || undefined,
-          total_questions: Number(entry.total_questions) || 0,
-          accuracy: Math.round(Number(entry.accuracy) || 0),
-          total_points: entry.total_points || 0,
-          streak: entry.current_streak || 0,
-          rank: currentRank,
-          rank_change: rankChange,
-          questions_today: 0
-        };
-      });
+      const userStats: LeaderboardUser[] = leaderboardData
+        .filter((entry: any) => entry.id && ((entry.total_points || 0) > 0 || (entry.total_questions || 0) > 0))
+        .map((entry: any, index: number) => {
+          const currentRank = index + 1;
+          // Calculate real rank change: previous_rank - current_rank
+          // Positive = moved up (was 5, now 3 = +2)
+          const rankChange = entry.previous_rank ? entry.previous_rank - currentRank : 0;
+          
+          return {
+            id: entry.id,
+            full_name: entry.full_name || 'Anonymous User',
+            avatar_url: entry.avatar_url || undefined,
+            total_questions: Number(entry.total_questions) || 0,
+            accuracy: entry.accuracy ? Math.round(Number(entry.accuracy)) : 0,
+            total_points: entry.total_points || 0,
+            streak: entry.current_streak || 0,
+            rank: currentRank,
+            rank_change: rankChange,
+            questions_today: 0
+          };
+        });
 
       // Find current user
       const current = userStats.find(u => u.id === user?.id);
@@ -132,6 +136,8 @@ const Leaderboard: React.FC = () => {
 
     } catch (error) {
       logger.error('Error fetching leaderboard:', error);
+      setTopUsers([]);
+      setCurrentUser(null);
     } finally {
       if (showLoader) setLoading(false);
       else setIsRefreshing(false);
@@ -342,20 +348,20 @@ const Leaderboard: React.FC = () => {
                           )}
                         </div>
                         
-                        <div className="flex items-center gap-3 text-xs text-slate-600 mt-1">
-                          <span className="flex items-center gap-1 font-bold text-indigo-600">
+                        <div className="flex items-center gap-3 text-xs text-slate-600 mt-1 flex-wrap">
+                          <span className="flex items-center gap-1 font-bold text-indigo-600 whitespace-nowrap">
                             <Zap className="h-3 w-3" />
                             {leaderUser.total_points} pts
                           </span>
-                          <span className="flex items-center gap-1">
+                          <span className="flex items-center gap-1 whitespace-nowrap">
                             <Target className="h-3 w-3" />
-                            {leaderUser.total_questions}Q
+                            {Number(leaderUser.total_questions) || 0}Q
                           </span>
-                          <span className={`font-semibold ${
-                            leaderUser.accuracy >= 80 ? 'text-green-600' :
-                            leaderUser.accuracy >= 60 ? 'text-yellow-600' : 'text-red-600'
+                          <span className={`font-semibold whitespace-nowrap ${
+                            Number(leaderUser.accuracy) >= 80 ? 'text-green-600' :
+                            Number(leaderUser.accuracy) >= 60 ? 'text-yellow-600' : 'text-red-600'
                           }`}>
-                            {leaderUser.accuracy}%
+                            {Math.round(Number(leaderUser.accuracy)) || 0}%
                           </span>
                         </div>
 

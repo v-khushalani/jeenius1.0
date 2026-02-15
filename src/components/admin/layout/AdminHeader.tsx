@@ -45,9 +45,10 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick }) => {
       <div className="flex items-center gap-4 flex-1">
         <button
           onClick={onMenuClick}
-          className="lg:hidden p-2 -ml-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-600 hover:text-slate-900"
+          className="lg:hidden flex items-center gap-2 px-3 py-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-600 hover:text-slate-900"
         >
           <Menu className="w-5 h-5" />
+          <span className="text-sm font-medium">Menu</span>
         </button>
         
         <div className="flex items-center gap-4">

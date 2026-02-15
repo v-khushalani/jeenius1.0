@@ -314,182 +314,62 @@ const StudyNowPage = () => {
   };
 
   const loadChapters = async (subject) => {
-    // Prevent multiple clicks while loading
     if (loading) return;
-    
     setLoading(true);
     setSelectedSubject(subject);
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not found');
 
-      // Get user's target exam and grade from profile
       let targetExam = profile?.target_exam || 'JEE';
-      let userGrade = profile?.grade || 12;
+      let userGrade = parseGrade(profile?.grade || 12);
       
-      // Parse grade properly (handles strings like "9th", "9", numbers, etc.)
-      userGrade = parseGrade(userGrade);
-
-      // ✅ Normalize Foundation exam types (some profiles store 'Foundation' instead of 'Foundation-9')
       if (isFoundationGrade(userGrade) && targetExam === 'Foundation') {
         targetExam = `Foundation-${userGrade}`;
       }
 
-      logger.info('LoadChapters debug', { targetExam, userGrade, subject });
-
-      // For Foundation grades, we derive chapters from questions table
-      // because Foundation questions may not have batch-specific chapters
-      const examFieldForChapters = mapBatchToExamField(targetExam, userGrade);
+      const examField = mapBatchToExamField(targetExam, userGrade);
       
-      if (isFoundationGrade(userGrade)) {
-        // Resolve student's batch via shared helper (single source of truth)
-        const batch = user?.id
-          ? await getBatchForStudent(user.id, userGrade, targetExam)
-          : null;
-
-        let chaptersToShow = [];
-
-        if (batch?.id) {
-          // Use batch-specific chapters from chapters table
-          const { data: batchChapters, error: batchError } = await supabase
-            .from('chapters')
-            .select('id, chapter_name, chapter_number, description, difficulty_level, batch_id')
-            .eq('subject', subject)
-            .eq('batch_id', batch.id)
-            .order('chapter_number', { ascending: true });
-          
-          if (batchError) throw batchError;
-          chaptersToShow = batchChapters || [];
-        } else {
-          // Foundation without batch: derive chapters from questions table
-          // This ensures we only show chapters that have Foundation-X questions
-          logger.info('Foundation free tier - deriving chapters from questions', {
-            userId: user?.id,
-            userGrade,
-            targetExam,
-            subject,
-            examField: examFieldForChapters
-          });
-
-          // Get distinct chapter info from questions for this exam
-          const { data: questionChapters, error: qError } = await supabase
-            .from('questions')
-            .select('chapter_id, chapters!inner(id, chapter_name, chapter_number, description, difficulty_level)')
-            .eq('subject', subject)
-            .eq('exam', examFieldForChapters)
-            .not('chapter_id', 'is', null);
-
-          if (qError) throw qError;
-
-          // Deduplicate chapters from questions
-          const chapterMap = new Map();
-          (questionChapters || []).forEach(q => {
-            if (q.chapters && !chapterMap.has(q.chapters.id)) {
-              chapterMap.set(q.chapters.id, q.chapters);
-            }
-          });
-          
-          chaptersToShow = Array.from(chapterMap.values())
-            .sort((a, b) => (a.chapter_number || 0) - (b.chapter_number || 0));
-        }
-
-        // Get questions count per chapter
-        const { data: questionsData } = await supabase
-          .from('questions')
-          .select('chapter_id, difficulty')
-          .eq('subject', subject)
-          .eq('exam', examFieldForChapters);
-
-        // Get user attempts for this subject
-        const { data: userAttempts } = await supabase
-          .from('question_attempts')
-          .select('*, questions!inner(subject, chapter_id)')
-          .eq('user_id', user?.id)
-          .eq('questions.subject', subject);
-
-        const chapterStats = chaptersToShow.map((chapter) => {
-          const chapterQuestions = questionsData?.filter(q => q.chapter_id === chapter.id) || [];
-          const totalQuestions = chapterQuestions.length;
-
-          const difficulties = {
-            easy: chapterQuestions.filter(q => q.difficulty === 'Easy').length,
-            medium: chapterQuestions.filter(q => q.difficulty === 'Medium').length,
-            hard: chapterQuestions.filter(q => q.difficulty === 'Hard').length
-          };
-
-          const chapterAttempts = userAttempts?.filter(
-            a => a.questions?.chapter_id === chapter.id
-          ) || [];
-
-          const attempted = chapterAttempts.length;
-          const correct = chapterAttempts.filter(a => a.is_correct).length;
-          const accuracy = attempted > 0 ? Math.round((correct / attempted) * 100) : 0;
-          const progress = totalQuestions > 0 ? Math.min(100, Math.round((attempted / totalQuestions) * 100)) : 0;
-
-          return {
-            id: chapter.id,
-            name: chapter.chapter_name,
-            sequence: chapter.chapter_number,
-            description: chapter.description,
-            totalQuestions,
-            difficulties,
-            attempted,
-            accuracy,
-            progress,
-            isLocked: false
-          };
-        });
-
-        // Filter out chapters with 0 questions
-        const validChapters = chapterStats.filter(ch => ch.totalQuestions > 0);
-        setChapters(validChapters);
-        setView('chapters');
-        setLoading(false);
-        return;
-      }
-
-      // For JEE/NEET etc: use global chapters only (batch_id is null)
-      const { data: chaptersData, error: chaptersError } = await supabase
+      // Get chapters - for Foundation use batch_id, for JEE/NEET use batch_id IS NULL
+      let chaptersQuery = supabase
         .from('chapters')
         .select('id, chapter_name, chapter_number, description, difficulty_level, batch_id')
         .eq('subject', subject)
-        .is('batch_id', null)
         .order('chapter_number', { ascending: true });
 
+      if (isFoundationGrade(userGrade)) {
+        const batch = await getBatchForStudent(user.id, userGrade, targetExam);
+        if (batch?.id) {
+          chaptersQuery = chaptersQuery.eq('batch_id', batch.id);
+        }
+      } else {
+        chaptersQuery = chaptersQuery.is('batch_id', null);
+      }
+
+      const { data: chaptersData, error: chaptersError } = await chaptersQuery;
       if (chaptersError) throw chaptersError;
 
-      // Get questions count per chapter (examFieldForChapters already defined above)
+      // Get questions and user attempts
       const { data: questionsData } = await supabase
         .from('questions')
         .select('chapter_id, difficulty')
         .eq('subject', subject)
-        .eq('exam', examFieldForChapters);
+        .eq('exam', examField);
 
-      // Get user attempts for this subject
       const { data: userAttempts } = await supabase
         .from('question_attempts')
         .select('*, questions!inner(subject, chapter_id)')
-        .eq('user_id', user?.id)
+        .eq('user_id', user.id)
         .eq('questions.subject', subject);
 
+      // Build chapter stats
       const chapterStats = (chaptersData || []).map((chapter) => {
         const chapterQuestions = questionsData?.filter(q => q.chapter_id === chapter.id) || [];
         const totalQuestions = chapterQuestions.length;
-
-        const difficulties = {
-          easy: chapterQuestions.filter(q => q.difficulty === 'Easy').length,
-          medium: chapterQuestions.filter(q => q.difficulty === 'Medium').length,
-          hard: chapterQuestions.filter(q => q.difficulty === 'Hard').length
-        };
-
-        const chapterAttempts = userAttempts?.filter(
-          a => a.questions?.chapter_id === chapter.id
-        ) || [];
-
+        const chapterAttempts = userAttempts?.filter(a => a.questions?.chapter_id === chapter.id) || [];
         const attempted = chapterAttempts.length;
         const correct = chapterAttempts.filter(a => a.is_correct).length;
-        const accuracy = attempted > 0 ? Math.round((correct / attempted) * 100) : 0;
-        const progress = totalQuestions > 0 ? Math.min(100, Math.round((attempted / totalQuestions) * 100)) : 0;
 
         return {
           id: chapter.id,
@@ -497,20 +377,25 @@ const StudyNowPage = () => {
           sequence: chapter.chapter_number,
           description: chapter.description,
           totalQuestions,
-          difficulties,
+          difficulties: {
+            easy: chapterQuestions.filter(q => q.difficulty === 'Easy').length,
+            medium: chapterQuestions.filter(q => q.difficulty === 'Medium').length,
+            hard: chapterQuestions.filter(q => q.difficulty === 'Hard').length
+          },
           attempted,
-          accuracy,
-          progress,
+          accuracy: attempted > 0 ? Math.round((correct / attempted) * 100) : 0,
+          progress: totalQuestions > 0 ? Math.min(100, Math.round((attempted / totalQuestions) * 100)) : 0,
           isLocked: false
         };
-      });
+      }).filter(ch => ch.totalQuestions > 0);
 
       setChapters(chapterStats);
       setView('chapters');
 
     } catch (error) {
-      logger.error('Error fetching chapters:', error);
+      logger.error('Error loading chapters:', error);
       toast.error('Failed to load chapters');
+      setChapters([]);
     } finally {
       setLoading(false);
     }
