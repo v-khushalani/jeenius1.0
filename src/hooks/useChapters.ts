@@ -40,12 +40,13 @@ export const useChapters = (batchId: string | null, subject: string | null) => {
           count: 'exact',
         })
         .eq('subject', subject)
+        .eq('batch_id', batchId)
         .order('chapter_number', { ascending: true });
 
       if (queryError) throw queryError;
 
       setChapters(data || []);
-      logger.log(`✅ Loaded ${count} chapters`);
+      logger.log(`✅ Loaded ${count} chapters for batch ${batchId}`);
     } catch (err: any) {
       logger.error('Error in useChapters:', err);
       setError(err.message || 'Failed to load chapters');

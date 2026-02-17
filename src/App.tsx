@@ -161,6 +161,16 @@ function App() {
                   }
                 />
                 
+                {/* Settings */}
+                <Route
+                  path="/settings"
+                  element={
+                    <ProtectedRoute>
+                      <Settings />
+                    </ProtectedRoute>
+                  }
+                />
+                
                 {/* Admin Routes */}
                 <Route
                   path="/admin"

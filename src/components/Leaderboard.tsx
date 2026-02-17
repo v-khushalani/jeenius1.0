@@ -277,8 +277,39 @@ const Leaderboard: React.FC = () => {
 
       <CardContent className="p-4 space-y-3 max-h-[600px] overflow-y-auto">
         
-        {/* Current User Card */}
-        {currentUser && currentUser.rank > 10 && (
+        {/* Empty State */}
+        {topUsers.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+            <div className="bg-gradient-to-br from-orange-50 to-yellow-50 p-6 rounded-full mb-4">
+              <Trophy className="h-12 w-12 text-orange-400" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-900 mb-2">No Scores Yet</h3>
+            <p className="text-sm text-slate-600 mb-6 max-w-xs">
+              Start practicing questions to see yourself on the leaderboard. The more you practice, the higher you'll climb!
+            </p>
+            <div className="w-full space-y-2">
+              <p className="text-xs text-slate-500 font-medium">How to get on the board:</p>
+              <ul className="text-xs text-slate-600 space-y-1">
+                <li className="flex items-center justify-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-orange-400 rounded-full"></span>
+                  Practice questions from chapters
+                </li>
+                <li className="flex items-center justify-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-orange-400 rounded-full"></span>
+                  Answer correctly to earn points
+                </li>
+                <li className="flex items-center justify-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-orange-400 rounded-full"></span>
+                  Track your rank in real-time
+                </li>
+              </ul>
+            </div>
+          </div>
+        )}
+
+        
+        {/* Current User Card - Only show if we have leaderboard data */}
+        {topUsers.length > 0 && currentUser && currentUser.rank > 10 && (
           <div className="mb-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border-2 border-blue-300">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">

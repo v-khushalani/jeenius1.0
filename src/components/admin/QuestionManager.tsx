@@ -104,32 +104,43 @@ export const QuestionManager = () => {
       return batch?.id || (batches.length === 0 ? 'NOT_FOUND' : 'NOT_FOUND');
     }
     
-    // For JEE/NEET - chapters have batch_id = null
+    // For JEE/NEET - find batch for grade 11 or 12
+    const jeeNeetMatch = formData.exam.match(/^(JEE|NEET)(?:-(\d+))?$/);
+    if (jeeNeetMatch) {
+      const examType = jeeNeetMatch[1]; // JEE or NEET
+      const grade = parseInt(jeeNeetMatch[2]) || 12; // Default to grade 12
+      const batch = batches.find(b => 
+        b.exam_type.toLowerCase() === examType.toLowerCase() && 
+        b.grade === grade
+      );
+      return batch?.id || (batches.length === 0 ? 'NOT_FOUND' : 'NOT_FOUND');
+    }
+    
     return null;
   };
 
   // Derived state for filtered chapters and topics
-  // Filter by subject AND by exam type (batch_id for Foundation, null for JEE/NEET)
+  // Filter by subject AND by exam type (batch_id for all exams now)
   const filteredChapters = (() => {
-    const isFoundation = formData.exam.startsWith('Foundation-');
+    const batchId = getCurrentBatchId();
     
-    if (isFoundation) {
-      const batchId = getCurrentBatchId();
-      // If batch not found, return empty array (don't show other batch's chapters)
-      if (batchId === 'NOT_FOUND' || batchId === null) return [];
-      return chapters.filter(c => c.subject === formData.subject && c.batch_id === batchId);
-    } else {
-      // JEE/NEET: only show chapters with null batch_id (global chapters)
-      return chapters.filter(c => c.subject === formData.subject && c.batch_id === null);
+    // If batch not found, return empty array (don't show other batch's chapters)
+    if (batchId === 'NOT_FOUND' || batchId === null) {
+      // Only allow null batch_id if no exam is selected
+      if (!formData.exam) return chapters.filter(c => c.subject === formData.subject);
+      return [];
     }
+    
+    // Return chapters matching both subject and batch_id
+    return chapters.filter(c => c.subject === formData.subject && c.batch_id === batchId);
   })();
   const selectedChapter = chapters.find(c => c.chapter_name === formData.chapter && c.subject === formData.subject);
   const filteredTopics = selectedChapter ? topics.filter(t => t.chapter_id === selectedChapter.id) : [];
 
   // Get valid subjects based on exam type
   const getValidSubjectsForExam = (exam: string): string[] => {
-    if (exam === 'JEE') return ['Physics', 'Chemistry', 'Mathematics'];
-    if (exam === 'NEET') return ['Physics', 'Chemistry', 'Biology'];
+    if (exam.startsWith('JEE')) return ['Physics', 'Chemistry', 'Mathematics'];
+    if (exam.startsWith('NEET')) return ['Physics', 'Chemistry', 'Biology'];
     // Foundation (6-10) has all 4 subjects
     return ['Physics', 'Chemistry', 'Mathematics', 'Biology'];
   };
@@ -137,17 +148,21 @@ export const QuestionManager = () => {
   // Get unique subjects from chapters (filtered by current exam type)
   const availableSubjects = (() => {
     const validSubjects = getValidSubjectsForExam(formData.exam);
-    const isFoundation = formData.exam.startsWith('Foundation-');
+    const batchId = getCurrentBatchId();
     
-    if (isFoundation) {
-      const batchId = getCurrentBatchId();
-      if (batchId === 'NOT_FOUND' || batchId === null) return validSubjects;
-      const chaptersSubjects = [...new Set(chapters.filter(c => c.batch_id === batchId).map(c => c.subject))];
-      return chaptersSubjects.length > 0 ? chaptersSubjects.filter(s => validSubjects.includes(s)) : validSubjects;
-    } else {
-      const chaptersSubjects = [...new Set(chapters.filter(c => c.batch_id === null).map(c => c.subject))];
-      return chaptersSubjects.length > 0 ? chaptersSubjects.filter(s => validSubjects.includes(s)) : validSubjects;
+    if (!formData.exam) {
+      // No exam selected - show all subjects
+      return validSubjects;
     }
+    
+    if (batchId === 'NOT_FOUND' || batchId === null) {
+      // Batch not found or not applicable - show valid subjects
+      return validSubjects;
+    }
+    
+    // Filter chapters by batch to get available subjects
+    const chaptersSubjects = [...new Set(chapters.filter(c => c.batch_id === batchId).map(c => c.subject))];
+    return chaptersSubjects.length > 0 ? chaptersSubjects.filter(s => validSubjects.includes(s)) : validSubjects;
   })();
 
   // Helper function to check if exam is Foundation or Scholarship (topic mapping optional)

@@ -200,10 +200,9 @@ const StudyNowPage = () => {
           filtered: subjectsToShow
         });
       } else {
-        // No batch configured - use static subjects from config
-        // Free users can access with daily limits (15 questions/day)
+        // No batch configured
         if (isFoundationGrade(userGrade)) {
-          logger.info('Foundation - using static subjects (no batch)', {
+          logger.info('Foundation - no batch configured', {
             userId: user.id,
             userGrade,
             targetExam,
@@ -211,16 +210,14 @@ const StudyNowPage = () => {
           // Use static subjects for Foundation (PCMB)
           subjectsToShow = examSubjects;
         } else {
-          // Non-Foundation fallback: derive subjects from JEE/NEET global chapters (batch_id is null)
-          const { data: chaptersData, error: chaptersError } = await supabase
-            .from('chapters')
-            .select('subject')
-            .is('batch_id', null);
-
-          if (chaptersError) throw chaptersError;
-
-          subjectsToShow = [...new Set(chaptersData?.map(c => c.subject) || [])]
-            .filter(subject => examSubjects.includes(subject));
+          // JEE/NEET: with new system, batch should always exist for grades 11-12
+          logger.warn('JEE/NEET batch not found for grade', {
+            userId: user.id,
+            userGrade,
+            targetExam,
+          });
+          // Fallback to exam subjects
+          subjectsToShow = examSubjects;
         }
       }
 
@@ -331,20 +328,26 @@ const StudyNowPage = () => {
 
       const examField = mapBatchToExamField(targetExam, userGrade);
       
-      // Get chapters - for Foundation use batch_id, for JEE/NEET use batch_id IS NULL
+      // Get chapters - for all exam types use grade-specific batch_id filtering
       let chaptersQuery = supabase
         .from('chapters')
         .select('id, chapter_name, chapter_number, description, difficulty_level, batch_id')
         .eq('subject', subject)
         .order('chapter_number', { ascending: true });
 
-      if (isFoundationGrade(userGrade)) {
-        const batch = await getBatchForStudent(user.id, userGrade, targetExam);
-        if (batch?.id) {
-          chaptersQuery = chaptersQuery.eq('batch_id', batch.id);
-        }
+      // Get batch for current user/grade/exam
+      const batch = await getBatchForStudent(user.id, userGrade, targetExam);
+      if (batch?.id) {
+        chaptersQuery = chaptersQuery.eq('batch_id', batch.id);
       } else {
-        chaptersQuery = chaptersQuery.is('batch_id', null);
+        // No batch found - this shouldn't happen with new system
+        logger.warn('No batch found for student in getChapterStats', {
+          userGrade,
+          targetExam,
+          subject
+        });
+        // Return empty for now
+        return null;
       }
 
       const { data: chaptersData, error: chaptersError } = await chaptersQuery;

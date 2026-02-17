@@ -34,6 +34,7 @@ const ChapterManager = () => {
   const [batches, setBatches] = useState<Batch[]>([]);
   const [selectedSubject, setSelectedSubject] = useState('Physics');
   const [filterExam, setFilterExam] = useState('JEE'); // Default to JEE instead of 'all'
+  const [selectedGrade, setSelectedGrade] = useState<number | null>(12); // For JEE/NEET, allow grade selection
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingChapter, setEditingChapter] = useState<Chapter | null>(null);
@@ -67,7 +68,7 @@ const ChapterManager = () => {
 
   useEffect(() => {
     fetchChapters();
-  }, [selectedSubject, filterExam, batches]);
+  }, [selectedSubject, filterExam, selectedGrade, batches]);
 
   const fetchBatches = async () => {
     const { data } = await supabase
@@ -81,12 +82,18 @@ const ChapterManager = () => {
   // Get batch_id for current filter - ALL chapters must be linked to a batch
   const getCurrentBatchId = (): string | 'NOT_FOUND' => {
     if (filterExam === 'JEE') {
-      const batch = batches.find(b => b.exam_type.toLowerCase() === 'jee');
+      const batch = batches.find(b => 
+        b.exam_type.toLowerCase() === 'jee' && 
+        (!selectedGrade || b.grade === selectedGrade)
+      );
       return batch?.id || 'NOT_FOUND';
     }
     
     if (filterExam === 'NEET') {
-      const batch = batches.find(b => b.exam_type.toLowerCase() === 'neet');
+      const batch = batches.find(b => 
+        b.exam_type.toLowerCase() === 'neet' && 
+        (!selectedGrade || b.grade === selectedGrade)
+      );
       return batch?.id || 'NOT_FOUND';
     }
     
@@ -267,26 +274,42 @@ const ChapterManager = () => {
               </div>
             </div>
             <div className="flex gap-2 flex-wrap">
+              {/* JEE Button */}
               <Button
                 variant={filterExam === 'JEE' ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => setFilterExam('JEE')}
+                onClick={() => {
+                  setFilterExam('JEE');
+                  setSelectedGrade(12);
+                }}
               >
                 JEE (PCM)
               </Button>
+
+              {/* NEET Button */}
               <Button
                 variant={filterExam === 'NEET' ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => setFilterExam('NEET')}
+                onClick={() => {
+                  setFilterExam('NEET');
+                  setSelectedGrade(12);
+                }}
               >
                 NEET (PCB)
               </Button>
+
+
+
+              {/* Foundation classes */}
               {[6, 7, 8, 9, 10].map(grade => (
                 <Button
                   key={grade}
                   variant={filterExam === `Foundation-${grade}` ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => setFilterExam(`Foundation-${grade}`)}
+                  onClick={() => {
+                    setFilterExam(`Foundation-${grade}`);
+                    setSelectedGrade(null);
+                  }}
                 >
                   Class {grade}
                 </Button>
