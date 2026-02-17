@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import DOMPurify from "dompurify";
 import { logger } from "@/utils/logger";
+import { replaceGreekLetters } from "@/constants/unified";
 
 interface Message {
   role: "user" | "assistant";
@@ -379,27 +380,11 @@ function cleanAndFormatJeenieText(text: string, isFirstResponse: boolean = false
       .replace(/^[\s\n]*/, ''); // Clean leading whitespace after removal
   }
   
+  // Use unified Greek letter replacements
+  formatted = replaceGreekLetters(formatted);
+  
+  // Additional formatting
   formatted = formatted
-    // Greek letters - convert text to proper Unicode symbols
-    .replace(/\\alpha|alpha/gi, 'α')
-    .replace(/\\beta|beta/gi, 'β')
-    .replace(/\\gamma|gamma/gi, 'γ')
-    .replace(/\\delta|delta/gi, 'δ')
-    .replace(/\\theta|theta/gi, 'θ')
-    .replace(/\\lambda|lambda/gi, 'λ')
-    .replace(/\\mu|mu(?![a-z])/gi, 'μ')
-    .replace(/\\sigma|sigma/gi, 'σ')
-    .replace(/\\pi|(?<![a-z])pi(?![a-z])/gi, 'π')
-    .replace(/\\omega|omega/gi, 'ω')
-    .replace(/\\Delta/g, 'Δ')
-    .replace(/\\Sigma/g, 'Σ')
-    .replace(/\\infty|infinity/gi, '∞')
-    .replace(/\\rho|rho/gi, 'ρ')
-    .replace(/\\epsilon|epsilon/gi, 'ε')
-    .replace(/\\phi|phi/gi, 'φ')
-    .replace(/\\psi|psi/gi, 'ψ')
-    .replace(/\\tau|tau/gi, 'τ')
-    .replace(/\\nu|(?<![a-z])nu(?![a-z])/gi, 'ν')
     // Math symbols
     .replace(/->/g, '→')
     .replace(/<-/g, '←')

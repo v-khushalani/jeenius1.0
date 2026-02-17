@@ -1,6 +1,7 @@
 // src/services/streakService.ts
 import { supabase } from '@/integrations/supabase/client';
 import { logger } from '@/utils/logger';
+import { STREAK_CONFIG, ACCURACY_THRESHOLDS } from '@/constants/unified';
 
 export class StreakService {
   
@@ -138,7 +139,7 @@ export class StreakService {
 
     const { data: profile } = await supabase
       .from('profiles')
-      .select('current_streak, longest_streak, last_activity_date, streak_freeze_available, total_streak_days')
+      .select('current_streak, longest_streak, last_activity_date, streak_freeze_available')
       .eq('id', userId)
       .single();
 
@@ -174,7 +175,6 @@ export class StreakService {
         current_streak: newStreak,
         longest_streak: longestStreak,
         last_activity_date: todayString,
-        total_streak_days: (profile.total_streak_days || 0) + 1,
         streak_freeze_available: usedFreeze ? false : profile.streak_freeze_available
       })
       .eq('id', userId);

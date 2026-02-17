@@ -1,6 +1,7 @@
 // src/services/pointsService.ts
 import { supabase } from '@/integrations/supabase/client';
 import { logger } from '@/utils/logger';
+import { DIFFICULTY_CONFIG, STREAK_CONFIG, Difficulty } from '@/constants/unified';
 
 export class PointsService {
   
@@ -66,12 +67,9 @@ export class PointsService {
   }
 
   private static getBasePoints(difficulty: string): number {
-    const map: Record<string, number> = {
-      easy: 5, Easy: 5,
-      medium: 10, Medium: 10,
-      hard: 20, Hard: 20
-    };
-    return map[difficulty] || 5;
+    const normalized = difficulty.toUpperCase() as Difficulty;
+    const config = DIFFICULTY_CONFIG[normalized];
+    return config?.basePoints ?? 5;
   }
 
   private static async calculateStreakBonus(userId: string): Promise<{
@@ -82,7 +80,7 @@ export class PointsService {
   }> {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('answer_streak, badges, longest_answer_streak')
+      .select('current_streak, badges, longest_streak')
       .eq('id', userId)
       .single();
 
@@ -90,14 +88,14 @@ export class PointsService {
       return { points: 0, streak: 0, badgeEarned: false };
     }
 
-    const currentStreak = profile.answer_streak || 0;
+    const currentStreak = profile.current_streak || 0;
     const newStreak = currentStreak + 1;
 
     await supabase
       .from('profiles')
       .update({
-        answer_streak: newStreak,
-        longest_answer_streak: Math.max(newStreak, profile.longest_answer_streak || 0)
+        current_streak: newStreak,
+        longest_streak: Math.max(newStreak, profile.longest_streak || 0)
       })
       .eq('id', userId);
 
@@ -139,7 +137,7 @@ export class PointsService {
   private static async resetAnswerStreak(userId: string) {
     await supabase
       .from('profiles')
-      .update({ answer_streak: 0 })
+      .update({ current_streak: 0 })
       .eq('id', userId);
   }
 
