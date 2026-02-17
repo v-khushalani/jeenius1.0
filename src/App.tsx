@@ -25,7 +25,7 @@ const TestResultsPage = lazy(() => import("./pages/TestResultsPage"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Profile = lazy(() => import("./pages/Profile"));
 const NotFound = lazy(() => import("./pages/NotFound"));
-const GoalSelectionClean = lazy(() => import('@/pages/GoalSelectionClean'));
+const GoalSelectionPage = lazy(() => import('@/pages/GoalSelectionPage'));
 const StudyHub = lazy(() => import('@/pages/StudyHub'));
 const AIStudyPlannerPage = lazy(() => import('./pages/AIStudyPlannerPage'));
 const EnhancedDashboard = lazy(() => import("./pages/EnhancedDashboard"));
@@ -91,7 +91,7 @@ function App() {
                   <Route path="/auth/callback" element={<AuthCallback />} />
                   
                   {/* Goal Selection */}
-                  <Route path="/goal-selection" element={<GoalSelectionClean />} />
+                  <Route path="/goal-selection" element={<GoalSelectionPage />} />
                   
                   {/* Study Hub */}
                   <Route

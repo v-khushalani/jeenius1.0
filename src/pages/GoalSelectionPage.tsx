@@ -83,10 +83,8 @@ const GoalSelectionPage = () => {
           
           logger.info('Profile already complete, redirecting to dashboard');
           setIsLoading(false);
-          // Use a small timeout to ensure state is updated before navigation
-          setTimeout(() => {
-            navigate('/dashboard', { replace: true });
-          }, 100);
+          // Direct navigation without timeout - ensures it happens immediately
+          navigate('/dashboard', { replace: true });
           return;
         }
   
@@ -189,6 +187,7 @@ const GoalSelectionPage = () => {
 
   const confirmStartJourney = async () => {
     setIsStartingJourney(true);
+    setShowWelcomeDialog(false);
     
     // Auto-select all subjects for the chosen goal
     const selectedSubjects = subjects[selectedGoal] || [];
@@ -197,6 +196,7 @@ const GoalSelectionPage = () => {
       if (!user?.id) {
         logger.error('No user found');
         toast.error('Please login again');
+        setIsStartingJourney(false);
         navigate('/login');
         return;
       }
@@ -265,11 +265,15 @@ const GoalSelectionPage = () => {
       };
       localStorage.setItem('userGoals', JSON.stringify(userGoals));
       
-      // Wait a bit for the animation
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Mark that we successfully completed goal selection to prevent re-entry
+      sessionStorage.setItem('goalSelectionComplete', 'true');
+      
+      // Wait briefly for UI feedback, then navigate
+      await new Promise(resolve => setTimeout(resolve, 800));
     
-      // Navigate to dashboard
+      // Navigate to dashboard - this should be the final action
       logger.info('Navigating to dashboard after goal setup');
+      setIsStartingJourney(false);
       navigate('/dashboard', { replace: true });
     
     } catch (error) {
@@ -379,40 +383,71 @@ const GoalSelectionPage = () => {
 
             {/* Step 2: Course Selection */}
             {currentStep === 2 && selectedGrade && (
-              <div className="max-w-4xl mx-auto">
-                <h2 className="text-2xl md:text-3xl font-bold text-center mb-6" style={{color: '#013062'}}>What's your target? 🎯</h2>
+              <div className="max-w-5xl mx-auto">
+                <h2 className="text-2xl md:text-3xl font-bold text-center mb-2" style={{color: '#013062'}}>What's your target? 🎯</h2>
+                <p className="text-center text-gray-600 mb-8">Choose your learning path and let's create your personalized study plan</p>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                   {goals[selectedGrade]?.map((goal) => (
                     <div
                       key={goal.id}
                       onClick={() => setSelectedGoal(goal.id)}
-                      className={`p-4 md:p-6 lg:p-8 rounded-2xl cursor-pointer transition-all duration-300 transform hover:scale-105 border-2 bg-white shadow-lg hover:shadow-xl ${
+                      className={`group relative overflow-hidden p-6 md:p-8 rounded-2xl cursor-pointer transition-all duration-300 transform border-2 bg-white hover:shadow-2xl ${
                         selectedGoal === goal.id
-                          ? 'shadow-2xl transform scale-105'
-                          : 'hover:border-gray-300'
+                          ? 'shadow-2xl scale-105'
+                          : 'hover:scale-102 hover:shadow-xl'
                       }`}
                       style={{
                         borderColor: selectedGoal === goal.id ? '#013062' : '#e5e7eb',
                         boxShadow: selectedGoal === goal.id ? '0 0 0 3px rgba(1, 48, 98, 0.1)' : undefined
                       }}
                     >
-                      <div className={`inline-flex p-3 rounded-full ${goal.color} mb-4`}>
+                      {/* Background gradient on hover */}
+                      <div className="absolute inset-0 opacity-0 group-hover:opacity-5 transition-opacity" style={{backgroundColor: goal.color}} />
+                      
+                      <div className={`inline-flex p-4 rounded-full ${goal.color} text-white mb-4 transition-transform group-hover:scale-110`}>
                         {goal.icon}
                       </div>
-                      <h3 className="text-xl md:text-2xl font-bold mb-2" style={{color: '#013062'}}>{goal.name}</h3>
                       
-                      {examDate && examDates[goal.id] && selectedGoal === goal.id && (
-                        <div className="mt-4 p-3 rounded-lg" style={{backgroundColor: '#f8fafc', border: '1px solid #e2e8f0'}}>
-                          <div className="flex items-center justify-between text-sm">
-                            <div className="flex items-center">
-                              <Calendar className="w-4 h-4 mr-2" style={{color: '#013062'}} />
-                              <span style={{color: '#013062'}}>Exam Date: {examDate ? new Date(examDate).toLocaleDateString() : 'Not set'}</span>
+                      <h3 className="text-2xl md:text-3xl font-bold mb-2" style={{color: '#013062'}}>{goal.name}</h3>
+                      <p className="text-gray-600 mb-4 text-sm md:text-base">{goal.desc}</p>
+                      
+                      {/* Subject badges */}
+                      <div className="mb-4 flex flex-wrap gap-2">
+                        {subjects[goal.id]?.map((subject, idx) => (
+                          <span key={idx} className="px-3 py-1 rounded-full text-xs font-semibold" style={{backgroundColor: '#f0f4f8', color: '#013062'}}>
+                            {subject}
+                          </span>
+                        ))}
+                      </div>
+                      
+                      {/* Exam details for grades 11-12 */}
+                      {examDate && examDates[goal.id] && (
+                        <div className="mt-4 pt-4 border-t" style={{borderColor: '#e5e7eb'}}>
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between text-sm">
+                              <div className="flex items-center text-gray-600">
+                                <Calendar className="w-4 h-4 mr-2" style={{color: '#013062'}} />
+                                <span>Exam Date</span>
+                              </div>
+                              <span className="font-semibold" style={{color: '#013062'}}>{new Date(examDate).toLocaleDateString()}</span>
                             </div>
-                            <div className="flex items-center font-bold" style={{color: '#dc2626'}}>
-                              <Clock className="w-4 h-4 mr-1" />
-                              <span>{daysRemaining} days left</span>
+                            <div className="flex items-center justify-between text-sm">
+                              <div className="flex items-center text-gray-600">
+                                <Clock className="w-4 h-4 mr-2" style={{color: '#dc2626'}} />
+                                <span>Time Remaining</span>
+                              </div>
+                              <span className="font-bold" style={{color: '#dc2626'}}>{daysRemaining} days</span>
                             </div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Selected indicator */}
+                      {selectedGoal === goal.id && (
+                        <div className="absolute top-4 right-4">
+                          <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{backgroundColor: '#013062'}}>
+                            <span className="text-white font-bold">✓</span>
                           </div>
                         </div>
                       )}
@@ -474,58 +509,75 @@ const GoalSelectionPage = () => {
 
       {/* Welcome Dialog */}
       {showWelcomeDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 md:p-8 max-w-md w-full mx-4 text-center transform transition-all duration-300 scale-100">
-            <div className="mb-6">
-              <div className="w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center" style={{backgroundColor: '#013062'}}>
-                <Trophy className="w-10 h-10 text-white" />
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
+          <div className="bg-white rounded-3xl p-6 md:p-10 max-w-lg w-full mx-4 text-center transform transition-all duration-300 scale-100 shadow-2xl animate-in zoom-in-95 duration-300">
+            {/* Animated icon */}
+            <div className="mb-6 relative">
+              <div className="w-24 h-24 mx-auto mb-4 rounded-full flex items-center justify-center animate-bounce" style={{backgroundColor: '#013062'}}>
+                <Trophy className="w-12 h-12 text-white" />
               </div>
-              <h2 className="text-2xl md:text-3xl font-bold mb-3" style={{color: '#013062'}}>
-                Welcome Aboard! 🎉
-              </h2>
-              <p className="text-gray-600 text-lg mb-4">
-                You're about to embark on an incredible learning journey!
-              </p>
+              {/* Decorative rings */}
+              <div className="absolute inset-0 rounded-full flex items-center justify-center pointer-events-none">
+                <div className="w-28 h-28 rounded-full border-2 border-blue-200 animate-pulse" />
+              </div>
             </div>
+            
+            <h2 className="text-3xl md:text-4xl font-bold mb-3" style={{color: '#013062'}}>
+              Welcome Aboard! 🎉
+            </h2>
+            <p className="text-gray-600 text-lg mb-6">
+              You're about to embark on an incredible learning journey customized just for you!
+            </p>
 
             {/* Goal Lock Warning */}
-            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-left">
-              <div className="flex items-start space-x-2">
+            <div className="mb-6 p-4 bg-amber-50 border-l-4 rounded-lg text-left" style={{borderColor: '#f59e0b'}}>
+              <div className="flex items-start space-x-3">
                 <Lock className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-sm font-semibold text-amber-800">Important Notice</p>
+                  <p className="text-sm font-semibold text-amber-800">Goal is Now Locked</p>
                   <p className="text-xs text-amber-700 mt-1">
-                    You can change your goal later, but it will reset your progress so we can personalize your new path.
+                    You can change it later, but it will reset your progress. Choose wisely!
                   </p>
                 </div>
               </div>
             </div>
 
-            <div className="space-y-3 mb-6 text-left">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-                  <Target className="w-4 h-4 text-green-600" />
+            {/* Features list with icons */}
+            <div className="space-y-3 mb-8 text-left bg-gradient-to-br from-blue-50 to-purple-50 p-4 rounded-xl">
+              <div className="flex items-center space-x-4">
+                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                  <Target className="w-5 h-5 text-green-600" />
                 </div>
-                <span className="text-sm text-gray-700">Personalized study plans</span>
+                <div>
+                  <p className="text-sm font-semibold text-gray-800">Personalized Study Plans</p>
+                  <p className="text-xs text-gray-600">Built just for your grade and goals</p>
+                </div>
               </div>
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                  <Rocket className="w-4 h-4 text-blue-600" />
+              <div className="flex items-center space-x-4">
+                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                  <Rocket className="w-5 h-5 text-blue-600" />
                 </div>
-                <span className="text-sm text-gray-700">Smart progress tracking</span>
+                <div>
+                  <p className="text-sm font-semibold text-gray-800">Smart Progress Tracking</p>
+                  <p className="text-xs text-gray-600">Watch your growth in real-time</p>
+                </div>
               </div>
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
-                  <Sparkles className="w-4 h-4 text-purple-600" />
+              <div className="flex items-center space-x-4">
+                <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
+                  <Sparkles className="w-5 h-5 text-purple-600" />
                 </div>
-                <span className="text-sm text-gray-700">AI-powered recommendations</span>
+                <div>
+                  <p className="text-sm font-semibold text-gray-800">AI-Powered Recommendations</p>
+                  <p className="text-xs text-gray-600">Get smarter insights every day</p>
+                </div>
               </div>
             </div>
 
+            {/* Action buttons */}
             <button
               onClick={confirmStartJourney}
               disabled={isStartingJourney}
-              className={`w-full py-3 md:py-4 rounded-full font-bold text-lg transition-all duration-300 text-white shadow-lg ${
+              className={`w-full py-3 md:py-4 rounded-full font-bold text-lg transition-all duration-300 text-white shadow-lg mb-3 flex items-center justify-center space-x-2 ${
                 isStartingJourney 
                   ? 'opacity-50 cursor-not-allowed' 
                   : 'hover:shadow-xl transform hover:scale-105'
@@ -533,21 +585,24 @@ const GoalSelectionPage = () => {
               style={{backgroundColor: '#013062'}}
             >
               {isStartingJourney ? (
-                <div className="flex items-center justify-center space-x-2">
+                <>
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
                   <span>Preparing your journey...</span>
-                </div>
+                </>
               ) : (
-                "Let's Begin! 🚀"
+                <>
+                  <Rocket className="w-5 h-5" />
+                  <span>Let's Begin!</span>
+                </>
               )}
             </button>
 
             {!isStartingJourney && (
               <button
                 onClick={() => setShowWelcomeDialog(false)}
-                className="w-full mt-3 py-2 text-gray-500 hover:text-gray-700 transition-colors"
+                className="w-full py-2 text-gray-500 hover:text-gray-700 transition-colors font-medium"
               >
-                Maybe later
+                Review my choices
               </button>
             )}
           </div>
