@@ -42,6 +42,8 @@ const GoalSelectionPage = () => {
 
   // Check if user has already completed goal selection
   useEffect(() => {
+    let isMounted = true;
+
     const checkUserProfile = async () => {
       // Only check once per component mount, and not if save is in progress
       if (redirectCheckedRef.current || saveInProgressRef.current) {
@@ -49,7 +51,7 @@ const GoalSelectionPage = () => {
       }
       
       if (!user?.id) {
-        setIsLoading(false);
+        if (isMounted) setIsLoading(false);
         return;
       }
   
@@ -64,7 +66,8 @@ const GoalSelectionPage = () => {
   
         if (error && error.code !== 'PGRST116') {
           logger.error('Profile check error:', error);
-          setIsLoading(false);
+          redirectCheckedRef.current = false; // Reset on error
+          if (isMounted) setIsLoading(false);
           return;
         }
   
@@ -79,12 +82,12 @@ const GoalSelectionPage = () => {
             setExistingGoal(profile.selected_goal || profile.target_exam);
             setExistingGrade(profile.grade);
             setIsChangingGoal(true);
-            setIsLoading(false);
+            if (isMounted) setIsLoading(false);
             return;
           }
           
           logger.info('Profile already complete, redirecting to dashboard');
-          setIsLoading(false);
+          if (isMounted) setIsLoading(false);
           // Use a small timeout to ensure state is updated before navigation
           setTimeout(() => {
             navigate('/dashboard', { replace: true });
@@ -94,14 +97,20 @@ const GoalSelectionPage = () => {
   
         // Profile exists but incomplete - let them continue with goal selection
         logger.info('User needs to complete goal selection');
-        setIsLoading(false);
+        if (isMounted) setIsLoading(false);
       } catch (error) {
         logger.error('Error checking user profile:', error);
-        setIsLoading(false);
+        redirectCheckedRef.current = false; // Reset on error to allow retry
+        if (isMounted) setIsLoading(false);
       }
     };
   
     checkUserProfile();
+    
+    // Cleanup: reset flags on unmount
+    return () => {
+      isMounted = false;
+    };
   }, [user?.id, navigate]);
 
   useEffect(() => {
@@ -275,6 +284,10 @@ const GoalSelectionPage = () => {
       // Shorter wait for the toast animation (500ms instead of 1500ms)
       await new Promise(resolve => setTimeout(resolve, 500));
     
+      // Reset both refs before navigation
+      saveInProgressRef.current = false;
+      redirectCheckedRef.current = false;
+      
       // Navigate to dashboard
       logger.info('Navigating to dashboard after goal setup');
       navigate('/dashboard', { replace: true });
