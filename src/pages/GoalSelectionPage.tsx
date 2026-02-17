@@ -245,11 +245,12 @@ const GoalSelectionPage = () => {
       logger.info('Profile update response:', updateData);
   
       // Verify the update was successful by querying the profile
-      const { data: verifyProfile, error: verifyError } = await supabase
+      const { data: verifyProfiles, error: verifyError } = await supabase
         .from('profiles')
         .select('selected_goal, target_exam, grade')
-        .eq('id', user.id)
-        .single();
+        .eq('id', user.id);
+      
+      const verifyProfile = verifyProfiles?.[0];
       
       if (verifyError || !verifyProfile?.selected_goal) {
         logger.error('Profile verification failed:', verifyError);
