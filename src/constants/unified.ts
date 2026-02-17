@@ -143,22 +143,6 @@ export const MASTERY_LEVELS = {
 };
 
 // ==========================================
-// BURNOUT DETECTION & STUDY CONFIG
-// ==========================================
-
-export const BURNOUT_CONFIG = {
-  MIN_ENERGY_SCORE: 40,
-  REST_DAY_THRESHOLD: 30,
-  CONSECUTIVE_LOW_DAYS: 3,
-  SIGNALS: {
-    accuracy_drop: -15,        // % drop from average
-    time_decrease: -30,        // % decrease
-    night_study_hour: 22,      // After 10 PM warning
-    incomplete_targets: 0.5    // 50% completion threshold
-  }
-};
-
-// ==========================================
 // STREAK & GAMIFICATION
 // ==========================================
 
@@ -452,7 +436,6 @@ export default {
   DIFFICULTY_CONFIG,
   ACCURACY_THRESHOLDS,
   MASTERY_LEVELS,
-  BURNOUT_CONFIG,
   STREAK_CONFIG,
   SPACED_REPETITION,
   SUBSCRIPTION_CONFIG,

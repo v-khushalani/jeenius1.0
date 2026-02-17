@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,6 +25,9 @@ const GoalSelectionPage = () => {
   const [existingGrade, setExistingGrade] = useState<number | null>(null);
   const [isChangingGoal, setIsChangingGoal] = useState(false);
   const [showGoalChangeWarning, setShowGoalChangeWarning] = useState(false);
+  
+  // Ref to prevent multiple redirect checks
+  const redirectCheckedRef = useRef(false);
 
   // Calculate exam dates and days remaining (only JEE and NEET for 11-12)
   const examDates: Record<string, string | null> = {
@@ -38,12 +41,19 @@ const GoalSelectionPage = () => {
   // Check if user has already completed goal selection
   useEffect(() => {
     const checkUserProfile = async () => {
+      // Only check once per component mount
+      if (redirectCheckedRef.current) {
+        return;
+      }
+      
       if (!user?.id) {
         setIsLoading(false);
         return;
       }
   
       try {
+        redirectCheckedRef.current = true;
+        
         const { data: profile, error } = await supabase
           .from('profiles')
           .select('full_name, target_exam, grade, goals_set, selected_goal')
@@ -72,7 +82,11 @@ const GoalSelectionPage = () => {
           }
           
           logger.info('Profile already complete, redirecting to dashboard');
-          navigate('/dashboard', { replace: true });
+          setIsLoading(false);
+          // Use a small timeout to ensure state is updated before navigation
+          setTimeout(() => {
+            navigate('/dashboard', { replace: true });
+          }, 100);
           return;
         }
   
@@ -86,7 +100,7 @@ const GoalSelectionPage = () => {
     };
   
     checkUserProfile();
-  }, [user, navigate]);
+  }, [user?.id, navigate]);
 
   useEffect(() => {
     if (selectedGoal && examDates[selectedGoal]) {
