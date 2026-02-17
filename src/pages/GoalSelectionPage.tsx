@@ -28,8 +28,6 @@ const GoalSelectionPage = () => {
   
   // Ref to prevent multiple redirect checks
   const redirectCheckedRef = useRef(false);
-  // Flag to prevent re-checking after we've saved
-  const saveInProgressRef = useRef(false);
 
   // Calculate exam dates and days remaining (only JEE and NEET for 11-12)
   const examDates: Record<string, string | null> = {
@@ -42,16 +40,14 @@ const GoalSelectionPage = () => {
 
   // Check if user has already completed goal selection
   useEffect(() => {
-    let isMounted = true;
-
     const checkUserProfile = async () => {
-      // Only check once per component mount, and not if save is in progress
-      if (redirectCheckedRef.current || saveInProgressRef.current) {
+      // Only check once per component mount
+      if (redirectCheckedRef.current) {
         return;
       }
       
       if (!user?.id) {
-        if (isMounted) setIsLoading(false);
+        setIsLoading(false);
         return;
       }
   
@@ -66,8 +62,7 @@ const GoalSelectionPage = () => {
   
         if (error && error.code !== 'PGRST116') {
           logger.error('Profile check error:', error);
-          redirectCheckedRef.current = false; // Reset on error
-          if (isMounted) setIsLoading(false);
+          setIsLoading(false);
           return;
         }
   
@@ -82,12 +77,12 @@ const GoalSelectionPage = () => {
             setExistingGoal(profile.selected_goal || profile.target_exam);
             setExistingGrade(profile.grade);
             setIsChangingGoal(true);
-            if (isMounted) setIsLoading(false);
+            setIsLoading(false);
             return;
           }
           
           logger.info('Profile already complete, redirecting to dashboard');
-          if (isMounted) setIsLoading(false);
+          setIsLoading(false);
           // Use a small timeout to ensure state is updated before navigation
           setTimeout(() => {
             navigate('/dashboard', { replace: true });
@@ -97,20 +92,14 @@ const GoalSelectionPage = () => {
   
         // Profile exists but incomplete - let them continue with goal selection
         logger.info('User needs to complete goal selection');
-        if (isMounted) setIsLoading(false);
+        setIsLoading(false);
       } catch (error) {
         logger.error('Error checking user profile:', error);
-        redirectCheckedRef.current = false; // Reset on error to allow retry
-        if (isMounted) setIsLoading(false);
+        setIsLoading(false);
       }
     };
   
     checkUserProfile();
-    
-    // Cleanup: reset flags on unmount
-    return () => {
-      isMounted = false;
-    };
   }, [user?.id, navigate]);
 
   useEffect(() => {
@@ -200,8 +189,6 @@ const GoalSelectionPage = () => {
 
   const confirmStartJourney = async () => {
     setIsStartingJourney(true);
-    // Mark save as in progress to prevent redirect check
-    saveInProgressRef.current = true;
     
     // Auto-select all subjects for the chosen goal
     const selectedSubjects = subjects[selectedGoal] || [];
@@ -210,7 +197,6 @@ const GoalSelectionPage = () => {
       if (!user?.id) {
         logger.error('No user found');
         toast.error('Please login again');
-        saveInProgressRef.current = false;
         navigate('/login');
         return;
       }
@@ -244,8 +230,7 @@ const GoalSelectionPage = () => {
           daily_goal: selectedSubjects.length * 10,
           goals_set: true,
           selected_goal: selectedGoal.toLowerCase(),
-          updated_at: new Date().toISOString(),
-          onboarding_completed: true
+          updated_at: new Date().toISOString()
         })
         .eq('id', user.id);
   
@@ -253,7 +238,6 @@ const GoalSelectionPage = () => {
         logger.error('Profile update error:', profileError);
         toast.error('Error saving profile. Please try again.');
         setIsStartingJourney(false);
-        saveInProgressRef.current = false;
         return;
       }
   
@@ -281,13 +265,9 @@ const GoalSelectionPage = () => {
       };
       localStorage.setItem('userGoals', JSON.stringify(userGoals));
       
-      // Shorter wait for the toast animation (500ms instead of 1500ms)
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Wait a bit for the animation
+      await new Promise(resolve => setTimeout(resolve, 1500));
     
-      // Reset both refs before navigation
-      saveInProgressRef.current = false;
-      redirectCheckedRef.current = false;
-      
       // Navigate to dashboard
       logger.info('Navigating to dashboard after goal setup');
       navigate('/dashboard', { replace: true });
@@ -296,7 +276,6 @@ const GoalSelectionPage = () => {
       logger.error('Error saving goals:', error);
       toast.error('Something went wrong. Please try again.');
       setIsStartingJourney(false);
-      saveInProgressRef.current = false;
     }
   };
 
@@ -401,83 +380,44 @@ const GoalSelectionPage = () => {
             {/* Step 2: Course Selection */}
             {currentStep === 2 && selectedGrade && (
               <div className="max-w-4xl mx-auto">
-                <h2 className="text-2xl md:text-3xl font-bold text-center mb-2" style={{color: '#013062'}}>What's your target? 🎯</h2>
-                <p className="text-center text-gray-600 mb-8">Choose your learning path and see what subjects you'll study</p>
+                <h2 className="text-2xl md:text-3xl font-bold text-center mb-6" style={{color: '#013062'}}>What's your target? 🎯</h2>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {goals[selectedGrade]?.map((goal) => {
-                    const courseSubjects = subjects[goal.id] || [];
-                    return (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                  {goals[selectedGrade]?.map((goal) => (
                     <div
                       key={goal.id}
                       onClick={() => setSelectedGoal(goal.id)}
-                      className={`p-6 lg:p-8 rounded-2xl cursor-pointer transition-all duration-300 transform hover:scale-105 border-2 bg-white shadow-lg hover:shadow-xl ${
+                      className={`p-4 md:p-6 lg:p-8 rounded-2xl cursor-pointer transition-all duration-300 transform hover:scale-105 border-2 bg-white shadow-lg hover:shadow-xl ${
                         selectedGoal === goal.id
                           ? 'shadow-2xl transform scale-105'
                           : 'hover:border-gray-300'
                       }`}
                       style={{
                         borderColor: selectedGoal === goal.id ? '#013062' : '#e5e7eb',
-                        boxShadow: selectedGoal === goal.id ? '0 0 0 3px rgba(1, 48, 98, 0.15)' : undefined
+                        boxShadow: selectedGoal === goal.id ? '0 0 0 3px rgba(1, 48, 98, 0.1)' : undefined
                       }}
                     >
-                      {/* Header with icon and title */}
-                      <div className="mb-4">
-                        <div className={`inline-flex p-4 rounded-full ${goal.color} mb-4 text-white`}>
-                          {goal.icon}
-                        </div>
-                        <h3 className="text-xl md:text-2xl font-bold mb-1" style={{color: '#013062'}}>{goal.name}</h3>
-                        <p className="text-sm text-gray-600">{goal.desc}</p>
+                      <div className={`inline-flex p-3 rounded-full ${goal.color} mb-4`}>
+                        {goal.icon}
                       </div>
-
-                      {/* Subjects Section */}
-                      <div className="mb-4 pt-4 border-t border-gray-200">
-                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Subjects Included</p>
-                        <div className="flex flex-wrap gap-2">
-                          {courseSubjects.map((subject) => (
-                            <span 
-                              key={subject}
-                              className="px-3 py-1 rounded-full text-sm font-medium transition-all duration-200"
-                              style={{
-                                backgroundColor: selectedGoal === goal.id ? '#013062' : '#f3f4f6',
-                                color: selectedGoal === goal.id ? 'white' : '#374151'
-                              }}
-                            >
-                              {subject}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
+                      <h3 className="text-xl md:text-2xl font-bold mb-2" style={{color: '#013062'}}>{goal.name}</h3>
                       
-                      {/* Exam Date Info - Only for JEE/NEET */}
-                      {(goal.id === 'JEE' || goal.id === 'NEET') && examDate && examDates[goal.id] && (
-                        <div className="mt-4 p-3 rounded-lg flex items-center gap-3 justify-between" style={{backgroundColor: selectedGoal === goal.id ? 'rgba(1, 48, 98, 0.05)' : '#f8fafc', border: '1px solid #e2e8f0'}}>
-                          <div className="flex items-center gap-2">
-                            <Calendar className="w-4 h-4" style={{color: '#013062'}} />
-                            <div>
-                              <p className="text-xs text-gray-500">Exam Date</p>
-                              <p className="text-sm font-bold" style={{color: '#013062'}}>{examDate ? new Date(examDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Not set'}</p>
+                      {examDate && examDates[goal.id] && selectedGoal === goal.id && (
+                        <div className="mt-4 p-3 rounded-lg" style={{backgroundColor: '#f8fafc', border: '1px solid #e2e8f0'}}>
+                          <div className="flex items-center justify-between text-sm">
+                            <div className="flex items-center">
+                              <Calendar className="w-4 h-4 mr-2" style={{color: '#013062'}} />
+                              <span style={{color: '#013062'}}>Exam Date: {examDate ? new Date(examDate).toLocaleDateString() : 'Not set'}</span>
+                            </div>
+                            <div className="flex items-center font-bold" style={{color: '#dc2626'}}>
+                              <Clock className="w-4 h-4 mr-1" />
+                              <span>{daysRemaining} days left</span>
                             </div>
                           </div>
-                          <div className="text-right">
-                            <p className="text-xs text-gray-500">Days Left</p>
-                            <p className="text-lg font-bold" style={{color: daysRemaining < 100 ? '#dc2626' : '#065f46'}}>{daysRemaining}</p>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Selection Indicator */}
-                      {selectedGoal === goal.id && (
-                        <div className="mt-4 p-2 rounded-lg bg-blue-50 flex items-center gap-2" style={{borderLeft: '3px solid #013062'}}>
-                          <div className="w-5 h-5 rounded-full flex items-center justify-center" style={{backgroundColor: '#013062', color: 'white'}}>
-                            <span className="text-sm">✓</span>
-                          </div>
-                          <span className="text-sm font-bold" style={{color: '#013062'}}>Selected</span>
                         </div>
                       )}
                     </div>
-                  );
-                  })}
+                  ))}
                 </div>
               </div>
             )}
