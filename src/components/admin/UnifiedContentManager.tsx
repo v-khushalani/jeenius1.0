@@ -374,9 +374,8 @@ export const UnifiedContentManager = () => {
         await supabase
           .from('questions')
           .insert({
-            topic_id: selectedTopic.id,
-            chapter_id: selectedChapter?.id,
             subject: selectedSubject,
+            chapter: selectedChapter?.chapter_name || '',
             question: questionForm.question,
             option_a: questionForm.option_a,
             option_b: questionForm.option_b,
@@ -385,7 +384,7 @@ export const UnifiedContentManager = () => {
             correct_option: questionForm.correct_option,
             explanation: questionForm.explanation,
             difficulty: questionForm.difficulty
-          });
+          } as any);
         toast.success('Question added');
       }
 

@@ -877,39 +877,32 @@ export type Database = {
       }
       profiles: {
         Row: {
-          answer_streak: number | null
           avatar_url: string | null
           badges: Json | null
           city: string | null
-          correct_answers: number | null
           created_at: string | null
           current_streak: number | null
           daily_goal: number | null
           daily_question_limit: number | null
-          daily_streak: number | null
-          daily_study_hours: number | null
           days_completed: number | null
           email: string
           exam_mode: boolean | null
           full_name: string | null
           goal_locked: boolean | null
           goal_locked_at: string | null
-          goals_set: boolean | null
           grade: number | null
           id: string
           is_eligible: boolean | null
           is_premium: boolean | null
-          is_pro: boolean | null
           last_activity_date: string | null
           level: string | null
           level_progress: number | null
-          longest_answer_streak: number | null
           longest_streak: number | null
           onboarding_completed: boolean | null
           overall_accuracy: number | null
           phone: string | null
-          premium_until: string | null
           previous_rank: number | null
+          profile_version: number | null
           rank_position: number | null
           rank_updated_at: string | null
           role: Database["public"]["Enums"]["app_role"] | null
@@ -923,46 +916,37 @@ export type Database = {
           target_exam: string | null
           target_exam_date: string | null
           total_points: number | null
-          total_questions_answered: number | null
           total_questions_solved: number | null
-          total_streak_days: number | null
           total_study_time: number | null
           updated_at: string | null
         }
         Insert: {
-          answer_streak?: number | null
           avatar_url?: string | null
           badges?: Json | null
           city?: string | null
-          correct_answers?: number | null
           created_at?: string | null
           current_streak?: number | null
           daily_goal?: number | null
           daily_question_limit?: number | null
-          daily_streak?: number | null
-          daily_study_hours?: number | null
           days_completed?: number | null
           email: string
           exam_mode?: boolean | null
           full_name?: string | null
           goal_locked?: boolean | null
           goal_locked_at?: string | null
-          goals_set?: boolean | null
           grade?: number | null
           id: string
           is_eligible?: boolean | null
           is_premium?: boolean | null
-          is_pro?: boolean | null
           last_activity_date?: string | null
           level?: string | null
           level_progress?: number | null
-          longest_answer_streak?: number | null
           longest_streak?: number | null
           onboarding_completed?: boolean | null
           overall_accuracy?: number | null
           phone?: string | null
-          premium_until?: string | null
           previous_rank?: number | null
+          profile_version?: number | null
           rank_position?: number | null
           rank_updated_at?: string | null
           role?: Database["public"]["Enums"]["app_role"] | null
@@ -976,46 +960,37 @@ export type Database = {
           target_exam?: string | null
           target_exam_date?: string | null
           total_points?: number | null
-          total_questions_answered?: number | null
           total_questions_solved?: number | null
-          total_streak_days?: number | null
           total_study_time?: number | null
           updated_at?: string | null
         }
         Update: {
-          answer_streak?: number | null
           avatar_url?: string | null
           badges?: Json | null
           city?: string | null
-          correct_answers?: number | null
           created_at?: string | null
           current_streak?: number | null
           daily_goal?: number | null
           daily_question_limit?: number | null
-          daily_streak?: number | null
-          daily_study_hours?: number | null
           days_completed?: number | null
           email?: string
           exam_mode?: boolean | null
           full_name?: string | null
           goal_locked?: boolean | null
           goal_locked_at?: string | null
-          goals_set?: boolean | null
           grade?: number | null
           id?: string
           is_eligible?: boolean | null
           is_premium?: boolean | null
-          is_pro?: boolean | null
           last_activity_date?: string | null
           level?: string | null
           level_progress?: number | null
-          longest_answer_streak?: number | null
           longest_streak?: number | null
           onboarding_completed?: boolean | null
           overall_accuracy?: number | null
           phone?: string | null
-          premium_until?: string | null
           previous_rank?: number | null
+          profile_version?: number | null
           rank_position?: number | null
           rank_updated_at?: string | null
           role?: Database["public"]["Enums"]["app_role"] | null
@@ -1029,9 +1004,7 @@ export type Database = {
           target_exam?: string | null
           target_exam_date?: string | null
           total_points?: number | null
-          total_questions_answered?: number | null
           total_questions_solved?: number | null
-          total_streak_days?: number | null
           total_study_time?: number | null
           updated_at?: string | null
         }
