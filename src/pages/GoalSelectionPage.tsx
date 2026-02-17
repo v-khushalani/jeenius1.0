@@ -220,9 +220,11 @@ const GoalSelectionPage = () => {
         targetExamValue = `Foundation-${gradeNumber}`;
       }
       
+      logger.info('Updating profile with:', { targetExamValue, gradeNumber, selected_goal: selectedGoal.toLowerCase() });
+      
       // Save goal for new users (first time setup)
       // Only update columns that exist in the database
-      const { error: profileError } = await supabase
+      const { error: profileError, data: updateData } = await supabase
         .from('profiles')
         .update({
           target_exam: targetExamValue,
@@ -230,7 +232,8 @@ const GoalSelectionPage = () => {
           selected_goal: selectedGoal.toLowerCase(),
           updated_at: new Date().toISOString()
         })
-        .eq('id', user.id);
+        .eq('id', user.id)
+        .select();
   
       if (profileError) {
         logger.error('Profile update error:', profileError);
@@ -238,6 +241,24 @@ const GoalSelectionPage = () => {
         setIsStartingJourney(false);
         return;
       }
+      
+      logger.info('Profile update response:', updateData);
+  
+      // Verify the update was successful by querying the profile
+      const { data: verifyProfile, error: verifyError } = await supabase
+        .from('profiles')
+        .select('selected_goal, target_exam, grade')
+        .eq('id', user.id)
+        .single();
+      
+      if (verifyError || !verifyProfile?.selected_goal) {
+        logger.error('Profile verification failed:', verifyError);
+        toast.error('Profile save verification failed. Please try again.');
+        setIsStartingJourney(false);
+        return;
+      }
+      
+      logger.info('Profile verified successfully:', verifyProfile);
   
       // Log the goal selection in audit table
       await supabase
@@ -266,8 +287,11 @@ const GoalSelectionPage = () => {
       // Mark that we successfully completed goal selection to prevent re-entry
       sessionStorage.setItem('goalSelectionComplete', 'true');
       
-      // Wait briefly for UI feedback, then navigate
-      await new Promise(resolve => setTimeout(resolve, 800));
+      // Wait briefly for UI feedback
+      await new Promise(resolve => setTimeout(resolve, 600));
+    
+      // Clear the redirect check to allow ProtectedRoute to recheck
+      redirectCheckedRef.current = false;
     
       // Navigate to dashboard - this should be the final action
       logger.info('Navigating to dashboard after goal setup');

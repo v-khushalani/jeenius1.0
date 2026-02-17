@@ -24,16 +24,30 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
       }
 
       try {
-        const { data: profile } = await supabase
+        // Check with a small delay to allow for database replication
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        const { data: profile, error } = await supabase
           .from('profiles')
           .select('selected_goal, target_exam, grade')
           .eq('id', user.id)
           .single();
 
-        // If profile is incomplete, user needs to set goals
-        // Check if selected_goal is set (not null/empty)
-        if (!profile?.selected_goal || !profile?.target_exam || !profile?.grade) {
+        if (error) {
+          console.error('Error checking goals:', error);
           setNeedsGoalSelection(true);
+        } else if (!profile?.selected_goal || !profile?.target_exam || !profile?.grade) {
+          // If profile is incomplete, user needs to set goals
+          console.info('Profile incomplete - needs goal selection:', { 
+            selected_goal: profile?.selected_goal,
+            target_exam: profile?.target_exam,
+            grade: profile?.grade
+          });
+          setNeedsGoalSelection(true);
+        } else {
+          // Profile is complete
+          console.info('Profile complete - allowing dashboard access');
+          setNeedsGoalSelection(false);
         }
       } catch (error) {
         console.error('Error checking goals:', error);
