@@ -438,7 +438,6 @@ const toggleSelectAll = () => {
                     <TableHead className="w-12">
                       <Checkbox
                         checked={selectedUsers.size === filteredUsers.length && filteredUsers.length > 0}
-                        indeterminate={selectedUsers.size > 0 && selectedUsers.size < filteredUsers.length}
                         onCheckedChange={toggleSelectAll}
                       />
                     </TableHead>

@@ -87,8 +87,6 @@ const ProgramSwitcher: React.FC<ProgramSwitcherProps> = ({
 
       // Build program access list
       const programAccess: ProgramAccess[] = gradePrograms.map(program => {
-        const programInfo = getProgramInfo(program);
-        // Check if user has a subscription to a batch with matching exam_type (which maps to program)
         const hasSubscription = subscriptions?.some(
           sub => {
             const batch = sub.batches as any;
@@ -98,8 +96,8 @@ const ProgramSwitcher: React.FC<ProgramSwitcherProps> = ({
         
         return {
           program,
-          hasAccess: programInfo.isFreeAvailable || hasSubscription,
-          isFree: programInfo.isFreeAvailable,
+          hasAccess: true, // All programs accessible by default
+          isFree: true,
         };
       });
 
@@ -198,7 +196,7 @@ const ProgramSwitcher: React.FC<ProgramSwitcherProps> = ({
                     )}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {info.subjects.join(' • ')}
+                    {info.displayName}
                   </div>
                 </div>
               </div>

@@ -48,7 +48,7 @@ export const useBatch = (profile: StudentProfile | null) => {
 
       const { data, error: queryError } = await supabase
         .from('batches')
-        .select('id, name, grade, exam_type, subjects')
+        .select('id, name, grade, exam_type')
         .eq('grade', profile.grade)
         .eq('exam_type', examType)
         .eq('is_active', true)
@@ -57,11 +57,13 @@ export const useBatch = (profile: StudentProfile | null) => {
       if (queryError) throw queryError;
 
       if (data) {
-        const subjects = typeof data.subjects === 'string'
-          ? data.subjects.split(',').map(s => s.trim())
-          : Array.isArray(data.subjects)
-          ? data.subjects
-          : [];
+        // Get subjects from batch_subjects table
+        const { data: subjectsData } = await supabase
+          .from('batch_subjects')
+          .select('subject')
+          .eq('batch_id', data.id);
+
+        const subjects = subjectsData?.map(s => s.subject) || [];
 
         setBatch({
           id: data.id,

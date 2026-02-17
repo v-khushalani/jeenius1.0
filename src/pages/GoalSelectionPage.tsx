@@ -318,10 +318,10 @@ const GoalSelectionPage = () => {
 
   return (
     <>
-      <div className="h-screen overflow-hidden bg-gradient-to-br from-slate-50 to-blue-50" style={{backgroundColor: '#e9e9e9'}}>
+      <div className="h-[100dvh] overflow-hidden bg-gradient-to-br from-slate-50 to-blue-50" style={{backgroundColor: '#e9e9e9'}}>
         <div className="h-full flex flex-col">
           {/* Header - Fixed height */}
-          <div className="flex-shrink-0 text-center pt-8 pb-6">
+          <div className="flex-shrink-0 text-center pt-4 pb-2 md:pt-8 md:pb-6">
             {/* Back button for change mode */}
             {isChangingGoal && (
               <button
@@ -333,10 +333,10 @@ const GoalSelectionPage = () => {
               </button>
             )}
             
-            <h1 className="text-4xl md:text-6xl font-bold mb-4" style={{color: '#013062'}}>
+            <h1 className="text-2xl md:text-5xl font-bold mb-2" style={{color: '#013062'}}>
               {isChangingGoal ? 'Change Your Goal ⚠️' : 'Welcome to JEEnius! 🎯'}
             </h1>
-            <p className="text-lg md:text-xl text-gray-600">
+            <p className="text-sm md:text-lg text-gray-600">
               {isChangingGoal 
                 ? 'Warning: Changing your goal will reset all progress data'
                 : "Let's customize your learning journey"}
@@ -355,10 +355,10 @@ const GoalSelectionPage = () => {
             )}
             
             {/* Progress Bar - Only 2 steps */}
-            <div className="flex justify-center mt-6 mb-4">
-              <div className="flex space-x-4">
+            <div className="flex justify-center mt-3 mb-2">
+              <div className="flex space-x-3">
                 {[1, 2].map((step) => (
-                  <div key={step} className={`w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center text-lg font-bold transition-all duration-300 ${
+                  <div key={step} className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${
                     step <= currentStep ? 'text-white shadow-lg' : 'bg-gray-400 text-gray-600'
                   }`} style={{
                     backgroundColor: step <= currentStep ? '#013062' : undefined
@@ -368,25 +368,25 @@ const GoalSelectionPage = () => {
                 ))}
               </div>
             </div>
-            <div className="text-sm text-gray-500">
+            <div className="text-xs text-gray-500">
               Step {currentStep}: {currentStep === 1 ? 'Select Grade' : 'Choose Course'}
             </div>
           </div>
 
           {/* Content - Scrollable if needed but constrained */}
-          <div className="flex-1 overflow-auto px-6">
+          <div className="flex-1 overflow-auto px-4 md:px-6">
             {/* Step 1: Grade Selection */}
             {currentStep === 1 && (
-              <div className="max-w-6xl mx-auto">
-                <h2 className="text-2xl md:text-3xl font-bold text-center mb-6" style={{color: '#013062'}}>Which grade are you in? 📚</h2>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+              <div className="max-w-5xl mx-auto">
+                <h2 className="text-lg md:text-2xl font-bold text-center mb-3" style={{color: '#013062'}}>Which grade are you in? 📚</h2>
+                <div className="grid grid-cols-4 md:grid-cols-7 gap-2 md:gap-4">
                   {grades.map((grade) => (
                     <div
                       key={grade.id}
                       onClick={() => setSelectedGrade(grade.id)}
-                      className={`p-3 md:p-4 lg:p-6 rounded-2xl cursor-pointer transition-all duration-300 transform hover:scale-105 border-2 bg-white shadow-lg hover:shadow-xl ${
+                      className={`p-2 md:p-4 rounded-xl cursor-pointer transition-all duration-300 border-2 bg-white shadow hover:shadow-lg ${
                         selectedGrade === grade.id
-                          ? 'shadow-2xl transform scale-105'
+                          ? 'shadow-xl scale-105'
                           : 'hover:border-gray-300'
                       }`}
                       style={{
@@ -394,9 +394,9 @@ const GoalSelectionPage = () => {
                         boxShadow: selectedGrade === grade.id ? '0 0 0 3px rgba(1, 48, 98, 0.1)' : undefined
                       }}
                     >
-                      <div className="text-2xl md:text-3xl lg:text-4xl mb-2 md:mb-3 text-center">{grade.icon}</div>
-                      <h3 className="text-sm md:text-lg lg:text-xl font-bold text-center mb-1 md:mb-2" style={{color: '#013062'}}>{grade.name}</h3>
-                      <p className="text-xs md:text-sm text-gray-500 text-center">{grade.desc}</p>
+                      <div className="text-xl md:text-3xl mb-1 text-center">{grade.icon}</div>
+                      <h3 className="text-xs md:text-base font-bold text-center" style={{color: '#013062'}}>{grade.name}</h3>
+                      <p className="text-[10px] md:text-xs text-gray-500 text-center hidden md:block">{grade.desc}</p>
                     </div>
                   ))}
                 </div>
@@ -405,11 +405,11 @@ const GoalSelectionPage = () => {
 
             {/* Step 2: Course Selection */}
             {currentStep === 2 && selectedGrade && (
-              <div className="max-w-5xl mx-auto">
-                <h2 className="text-2xl md:text-3xl font-bold text-center mb-2" style={{color: '#013062'}}>What's your target? 🎯</h2>
-                <p className="text-center text-gray-600 mb-8">Choose your learning path and let's create your personalized study plan</p>
+              <div className="max-w-4xl mx-auto">
+                <h2 className="text-lg md:text-2xl font-bold text-center mb-1" style={{color: '#013062'}}>What's your target? 🎯</h2>
+                <p className="text-center text-gray-600 text-sm mb-4">Choose your learning path</p>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                   {goals[selectedGrade]?.map((goal) => (
                     <div
                       key={goal.id}
@@ -481,7 +481,7 @@ const GoalSelectionPage = () => {
           </div>
 
           {/* Navigation Buttons - Fixed at bottom */}
-          <div className="flex-shrink-0 text-center py-8">
+          <div className="flex-shrink-0 text-center py-4 md:py-6">
             {currentStep === 1 && (
               <button
                 onClick={handleNext}
