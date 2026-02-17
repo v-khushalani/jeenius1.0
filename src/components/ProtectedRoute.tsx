@@ -26,12 +26,13 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
       try {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('goals_set, target_exam, grade')
+          .select('selected_goal, target_exam, grade')
           .eq('id', user.id)
           .single();
 
         // If profile is incomplete, user needs to set goals
-        if (!profile?.goals_set || !profile?.target_exam || !profile?.grade) {
+        // Check if selected_goal is set (not null/empty)
+        if (!profile?.selected_goal || !profile?.target_exam || !profile?.grade) {
           setNeedsGoalSelection(true);
         }
       } catch (error) {

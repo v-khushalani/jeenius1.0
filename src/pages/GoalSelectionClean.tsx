@@ -76,7 +76,7 @@ const GoalSelectionClean = () => {
         .update({
           grade: gradeNum,
           target_exam: targetExam,
-          goals_set: true,
+          selected_goal: goal.toLowerCase(),
         })
         .eq('id', user.id);
 

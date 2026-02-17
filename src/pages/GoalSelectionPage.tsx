@@ -56,7 +56,7 @@ const GoalSelectionPage = () => {
         
         const { data: profile, error } = await supabase
           .from('profiles')
-          .select('full_name, target_exam, grade, goals_set, selected_goal')
+          .select('full_name, target_exam, grade, selected_goal')
           .eq('id', user.id)
           .single();
   
@@ -67,7 +67,7 @@ const GoalSelectionPage = () => {
         }
   
         // If profile is complete (has grade and exam)
-        if (profile?.goals_set && profile?.target_exam && profile?.grade) {
+        if (profile?.selected_goal && profile?.target_exam && profile?.grade) {
           // Check if coming from settings to change goal
           const urlParams = new URLSearchParams(window.location.search);
           const isChangeMode = urlParams.get('change') === 'true';
@@ -221,14 +221,12 @@ const GoalSelectionPage = () => {
       }
       
       // Save goal for new users (first time setup)
+      // Only update columns that exist in the database
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
           target_exam: targetExamValue,
           grade: gradeNumber,
-          subjects: selectedSubjects,
-          daily_goal: selectedSubjects.length * 10,
-          goals_set: true,
           selected_goal: selectedGoal.toLowerCase(),
           updated_at: new Date().toISOString()
         })
