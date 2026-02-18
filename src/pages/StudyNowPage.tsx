@@ -722,7 +722,7 @@ const handleAnswer = async (answer: string) => {
         timeSpent
       ),
       
-      // Update user question stats (total_questions_answered, accuracy) for leaderboard
+      // Update user question stats (total_questions_solved, accuracy) for leaderboard
       PointsService.updateUserQuestionStats(user.id, isCorrect)
     ]);
 

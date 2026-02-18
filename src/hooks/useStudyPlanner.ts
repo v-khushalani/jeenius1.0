@@ -68,7 +68,7 @@ export function useStudyPlanner() {
     profile: any,
     questionsCount: number
   ): StudyPlannerData => {
-    const dailyStudyHours = profile?.daily_study_hours || 4;
+    const dailyStudyHours = profile?.daily_study_hours ?? 4;
     const targetExam = (profile?.target_exam || 'JEE') as TargetExamType;
     const examDate = profile?.target_exam_date || '2026-05-24';
     const daysToExam = calculateDaysToExam(examDate);
@@ -133,7 +133,7 @@ export function useStudyPlanner() {
           totalQuestions: questionsCount,
           isLoading: false,
           hasEnoughData: false,
-          dailyStudyHours: (profile as any)?.daily_study_hours || 4,
+          dailyStudyHours: profile?.daily_study_hours ?? 4,
           targetExam: (profile?.target_exam || 'JEE') as TargetExamType,
           examDate: profile?.target_exam_date || '2026-05-24',
           daysToExam: calculateDaysToExam(profile?.target_exam_date || '2026-05-24'),
