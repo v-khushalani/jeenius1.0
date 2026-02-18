@@ -308,15 +308,7 @@ const GoalSelectionPage = () => {
         }
       }
   
-      // Log the goal selection in audit table
-      await supabase
-        .from('goal_change_audit')
-        .insert({
-          user_id: user.id,
-          new_goal: selectedGoal.toLowerCase(),
-          status: 'success',
-          reason: 'Initial goal selection'
-        });
+      // Goal selection saved successfully
   
       logger.info('Profile updated successfully');
       toast.success('Your learning path is set! 🎯');

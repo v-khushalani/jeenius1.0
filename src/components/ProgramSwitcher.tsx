@@ -213,14 +213,7 @@ const ProgramSwitcher: React.FC<ProgramSwitcherProps> = ({
           );
         })}
         
-        <DropdownMenuSeparator />
-        <DropdownMenuItem 
-          className="text-primary cursor-pointer"
-          onClick={() => window.location.href = '/batches'}
-        >
-          <Sparkles className="h-4 w-4 mr-2" />
-          Explore More Programs
-        </DropdownMenuItem>
+
       </DropdownMenuContent>
     </DropdownMenu>
   );

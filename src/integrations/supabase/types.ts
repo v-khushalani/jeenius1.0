@@ -656,36 +656,6 @@ export type Database = {
         }
         Relationships: []
       }
-      goal_change_audit: {
-        Row: {
-          created_at: string | null
-          id: string
-          new_goal: string | null
-          old_goal: string | null
-          reason: string | null
-          status: string | null
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          new_goal?: string | null
-          old_goal?: string | null
-          reason?: string | null
-          status?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          new_goal?: string | null
-          old_goal?: string | null
-          reason?: string | null
-          status?: string | null
-          user_id?: string | null
-        }
-        Relationships: []
-      }
       mock_test_schedule: {
         Row: {
           completed: boolean | null

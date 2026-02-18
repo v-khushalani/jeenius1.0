@@ -14,7 +14,7 @@ export function SubscriptionPaywall({ open, onOpenChange, feature = 'this featur
   const navigate = useNavigate();
 
   const handleUpgrade = () => {
-    navigate('/batches');
+    navigate('/dashboard');
     onOpenChange(false);
   };
 
