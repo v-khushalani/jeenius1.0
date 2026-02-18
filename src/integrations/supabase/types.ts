@@ -853,6 +853,7 @@ export type Database = {
           created_at: string | null
           current_streak: number | null
           daily_goal: number | null
+          daily_study_hours: number | null
           daily_question_limit: number | null
           days_completed: number | null
           email: string
@@ -897,6 +898,7 @@ export type Database = {
           created_at?: string | null
           current_streak?: number | null
           daily_goal?: number | null
+          daily_study_hours?: number | null
           daily_question_limit?: number | null
           days_completed?: number | null
           email: string
@@ -941,6 +943,7 @@ export type Database = {
           created_at?: string | null
           current_streak?: number | null
           daily_goal?: number | null
+          daily_study_hours?: number | null
           daily_question_limit?: number | null
           days_completed?: number | null
           email?: string

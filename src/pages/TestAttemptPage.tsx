@@ -218,7 +218,7 @@ const TestAttemptPage = () => {
               _user_answer: userAnswer.selectedOption
             });
             
-            // Update user question stats (total_questions_answered, accuracy) for leaderboard
+            // Update user question stats (total_questions_solved, accuracy) for leaderboard
             await PointsService.updateUserQuestionStats(user.id, isCorrect);
           } catch (validationError) {
             logger.error('Error saving answer:', validationError);

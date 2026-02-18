@@ -242,7 +242,7 @@ export class PointsService {
       totalPoints: profile.total_points || 0,
       level: profile.level || 'BEGINNER',
       levelProgress: profile.level_progress || 0,
-      answerStreak: (profile as any).answer_streak || 0,
+      answerStreak: profile.current_streak || 0,
       longestAnswerStreak: profile.longest_streak || 0,
       badges: profile.badges || [],
       levelInfo: this.calculateLevel(profile.total_points || 0)
@@ -279,7 +279,7 @@ export class PointsService {
   }
 
   /**
-   * Update user's question stats (total_questions_answered, correct_answers, overall_accuracy)
+   * Update user's question stats (total_questions_solved, overall_accuracy)
    * Call this after each question attempt to keep leaderboard stats up to date
    */
   static async updateUserQuestionStats(userId: string, isCorrect: boolean): Promise<boolean> {

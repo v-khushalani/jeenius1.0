@@ -47,7 +47,7 @@ const Leaderboard: React.FC = () => {
         // Fallback to profiles-only fetch if RPC fails (migration not applied)
         const { data: profiles, error: profileError } = await supabase
           .from('profiles')
-          .select('id, full_name, avatar_url, total_points, current_streak, total_questions_answered, correct_answers, overall_accuracy')
+          .select('id, full_name, avatar_url, total_points, current_streak, total_questions_solved, overall_accuracy')
           .order('total_points', { ascending: false })
           .limit(100);
 
@@ -61,14 +61,14 @@ const Leaderboard: React.FC = () => {
 
         // Build user stats from profile data (fallback)
         const userStats: LeaderboardUser[] = (profiles as any[])
-          .filter((p: any) => p.id && ((p.total_points || 0) > 0 || (p.total_questions_answered || 0) > 0))
+          .filter((p: any) => p.id && ((p.total_points || 0) > 0 || (p.total_questions_solved || 0) > 0))
           .map((profile: any, index: number) => {
             const currentRank = index + 1;
             return {
               id: profile.id,
               full_name: profile.full_name || 'Anonymous User',
               avatar_url: profile.avatar_url || undefined,
-              total_questions: profile.total_questions_answered || 0,
+              total_questions: profile.total_questions_solved || 0,
               accuracy: profile.overall_accuracy ? Math.round(Number(profile.overall_accuracy)) : 0,
               total_points: profile.total_points || 0,
               streak: profile.current_streak || 0,

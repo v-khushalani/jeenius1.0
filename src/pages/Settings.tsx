@@ -175,7 +175,7 @@ const Settings = () => {
                  '12th-pass',
           target_exam: displayExam,
           daily_goal: profileData.daily_goal || 15,
-          daily_study_hours: (profileData as any).daily_study_hours || 4
+          daily_study_hours: profileData.daily_study_hours ?? 4
         });
         
         // Store original goal for change detection
