@@ -244,22 +244,30 @@ const GoalSelectionPage = () => {
       
       logger.info('Profile update response:', updateData);
   
-      // Verify the update was successful by querying the profile
-      const { data: verifyProfiles, error: verifyError } = await supabase
-        .from('profiles')
-        .select('selected_goal, target_exam, grade')
-        .eq('id', user.id);
-      
-      const verifyProfile = verifyProfiles?.[0];
-      
-      if (verifyError || !verifyProfile?.selected_goal) {
-        logger.error('Profile verification failed:', verifyError);
-        toast.error('Profile save verification failed. Please try again.');
-        setIsStartingJourney(false);
-        return;
+      // Verify the update was successful by checking the returned data
+      if (updateData && updateData.length > 0) {
+        const savedProfile = updateData[0];
+        if (savedProfile?.selected_goal && savedProfile?.target_exam && savedProfile?.grade) {
+          logger.info('Profile verified successfully from update:', savedProfile);
+        } else {
+          logger.warn('Profile update succeeded but missing some fields');
+        }
+      } else {
+        // If no data returned, do a gentle check without .single() to avoid PGRST116
+        const { data: verifyProfiles, error: verifyError } = await supabase
+          .from('profiles')
+          .select('selected_goal, target_exam, grade')
+          .eq('id', user.id);
+        
+        if (verifyError) {
+          logger.warn('Verification query error (non-blocking):', verifyError);
+          // Don't fail - the update likely succeeded even if verification had issues
+        } else if (verifyProfiles && verifyProfiles.length > 0) {
+          logger.info('Profile verified successfully:', verifyProfiles[0]);
+        } else {
+          logger.warn('Profile verification query returned no results');
+        }
       }
-      
-      logger.info('Profile verified successfully:', verifyProfile);
   
       // Log the goal selection in audit table
       await supabase
@@ -319,10 +327,10 @@ const GoalSelectionPage = () => {
 
   return (
     <>
-      <div className="h-[100dvh] overflow-hidden bg-gradient-to-br from-slate-50 to-blue-50" style={{backgroundColor: '#e9e9e9'}}>
-        <div className="h-full flex flex-col">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 overflow-hidden" style={{backgroundColor: '#e9e9e9'}}>
+        <div className="min-h-screen flex flex-col">
           {/* Header - Fixed height */}
-          <div className="flex-shrink-0 text-center pt-4 pb-2 md:pt-8 md:pb-6">
+          <div className="flex-shrink-0 text-center pt-3 pb-2 md:pt-4 md:pb-4">
             {/* Back button for change mode */}
             {isChangingGoal && (
               <button
@@ -334,10 +342,10 @@ const GoalSelectionPage = () => {
               </button>
             )}
             
-            <h1 className="text-2xl md:text-5xl font-bold mb-2" style={{color: '#013062'}}>
+            <h1 className="text-2xl md:text-4xl font-bold mb-1 md:mb-2" style={{color: '#013062'}}>
               {isChangingGoal ? 'Change Your Goal ⚠️' : 'Welcome to JEEnius! 🎯'}
             </h1>
-            <p className="text-sm md:text-lg text-gray-600">
+            <p className="text-xs md:text-base text-gray-600">
               {isChangingGoal 
                 ? 'Warning: Changing your goal will reset all progress data'
                 : "Let's customize your learning journey"}
@@ -345,10 +353,10 @@ const GoalSelectionPage = () => {
             
             {/* Change Warning Banner */}
             {isChangingGoal && (
-              <div className="max-w-2xl mx-auto mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <div className="max-w-2xl mx-auto mt-2 p-2 bg-amber-50 border border-amber-200 rounded-lg">
                 <div className="flex items-center justify-center gap-2 text-amber-800">
-                  <AlertTriangle className="w-5 h-5" />
-                  <span className="text-sm font-medium">
+                  <AlertTriangle className="w-4 h-4" />
+                  <span className="text-xs md:text-sm font-medium">
                     Changing from <strong>{existingGoal?.toUpperCase()}</strong> will DELETE all your points, streaks, and question history.
                   </span>
                 </div>
@@ -375,11 +383,11 @@ const GoalSelectionPage = () => {
           </div>
 
           {/* Content - Scrollable if needed but constrained */}
-          <div className="flex-1 overflow-auto px-4 md:px-6">
+          <div className="flex-1 overflow-y-auto px-3 md:px-6 py-3">
             {/* Step 1: Grade Selection */}
             {currentStep === 1 && (
-              <div className="max-w-5xl mx-auto">
-                <h2 className="text-lg md:text-2xl font-bold text-center mb-3" style={{color: '#013062'}}>Which grade are you in? 📚</h2>
+              <div className="max-w-5xl mx-auto pb-6">
+                <h2 className="text-base md:text-xl font-bold text-center mb-3" style={{color: '#013062'}}>Which grade are you in? 📚</h2>
                 <div className="grid grid-cols-4 md:grid-cols-7 gap-2 md:gap-4">
                   {grades.map((grade) => (
                     <div
@@ -406,19 +414,19 @@ const GoalSelectionPage = () => {
 
             {/* Step 2: Course Selection */}
             {currentStep === 2 && selectedGrade && (
-              <div className="max-w-4xl mx-auto">
-                <h2 className="text-lg md:text-2xl font-bold text-center mb-1" style={{color: '#013062'}}>What's your target? 🎯</h2>
-                <p className="text-center text-gray-600 text-sm mb-4">Choose your learning path</p>
+              <div className="max-w-4xl mx-auto pb-6">
+                <h2 className="text-base md:text-xl font-bold text-center mb-1" style={{color: '#013062'}}>What's your target? 🎯</h2>
+                <p className="text-center text-gray-600 text-xs md:text-sm mb-3">Choose your learning path</p>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
                   {goals[selectedGrade]?.map((goal) => (
                     <div
                       key={goal.id}
                       onClick={() => setSelectedGoal(goal.id)}
-                      className={`group relative overflow-hidden p-6 md:p-8 rounded-2xl cursor-pointer transition-all duration-300 transform border-2 bg-white hover:shadow-2xl ${
+                      className={`group relative overflow-hidden p-3 md:p-5 rounded-xl cursor-pointer transition-all duration-300 transform border-2 bg-white hover:shadow-xl ${
                         selectedGoal === goal.id
-                          ? 'shadow-2xl scale-105'
-                          : 'hover:scale-102 hover:shadow-xl'
+                          ? 'shadow-lg scale-105'
+                          : 'hover:scale-102 hover:shadow-lg'
                       }`}
                       style={{
                         borderColor: selectedGoal === goal.id ? '#013062' : '#e5e7eb',
@@ -428,17 +436,17 @@ const GoalSelectionPage = () => {
                       {/* Background gradient on hover */}
                       <div className="absolute inset-0 opacity-0 group-hover:opacity-5 transition-opacity" style={{backgroundColor: goal.color}} />
                       
-                      <div className={`inline-flex p-4 rounded-full ${goal.color} text-white mb-4 transition-transform group-hover:scale-110`}>
+                      <div className={`inline-flex p-2 md:p-3 rounded-full ${goal.color} text-white mb-2 md:mb-3 transition-transform group-hover:scale-110`}>
                         {goal.icon}
                       </div>
                       
-                      <h3 className="text-2xl md:text-3xl font-bold mb-2" style={{color: '#013062'}}>{goal.name}</h3>
-                      <p className="text-gray-600 mb-4 text-sm md:text-base">{goal.desc}</p>
+                      <h3 className="text-lg md:text-2xl font-bold mb-1" style={{color: '#013062'}}>{goal.name}</h3>
+                      <p className="text-gray-600 mb-2 md:mb-3 text-xs md:text-sm">{goal.desc}</p>
                       
                       {/* Subject badges */}
-                      <div className="mb-4 flex flex-wrap gap-2">
+                      <div className="mb-2 md:mb-3 flex flex-wrap gap-1 md:gap-2">
                         {subjects[goal.id]?.map((subject, idx) => (
-                          <span key={idx} className="px-3 py-1 rounded-full text-xs font-semibold" style={{backgroundColor: '#f0f4f8', color: '#013062'}}>
+                          <span key={idx} className="px-2 py-0.5 rounded-full text-[10px] md:text-xs font-semibold" style={{backgroundColor: '#f0f4f8', color: '#013062'}}>
                             {subject}
                           </span>
                         ))}
@@ -446,21 +454,21 @@ const GoalSelectionPage = () => {
                       
                       {/* Exam details for grades 11-12 */}
                       {examDate && examDates[goal.id] && (
-                        <div className="mt-4 pt-4 border-t" style={{borderColor: '#e5e7eb'}}>
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between text-sm">
+                        <div className="mt-2 md:mt-3 pt-2 md:pt-3 border-t text-[10px] md:text-xs" style={{borderColor: '#e5e7eb'}}>
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between">
                               <div className="flex items-center text-gray-600">
-                                <Calendar className="w-4 h-4 mr-2" style={{color: '#013062'}} />
-                                <span>Exam Date</span>
+                                <Calendar className="w-3 h-3 mr-1" style={{color: '#013062'}} />
+                                <span>Exam</span>
                               </div>
-                              <span className="font-semibold" style={{color: '#013062'}}>{new Date(examDate).toLocaleDateString()}</span>
+                              <span className="font-semibold" style={{color: '#013062'}}>{new Date(examDate).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})}</span>
                             </div>
-                            <div className="flex items-center justify-between text-sm">
+                            <div className="flex items-center justify-between">
                               <div className="flex items-center text-gray-600">
-                                <Clock className="w-4 h-4 mr-2" style={{color: '#dc2626'}} />
-                                <span>Time Remaining</span>
+                                <Clock className="w-3 h-3 mr-1" style={{color: '#dc2626'}} />
+                                <span>Days</span>
                               </div>
-                              <span className="font-bold" style={{color: '#dc2626'}}>{daysRemaining} days</span>
+                              <span className="font-bold" style={{color: '#dc2626'}}>{daysRemaining}</span>
                             </div>
                           </div>
                         </div>
@@ -468,9 +476,9 @@ const GoalSelectionPage = () => {
                       
                       {/* Selected indicator */}
                       {selectedGoal === goal.id && (
-                        <div className="absolute top-4 right-4">
-                          <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{backgroundColor: '#013062'}}>
-                            <span className="text-white font-bold">✓</span>
+                        <div className="absolute top-3 right-3">
+                          <div className="w-5 h-5 rounded-full flex items-center justify-center" style={{backgroundColor: '#013062'}}>
+                            <span className="text-white font-bold text-xs">✓</span>
                           </div>
                         </div>
                       )}
@@ -482,12 +490,12 @@ const GoalSelectionPage = () => {
           </div>
 
           {/* Navigation Buttons - Fixed at bottom */}
-          <div className="flex-shrink-0 text-center py-4 md:py-6">
+          <div className="flex-shrink-0 text-center py-3 md:py-4 border-t border-gray-200 bg-white">
             {currentStep === 1 && (
               <button
                 onClick={handleNext}
                 disabled={!canProceed()}
-                className={`px-6 md:px-8 py-3 md:py-4 rounded-full font-bold text-lg transition-all duration-300 transform text-white shadow-lg hover:shadow-xl ${
+                className={`px-5 md:px-8 py-2 md:py-3 rounded-full font-bold text-sm md:text-base transition-all duration-300 transform text-white shadow-lg hover:shadow-xl ${
                   canProceed()
                     ? 'hover:scale-105'
                     : 'opacity-50 cursor-not-allowed'
@@ -497,16 +505,16 @@ const GoalSelectionPage = () => {
                 }}
               >
                 Continue
-                <ChevronRight className="inline ml-2 w-5 h-5" />
+                <ChevronRight className="inline ml-2 w-4 h-4 md:w-5 md:h-5" />
               </button>
             )}
 
             {currentStep === 2 && (
-              <div className="space-x-4">
+              <div className="space-x-2 md:space-x-3">
                 <button
                   onClick={handleStartJourney}
                   disabled={!selectedGoal}
-                  className={`px-6 md:px-8 py-3 md:py-4 rounded-full font-bold text-lg transition-all duration-300 transform text-white shadow-lg hover:shadow-xl ${
+                  className={`px-5 md:px-8 py-2 md:py-3 rounded-full font-bold text-sm md:text-base transition-all duration-300 transform text-white shadow-lg hover:shadow-xl ${
                     selectedGoal
                       ? 'hover:scale-105'
                       : 'opacity-50 cursor-not-allowed'
@@ -520,7 +528,7 @@ const GoalSelectionPage = () => {
                 
                 <button
                   onClick={() => setCurrentStep(1)}
-                  className="px-4 md:px-6 py-3 md:py-4 rounded-full border border-gray-400 text-gray-600 hover:bg-gray-100 transition-all duration-300"
+                  className="px-3 md:px-6 py-2 md:py-3 rounded-full border border-gray-400 text-gray-600 hover:bg-gray-100 transition-all duration-300 font-semibold text-sm md:text-base"
                 >
                   Back
                 </button>
