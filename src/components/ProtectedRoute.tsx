@@ -24,17 +24,29 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
       }
 
       try {
+        // Check if goal selection was just completed (within this session)
+        const goalSelectionComplete = sessionStorage.getItem('goalSelectionComplete') === 'true';
+        if (goalSelectionComplete) {
+          console.info('Goal selection just completed - allowing access');
+          sessionStorage.removeItem('goalSelectionComplete');
+          setNeedsGoalSelection(false);
+          setGoalsChecked(true);
+          return;
+        }
+
         // Check with a small delay to allow for database replication
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 200));
         
         const { data: profile, error } = await supabase
           .from('profiles')
           .select('selected_goal, target_exam, grade')
           .eq('id', user.id)
-          .single();
+          .maybeSingle();
 
-        if (error) {
+        // Handle query errors gracefully
+        if (error && error.code !== 'PGRST116') {
           console.error('Error checking goals:', error);
+          // On error, assume profile is incomplete to be safe
           setNeedsGoalSelection(true);
         } else if (!profile?.selected_goal || !profile?.target_exam || !profile?.grade) {
           // If profile is incomplete, user needs to set goals

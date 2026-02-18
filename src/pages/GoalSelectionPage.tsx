@@ -58,7 +58,7 @@ const GoalSelectionPage = () => {
           .from('profiles')
           .select('full_name, target_exam, grade, selected_goal')
           .eq('id', user.id)
-          .single();
+          .maybeSingle();
   
         if (error && error.code !== 'PGRST116') {
           logger.error('Profile check error:', error);
@@ -293,14 +293,11 @@ const GoalSelectionPage = () => {
       };
       localStorage.setItem('userGoals', JSON.stringify(userGoals));
       
-      // Mark that we successfully completed goal selection to prevent re-entry
+      // Mark that we successfully completed goal selection
       sessionStorage.setItem('goalSelectionComplete', 'true');
       
-      // Wait briefly for UI feedback
-      await new Promise(resolve => setTimeout(resolve, 600));
-    
-      // Clear the redirect check to allow ProtectedRoute to recheck
-      redirectCheckedRef.current = false;
+      // Wait briefly for UI feedback before navigating
+      await new Promise(resolve => setTimeout(resolve, 800));
     
       // Navigate to dashboard - this should be the final action
       logger.info('Navigating to dashboard after goal setup');
