@@ -233,9 +233,18 @@ export function ExtractionReviewQueue() {
   };
 
   const fetchChapters = async () => {
-    const { data } = await supabase.from("chapters").select("id, chapter_name, subject, batch_id");
-    setChapters(data || []);
-    clearCurriculumCache(); // Refresh NLP cache
+    try {
+      // Fetch all available chapters with their batch info
+      const { data } = await supabase
+        .from("chapters")
+        .select("id, chapter_name, subject, batch_id")
+        .order('chapter_name');
+      setChapters(data || []);
+      clearCurriculumCache(); // Refresh NLP cache
+    } catch (error) {
+      logger.error("Error fetching chapters:", error);
+      toast.error("Failed to load chapters");
+    }
   };
 
   const fetchBatches = async () => {
@@ -254,25 +263,43 @@ export function ExtractionReviewQueue() {
       return batch?.id || (batches.length === 0 ? 'NOT_FOUND' : 'NOT_FOUND');
     }
     
-    // JEE/NEET - chapters have batch_id = null
+    // JEE/NEET - try to find batch for the exam type
+    const jeeNeetMatch = examType.match(/^(Foundation-)?(?:(\d+)[a-z]+\s+)?(JEE|NEET)$/i);
+    if (jeeNeetMatch) {
+      const examName = jeeNeetMatch[3]; // JEE or NEET
+      const grade = jeeNeetMatch[2] ? parseInt(jeeNeetMatch[2]) : 12; // Default to 12
+      const batch = batches.find(b => 
+        b.exam_type.toLowerCase() === examName.toLowerCase() && 
+        b.grade === grade
+      );
+      return batch?.id || (batches.length === 0 ? 'NOT_FOUND' : 'NOT_FOUND');
+    }
+    
+    // Fallback: Check if it's just "JEE" or "NEET"
+    if (examType === 'JEE' || examType === 'NEET') {
+      const batch = batches.find(b => b.exam_type === examType && (b.grade === 11 || b.grade === 12));
+      return batch?.id || (batches.length === 0 ? 'NOT_FOUND' : 'NOT_FOUND');
+    }
+    
     return null;
   };
 
   // Filter chapters by subject AND exam type
   const getFilteredChapters = (subject: string | undefined, examType: string | undefined): Chapter[] => {
-    if (!subject) return [];
+    if (!subject || !examType) return [];
     
-    const isFoundation = examType?.startsWith('Foundation-');
+    const batchId = getBatchIdForExam(examType);
     
-    if (isFoundation) {
-      const batchId = getBatchIdForExam(examType);
-      // If batch not found, return empty array (don't show other batch's chapters)
-      if (batchId === 'NOT_FOUND' || batchId === null) return [];
-      return chapters.filter(c => c.subject === subject && c.batch_id === batchId);
-    } else {
-      // JEE/NEET: only show chapters with null batch_id
-      return chapters.filter(c => c.subject === subject && c.batch_id === null);
+    // If batch not found, return empty array (don't show other batch's chapters)
+    if (batchId === 'NOT_FOUND') return [];
+    
+    // Filter by subject and batch_id
+    if (batchId === null) {
+      // Legacy: No batch_id filtering (shouldn't happen with current setup)
+      return chapters.filter(c => c.subject === subject && !c.batch_id);
     }
+    
+    return chapters.filter(c => c.subject === subject && c.batch_id === batchId);
   };
 
   const fetchTopics = async (chapterId: string): Promise<Topic[]> => {

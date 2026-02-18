@@ -33,18 +33,6 @@ export const SPACED_REPETITION = {
   REVIEW_DURATION: [10, 8, 5, 5, 3, 3] // minutes
 };
 
-export const BURNOUT_CONFIG = {
-  MIN_ENERGY_SCORE: 40,
-  REST_DAY_THRESHOLD: 30,
-  CONSECUTIVE_LOW_DAYS: 3,
-  SIGNALS: {
-    accuracy_drop: -15, // % drop from avg
-    time_decrease: -30, // % decrease
-    night_study: 22, // hour threshold
-    incomplete_targets: 0.5 // 50% completion
-  }
-};
-
 export const JEE_CONFIG = {
   EXAM_DATE: '2026-05-24',
   SUBJECT_WEIGHTAGE: {

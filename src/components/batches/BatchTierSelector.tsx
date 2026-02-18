@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Crown, Zap, Lock } from 'lucide-react';
+import { Check, X, Crown, Zap, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -58,49 +58,22 @@ export const BatchTierSelector: React.FC<BatchTierSelectorProps> = ({
 
   const fetchTiers = async () => {
     try {
-      // batch_access_tiers table may not exist yet - use batch data directly
-      const { data: batch, error } = await supabase
-        .from('batches')
-        .select('id, name, price, offer_price, validity_days')
-        .eq('id', batchId)
-        .maybeSingle();
+      const { data, error } = await (supabase.from as any)('batch_access_tiers')
+        .select('*')
+        .eq('batch_id', batchId)
+        .order('price_paise');
 
       if (error) throw error;
       
-      if (batch) {
-        // Build tiers from batch data
-        const defaultFeatures = {
-          videos: false, pdfs: true, tests: true,
-          solutions: false, liveClasses: false, doubtSupport: false
-        };
-        const proFeatures = {
-          videos: true, pdfs: true, tests: true,
-          solutions: true, liveClasses: true, doubtSupport: true
-        };
-
-        setTiers([
-          {
-            id: `${batch.id}-free`,
-            batch_id: batch.id,
-            tier_name: 'free',
-            description: 'Try before you buy - limited access',
-            price_paise: 0,
-            duration_days: 7,
-            content_limit: 50,
-            features: defaultFeatures
-          },
-          {
-            id: `${batch.id}-pro`,
-            batch_id: batch.id,
-            tier_name: 'pro',
-            description: 'Full access to all content and features',
-            price_paise: batch.offer_price || batch.price,
-            duration_days: batch.validity_days,
-            content_limit: null,
-            features: proFeatures
-          }
-        ]);
-      }
+      // Parse features from JSONB
+      const parsedTiers = (data || []).map((tier: any) => ({
+        ...tier,
+        features: typeof tier.features === 'string' 
+          ? JSON.parse(tier.features) 
+          : tier.features
+      }));
+      
+      setTiers(parsedTiers as BatchTier[]);
     } catch (error) {
       console.error('Error fetching tiers:', error);
       toast.error('Failed to load tier options');
@@ -123,31 +96,37 @@ export const BatchTierSelector: React.FC<BatchTierSelectorProps> = ({
 
     setEnrolling(true);
     try {
+      // Calculate expiry
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + freeTier.duration_days);
 
       // Check if already enrolled
-      const { data: existing } = await supabase
-        .from('user_batch_subscriptions')
-        .select('id, status')
+      const { data: existing } = await (supabase.from as any)('user_batch_subscriptions')
+        .select('id, tier')
         .eq('user_id', user.id)
         .eq('batch_id', batchId)
-        .maybeSingle();
+        .single();
 
       if (existing) {
-        toast.info('You already have access to this batch');
+        if ((existing as any).tier === 'pro') {
+          toast.info('You already have Pro access to this batch!');
+        } else {
+          toast.info('You already have a free trial for this batch');
+        }
         onClose?.();
         return;
       }
 
-      const { error } = await supabase
-        .from('user_batch_subscriptions')
+      // Create subscription
+      const { error } = await (supabase.from as any)('user_batch_subscriptions')
         .insert({
           user_id: user.id,
           batch_id: batchId,
+          tier: 'free',
           expires_at: expiresAt.toISOString(),
+          features_unlocked: freeTier.features,
           status: 'active'
-        } as any);
+        });
 
       if (error) throw error;
 
@@ -188,10 +167,13 @@ export const BatchTierSelector: React.FC<BatchTierSelectorProps> = ({
         <h3 className="text-2xl font-bold text-foreground mb-2">
           Choose Your Access Level
         </h3>
-        <p className="text-muted-foreground">{batchName}</p>
+        <p className="text-muted-foreground">
+          {batchName}
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Free Tier */}
         {freeTier && (
           <div
             className={`border-2 rounded-xl p-6 transition-all cursor-pointer ${
@@ -202,30 +184,54 @@ export const BatchTierSelector: React.FC<BatchTierSelectorProps> = ({
             onClick={() => setSelectedTier('free')}
           >
             <div className="flex items-center justify-between mb-4">
-              <h4 className="text-xl font-bold">🆓 Free Trial</h4>
+              <h4 className="text-xl font-bold flex items-center gap-2">
+                🆓 Free Trial
+              </h4>
               <Badge variant="secondary">{freeTier.duration_days} days</Badge>
             </div>
-            <p className="text-sm text-muted-foreground mb-4">{freeTier.description}</p>
-            <div className="text-3xl font-bold text-green-600 mb-4">₹0</div>
+
+            <p className="text-sm text-muted-foreground mb-4">
+              {freeTier.description || 'Try before you buy - limited access'}
+            </p>
+
+            <div className="text-3xl font-bold text-green-600 mb-4">
+              ₹0
+            </div>
+
             {freeTier.content_limit && (
               <p className="text-xs text-muted-foreground mb-4 bg-muted p-2 rounded">
-                📊 Limited to {freeTier.content_limit} questions
+                📊 Limited to {freeTier.content_limit} questions/videos
               </p>
             )}
+
             <div className="space-y-2 mb-6">
               {Object.entries(freeTier.features).map(([key, enabled]) => (
-                <div key={key} className={`flex items-center gap-2 text-sm ${enabled ? 'text-foreground' : 'text-muted-foreground line-through'}`}>
+                <div
+                  key={key}
+                  className={`flex items-center gap-2 text-sm ${
+                    enabled ? 'text-foreground' : 'text-muted-foreground line-through'
+                  }`}
+                >
                   <span>{enabled ? '✅' : '❌'}</span>
-                  <span>{FEATURE_LABELS[key]?.icon} {FEATURE_LABELS[key]?.label || key}</span>
+                  <span>
+                    {FEATURE_LABELS[key]?.icon} {FEATURE_LABELS[key]?.label || key}
+                  </span>
                 </div>
               ))}
             </div>
-            <Button variant="outline" className="w-full" onClick={handleFreeTrial} disabled={enrolling}>
+
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={handleFreeTrial}
+              disabled={enrolling}
+            >
               {enrolling ? 'Starting...' : 'Start Free Trial'}
             </Button>
           </div>
         )}
 
+        {/* Pro Tier */}
         {proTier && (
           <div
             className={`border-2 rounded-xl p-6 transition-all cursor-pointer relative ${
@@ -240,32 +246,59 @@ export const BatchTierSelector: React.FC<BatchTierSelectorProps> = ({
                 <Crown className="w-3 h-3 mr-1" /> RECOMMENDED
               </Badge>
             </div>
+
             <div className="flex items-center justify-between mb-4 mt-2">
-              <h4 className="text-xl font-bold">💎 Pro Access</h4>
+              <h4 className="text-xl font-bold flex items-center gap-2">
+                💎 Pro Access
+              </h4>
               <Badge variant="default">{proTier.duration_days} days</Badge>
             </div>
-            <p className="text-sm text-muted-foreground mb-4">{proTier.description}</p>
+
+            <p className="text-sm text-muted-foreground mb-4">
+              {proTier.description || 'Full access to all content and features'}
+            </p>
+
             <div className="mb-4">
-              <div className="text-3xl font-bold text-foreground">₹{(proTier.price_paise / 100).toFixed(0)}</div>
+              <div className="text-3xl font-bold text-foreground">
+                ₹{(proTier.price_paise / 100).toFixed(0)}
+              </div>
               <div className="text-sm text-muted-foreground">
                 {proTier.duration_days === 365 ? 'per year' : `for ${proTier.duration_days} days`}
               </div>
             </div>
+
             <div className="space-y-2 mb-6">
               {Object.entries(proTier.features).map(([key, enabled]) => (
-                <div key={key} className={`flex items-center gap-2 text-sm ${enabled ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                <div
+                  key={key}
+                  className={`flex items-center gap-2 text-sm ${
+                    enabled ? 'text-foreground font-medium' : 'text-muted-foreground'
+                  }`}
+                >
                   <span>{enabled ? '✅' : '❌'}</span>
-                  <span>{FEATURE_LABELS[key]?.icon} {FEATURE_LABELS[key]?.label || key}</span>
+                  <span>
+                    {FEATURE_LABELS[key]?.icon} {FEATURE_LABELS[key]?.label || key}
+                  </span>
                 </div>
               ))}
             </div>
-            <Button className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-bold" onClick={handleProPurchase}>
-              <Zap className="w-4 h-4 mr-2" /> Upgrade to Pro
+
+            <div className="text-xs text-center text-muted-foreground mb-3">
+              💡 Unlimited content access
+            </div>
+
+            <Button
+              className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-bold"
+              onClick={handleProPurchase}
+            >
+              <Zap className="w-4 h-4 mr-2" />
+              Upgrade to Pro
             </Button>
           </div>
         )}
       </div>
 
+      {/* Comparison note */}
       <div className="text-center text-sm text-muted-foreground">
         <Lock className="w-4 h-4 inline mr-1" />
         Secure payment powered by Razorpay

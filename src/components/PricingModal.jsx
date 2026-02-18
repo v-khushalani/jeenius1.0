@@ -78,7 +78,7 @@ const PricingModal = ({
 
   const handleUpgrade = () => {
     onClose();
-    navigate('/batches');
+    navigate('/dashboard');
   };
 
   if (!isOpen) return null;

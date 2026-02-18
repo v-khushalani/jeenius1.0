@@ -44,7 +44,8 @@ const TopicManager = () => {
   const [batches, setBatches] = useState<Batch[]>([]);
   const [selectedSubject, setSelectedSubject] = useState('Physics');
   const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
-  const [filterExam, setFilterExam] = useState('all');
+  const [filterExam, setFilterExam] = useState('JEE');
+  const [selectedGrade, setSelectedGrade] = useState<number | null>(12);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingTopic, setEditingTopic] = useState<Topic | null>(null);
@@ -64,7 +65,7 @@ const TopicManager = () => {
 
   useEffect(() => {
     fetchChapters();
-  }, [selectedSubject, filterExam, batches]);
+  }, [selectedSubject, filterExam, selectedGrade, batches]);
 
   useEffect(() => {
     if (selectedChapter) {
@@ -83,7 +84,13 @@ const TopicManager = () => {
 
   // Get batch_id for current filter
   const getCurrentBatchId = (): string | null | 'NOT_FOUND' => {
-    if (filterExam === 'all' || filterExam === 'JEE' || filterExam === 'NEET') return null;
+    if (filterExam === 'JEE' || filterExam === 'NEET') {
+      const batch = batches.find(b => 
+        b.exam_type.toLowerCase() === filterExam.toLowerCase() && 
+        (!selectedGrade || b.grade === selectedGrade)
+      );
+      return batch?.id || 'NOT_FOUND';
+    }
     
     if (filterExam.startsWith('Foundation-')) {
       const grade = parseInt(filterExam.replace('Foundation-', ''));
@@ -102,11 +109,19 @@ const TopicManager = () => {
       .order('chapter_number');
 
     // Apply filter based on exam type
-    if (filterExam !== 'all') {
+    if (filterExam === 'JEE' || filterExam === 'NEET') {
       const batchId = getCurrentBatchId();
-      if (filterExam === 'JEE' || filterExam === 'NEET') {
-        query = query.is('batch_id', null);
-      } else if (batchId && batchId !== 'NOT_FOUND') {
+      if (batchId && batchId !== 'NOT_FOUND') {
+        query = query.eq('batch_id', batchId);
+      } else if (batchId === 'NOT_FOUND') {
+        setChapters([]);
+        setSelectedChapter(null);
+        setTopics([]);
+        return;
+      }
+    } else if (filterExam.startsWith('Foundation-')) {
+      const batchId = getCurrentBatchId();
+      if (batchId && batchId !== 'NOT_FOUND') {
         query = query.eq('batch_id', batchId);
       } else if (batchId === 'NOT_FOUND') {
         setChapters([]);

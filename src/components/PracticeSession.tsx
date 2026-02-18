@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Brain, Target, Clock, CheckCircle, XCircle, Lightbulb, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useQuestions } from '@/hooks/useQuestions';
+import { useQuestions } from '@/hooks/useQuestions.tsx';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import LoadingScreen from '@/components/ui/LoadingScreen';

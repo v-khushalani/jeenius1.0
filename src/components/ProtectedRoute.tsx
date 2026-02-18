@@ -24,15 +24,67 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
       }
 
       try {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('goals_set, target_exam, grade')
-          .eq('id', user.id)
-          .single();
+        // First check localStorage for cached goals
+        const cachedGoals = localStorage.getItem('userGoals');
+        if (cachedGoals) {
+          try {
+            const goals = JSON.parse(cachedGoals);
+            if (goals?.goal && goals?.grade) {
+              console.info('Found cached goals in localStorage');
+              setNeedsGoalSelection(false);
+              setGoalsChecked(true);
+              return;
+            }
+          } catch (e) {
+            console.warn('Invalid cached goals in localStorage');
+          }
+        }
 
-        // If profile is incomplete, user needs to set goals
-        if (!profile?.goals_set || !profile?.target_exam || !profile?.grade) {
+        // Check if goal selection was just completed (within this session)
+        const goalSelectionComplete = sessionStorage.getItem('goalSelectionComplete') === 'true';
+        if (goalSelectionComplete) {
+          console.info('Goal selection just completed - allowing access');
+          sessionStorage.removeItem('goalSelectionComplete');
+          setNeedsGoalSelection(false);
+          setGoalsChecked(true);
+          return;
+        }
+
+        // Check with a small delay to allow for database replication
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('selected_goal, target_exam, grade')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        // Handle query errors gracefully
+        if (error && error.code !== 'PGRST116') {
+          console.error('Error checking goals:', error);
+          // On error, assume profile is incomplete to be safe
           setNeedsGoalSelection(true);
+        } else if (!profile?.selected_goal || !profile?.target_exam || !profile?.grade) {
+          // If profile is incomplete, user needs to set goals
+          console.info('Profile incomplete - needs goal selection:', { 
+            selected_goal: profile?.selected_goal,
+            target_exam: profile?.target_exam,
+            grade: profile?.grade
+          });
+          setNeedsGoalSelection(true);
+        } else {
+          // Profile is complete - save to localStorage for next visit
+          const userGoals = {
+            grade: profile.grade,
+            goal: profile.selected_goal,
+            subjects: [],
+            name: '',
+            daysRemaining: 0,
+            createdAt: new Date().toISOString()
+          };
+          localStorage.setItem('userGoals', JSON.stringify(userGoals));
+          console.info('Profile complete - allowing dashboard access');
+          setNeedsGoalSelection(false);
         }
       } catch (error) {
         console.error('Error checking goals:', error);

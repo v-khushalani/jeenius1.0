@@ -33,7 +33,7 @@ const UpgradePrompt: React.FC<UpgradePromptProps> = ({ questionsCompleted, onDis
           </p>
           <Button 
             size="sm" 
-            onClick={() => navigate('/batches')}
+            onClick={() => navigate('/dashboard')}
             className="w-full h-8 text-xs"
           >
             Upgrade to Pro

@@ -1,5 +1,5 @@
 -- =============================================
--- GOAL CHANGE WITH DATA RESET - DEPLOY TO SUPABASE
+-- JEENIUS CORE DATABASE SETUP - DEPLOY TO SUPABASE
 -- Copy this entire file and paste in Supabase Dashboard > SQL Editor > New query
 -- =============================================
 
@@ -13,48 +13,11 @@ ADD COLUMN IF NOT EXISTS goal_locked_at TIMESTAMP WITH TIME ZONE;
 CREATE INDEX IF NOT EXISTS idx_profiles_goal ON public.profiles(selected_goal);
 CREATE INDEX IF NOT EXISTS idx_profiles_goal_locked ON public.profiles(goal_locked);
 
--- Step 2: Create goal change audit log
-CREATE TABLE IF NOT EXISTS public.goal_change_audit (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  old_goal VARCHAR(50),
-  new_goal VARCHAR(50),
-  attempted_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-  status VARCHAR(20) DEFAULT 'blocked',
-  reason TEXT
-);
-
-CREATE INDEX IF NOT EXISTS idx_goal_audit_user ON public.goal_change_audit(user_id);
-CREATE INDEX IF NOT EXISTS idx_goal_audit_time ON public.goal_change_audit(attempted_at DESC);
-
--- Enable RLS 
-ALTER TABLE public.goal_change_audit ENABLE ROW LEVEL SECURITY;
-
--- Drop existing policies first
-DROP POLICY IF EXISTS "Users can view own goal audit" ON public.goal_change_audit;
-DROP POLICY IF EXISTS "System can insert goal audit" ON public.goal_change_audit;
-DROP POLICY IF EXISTS "Admins can view all goal audits" ON public.goal_change_audit;
-
--- Create policies
-CREATE POLICY "Users can view own goal audit" ON public.goal_change_audit
-FOR SELECT USING (auth.uid() = user_id);
-
-CREATE POLICY "System can insert goal audit" ON public.goal_change_audit
-FOR INSERT WITH CHECK (auth.uid() = user_id);
-
--- Step 3: Drop the old restrictive trigger (if exists)
+-- Step 2: Drop the old restrictive trigger (if exists)
 DROP TRIGGER IF EXISTS trigger_prevent_goal_change ON public.profiles;
 DROP FUNCTION IF EXISTS public.prevent_goal_change();
 
--- Step 4: Update constraint to allow more status types
-ALTER TABLE public.goal_change_audit 
-DROP CONSTRAINT IF EXISTS goal_change_audit_status_check;
-
-ALTER TABLE public.goal_change_audit 
-ADD CONSTRAINT goal_change_audit_status_check 
-CHECK (status IN ('blocked', 'success', 'warning', 'reset'));
-
--- Step 5: Create function to RESET all user progress data
+-- Step 3: Create function to RESET all user progress data
 CREATE OR REPLACE FUNCTION public.reset_user_progress(p_user_id UUID)
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -116,7 +79,7 @@ BEGIN
 END;
 $$;
 
--- Step 6: Create function to change goal WITH data reset
+-- Step 4: Create function to change goal WITH data reset
 CREATE OR REPLACE FUNCTION public.change_user_goal(
   p_user_id UUID,
   p_new_goal VARCHAR(50),
@@ -171,10 +134,6 @@ BEGIN
     updated_at = now()
   WHERE id = p_user_id;
   
-  -- Log the goal change
-  INSERT INTO goal_change_audit (user_id, old_goal, new_goal, status, reason)
-  VALUES (p_user_id, v_old_goal, p_new_goal, 'success', 'User confirmed goal change with data reset');
-  
   RETURN jsonb_build_object(
     'success', true,
     'old_goal', v_old_goal,
@@ -184,9 +143,42 @@ BEGIN
 END;
 $$;
 
--- Step 7: Grant execute permissions
+-- Step 5: Grant execute permissions
 GRANT EXECUTE ON FUNCTION public.reset_user_progress(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.change_user_goal(UUID, VARCHAR, INT, VARCHAR, BOOLEAN) TO authenticated;
 
+-- Step 6: Create trigger to automatically create user_role entry when profile is created
+CREATE OR REPLACE FUNCTION public.create_user_role_on_profile_creation()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+BEGIN
+  -- Insert a new row in user_roles table with 'user' role
+  INSERT INTO public.user_roles (user_id, role)
+  VALUES (NEW.id, 'user')
+  ON CONFLICT (user_id) DO NOTHING;
+  
+  RETURN NEW;
+END;
+$$;
+
+-- Drop existing trigger if it exists
+DROP TRIGGER IF EXISTS trigger_create_user_role_on_profile_creation ON public.profiles;
+
+-- Create the trigger
+CREATE TRIGGER trigger_create_user_role_on_profile_creation
+AFTER INSERT ON public.profiles
+FOR EACH ROW
+EXECUTE FUNCTION public.create_user_role_on_profile_creation();
+
+-- Step 7: Create any missing user_role entries for existing profiles (backward compatibility)
+INSERT INTO public.user_roles (user_id, role)
+SELECT id, 'user'
+FROM public.profiles
+WHERE id NOT IN (SELECT user_id FROM public.user_roles)
+ON CONFLICT (user_id) DO NOTHING;
+
 -- Done! 
-SELECT 'Migration complete! Goal change with data reset is now enabled.' as status;
+SELECT 'Migration complete! Core database setup is ready.' as status;

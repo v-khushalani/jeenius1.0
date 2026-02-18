@@ -5,7 +5,17 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Search, Shield, User, Gift, Crown, XCircle } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Search, Shield, User, Gift, Crown, XCircle, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { logger } from '@/utils/logger';
@@ -30,6 +40,10 @@ export const UserManagement: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
+  const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<UserProfile | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -219,6 +233,123 @@ const revokeProMembership = async (userId: string) => {
     });
   }
 };
+
+const deleteUser = async (userId: string) => {
+  try {
+    setDeleting(true);
+    
+    // Delete from auth
+    const { error: authError } = await supabase.auth.admin.deleteUser(userId);
+    if (authError) logger.warn('Auth deletion warning:', authError);
+
+    // Delete from user_roles
+    await supabase
+      .from('user_roles')
+      .delete()
+      .eq('user_id', userId);
+
+    // Delete from question_attempts
+    await supabase
+      .from('question_attempts')
+      .delete()
+      .eq('user_id', userId);
+
+    // Delete from profiles
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .delete()
+      .eq('id', userId);
+
+    if (profileError) throw profileError;
+
+    // Update local state
+    const updatedUsers = users.filter(user => user.user_id !== userId);
+    setUsers(updatedUsers);
+
+    toast({
+      title: "Success",
+      description: "User deleted successfully from all systems",
+    });
+  } catch (error) {
+    logger.error('Error deleting user:', error);
+    toast({
+      title: "Error",
+      description: "Failed to delete user",
+      variant: "destructive"
+    });
+  } finally {
+    setDeleting(false);
+    setDeleteDialogOpen(false);
+    setUserToDelete(null);
+  }
+};
+
+const deleteBulkUsers = async () => {
+  try {
+    setDeleting(true);
+    
+    for (const userId of selectedUsers) {
+      // Delete from auth
+      await supabase.auth.admin.deleteUser(userId).catch(() => {});
+
+      // Delete from user_roles
+      await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', userId);
+
+      // Delete from question_attempts
+      await supabase
+        .from('question_attempts')
+        .delete()
+        .eq('user_id', userId);
+
+      // Delete from profiles
+      await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', userId);
+    }
+
+    // Update local state
+    const updatedUsers = users.filter(user => !selectedUsers.has(user.user_id));
+    setUsers(updatedUsers);
+    setSelectedUsers(new Set());
+
+    toast({
+      title: "Success",
+      description: `${selectedUsers.size} user(s) deleted successfully`,
+    });
+  } catch (error) {
+    logger.error('Error bulk deleting users:', error);
+    toast({
+      title: "Error",
+      description: "Failed to delete users",
+      variant: "destructive"
+    });
+  } finally {
+    setDeleting(false);
+    setDeleteDialogOpen(false);
+  }
+};
+
+const toggleSelectUser = (userId: string) => {
+  const newSelected = new Set(selectedUsers);
+  if (newSelected.has(userId)) {
+    newSelected.delete(userId);
+  } else {
+    newSelected.add(userId);
+  }
+  setSelectedUsers(newSelected);
+};
+
+const toggleSelectAll = () => {
+  if (selectedUsers.size === filteredUsers.length) {
+    setSelectedUsers(new Set());
+  } else {
+    setSelectedUsers(new Set(filteredUsers.map(u => u.user_id)));
+  }
+};
   
   const getRoleIcon = (role?: string) => {
     switch (role) {
@@ -253,6 +384,7 @@ const revokeProMembership = async (userId: string) => {
           <CardTitle>User Management</CardTitle>
           <CardDescription>
             Manage users and their roles. Total users: {users.length}
+            {selectedUsers.size > 0 && ` | ${selectedUsers.size} selected`}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -279,12 +411,36 @@ const revokeProMembership = async (userId: string) => {
             </Select>
           </div>
 
+          {/* Bulk Delete Bar */}
+          {selectedUsers.size > 0 && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center justify-between">
+              <span className="text-sm font-medium text-red-900">
+                {selectedUsers.size} user(s) selected
+              </span>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => setDeleteDialogOpen(true)}
+                disabled={deleting}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Selected
+              </Button>
+            </div>
+          )}
+
           {/* Users Table */}
           <div className="rounded-md border overflow-hidden">
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-12">
+                      <Checkbox
+                        checked={selectedUsers.size === filteredUsers.length && filteredUsers.length > 0}
+                        onCheckedChange={toggleSelectAll}
+                      />
+                    </TableHead>
                     <TableHead>User</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Target Exam</TableHead>
@@ -297,7 +453,13 @@ const revokeProMembership = async (userId: string) => {
                 </TableHeader>
                 <TableBody>
                   {filteredUsers.map((user) => (
-                    <TableRow key={user.user_id}>
+                    <TableRow key={user.user_id} className={selectedUsers.has(user.user_id) ? 'bg-red-50' : ''}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedUsers.has(user.user_id)}
+                          onCheckedChange={() => toggleSelectUser(user.user_id)}
+                        />
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           {getRoleIcon(user.role)}
@@ -371,6 +533,17 @@ const revokeProMembership = async (userId: string) => {
                               Revoke Pro
                             </Button>
                           )}
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => {
+                              setUserToDelete(user);
+                              setDeleteDialogOpen(true);
+                            }}
+                            disabled={deleting}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -387,6 +560,52 @@ const revokeProMembership = async (userId: string) => {
           )}
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-red-600">Delete User(s)?</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <div>
+                {userToDelete ? (
+                  <>
+                    <p>Are you sure you want to delete this user?</p>
+                    <p className="font-semibold">{userToDelete.full_name} ({userToDelete.email})</p>
+                  </>
+                ) : (
+                  <p>Are you sure you want to delete {selectedUsers.size} user(s)?</p>
+                )}
+              </div>
+              <div className="bg-red-50 border border-red-200 rounded p-3 mt-4">
+                <p className="text-sm font-medium text-red-900">⚠️ This action cannot be undone.</p>
+                <p className="text-sm text-red-800 mt-2">The user will be deleted from:</p>
+                <ul className="text-sm text-red-800 list-disc list-inside ml-2">
+                  <li>Authentication system</li>
+                  <li>User profiles</li>
+                  <li>All activity records</li>
+                </ul>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex gap-3">
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (userToDelete) {
+                  deleteUser(userToDelete.user_id);
+                } else {
+                  deleteBulkUsers();
+                }
+              }}
+              disabled={deleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deleting ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

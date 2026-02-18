@@ -88,8 +88,8 @@ const Profile = () => {
 
       // Stats from profiles table
       setStats({
-        total_questions: profileData.total_questions_answered || 0,
-        correct_answers: profileData.correct_answers || 0,
+        total_questions: profileData.total_questions_solved || 0,
+        correct_answers: (profileData as any).correct_answers || 0,
         accuracy: profileData.overall_accuracy || 0,
         streak: profileData.current_streak || 0,
         total_points: profileData.total_points || 0,

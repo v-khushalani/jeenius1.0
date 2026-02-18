@@ -340,7 +340,7 @@ export const BatchExplorer: React.FC = () => {
                   {/* Price Display */}
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-sm font-medium text-muted-foreground">
-                      {batch.free_mode_enabled ? 'Free Trial + Pro' : 'Price'}
+                      Price
                     </span>
                     <div className="flex items-center gap-2">
                       {originalPrice && (
@@ -355,14 +355,6 @@ export const BatchExplorer: React.FC = () => {
                   </div>
 
                   {/* Free Trial Badge */}
-                  {batch.free_mode_enabled && !hasAccess && (
-                    <div className="flex items-center justify-center gap-2 p-2 bg-green-50 rounded-lg">
-                      <Zap className="w-4 h-4 text-green-600" />
-                      <span className="text-xs font-medium text-green-600">
-                        7-day Free Trial Available
-                      </span>
-                    </div>
-                  )}
 
                   {/* Action Button */}
                   {hasAccess ? (
@@ -391,7 +383,7 @@ export const BatchExplorer: React.FC = () => {
                       className="w-full gap-2"
                     >
                       <Zap className="w-4 h-4" />
-                      {batch.free_mode_enabled ? 'Start Free Trial' : 'Get Access'}
+                      Get Access
                     </Button>
                   )}
                 </div>

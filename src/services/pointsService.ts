@@ -1,6 +1,7 @@
 // src/services/pointsService.ts
 import { supabase } from '@/integrations/supabase/client';
 import { logger } from '@/utils/logger';
+import { DIFFICULTY_CONFIG, STREAK_CONFIG, Difficulty } from '@/constants/unified';
 
 export class PointsService {
   
@@ -66,12 +67,9 @@ export class PointsService {
   }
 
   private static getBasePoints(difficulty: string): number {
-    const map: Record<string, number> = {
-      easy: 5, Easy: 5,
-      medium: 10, Medium: 10,
-      hard: 20, Hard: 20
-    };
-    return map[difficulty] || 5;
+    const normalized = difficulty.toUpperCase() as Difficulty;
+    const config = DIFFICULTY_CONFIG[normalized];
+    return config?.basePoints ?? 5;
   }
 
   private static async calculateStreakBonus(userId: string): Promise<{
@@ -82,7 +80,7 @@ export class PointsService {
   }> {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('answer_streak, badges, longest_answer_streak')
+      .select('current_streak, badges, longest_streak')
       .eq('id', userId)
       .single();
 
@@ -90,14 +88,14 @@ export class PointsService {
       return { points: 0, streak: 0, badgeEarned: false };
     }
 
-    const currentStreak = profile.answer_streak || 0;
+    const currentStreak = profile.current_streak || 0;
     const newStreak = currentStreak + 1;
 
     await supabase
       .from('profiles')
       .update({
-        answer_streak: newStreak,
-        longest_answer_streak: Math.max(newStreak, profile.longest_answer_streak || 0)
+        current_streak: newStreak,
+        longest_streak: Math.max(newStreak, profile.longest_streak || 0)
       })
       .eq('id', userId);
 
@@ -139,7 +137,7 @@ export class PointsService {
   private static async resetAnswerStreak(userId: string) {
     await supabase
       .from('profiles')
-      .update({ answer_streak: 0 })
+      .update({ current_streak: 0 })
       .eq('id', userId);
   }
 
@@ -244,8 +242,8 @@ export class PointsService {
       totalPoints: profile.total_points || 0,
       level: profile.level || 'BEGINNER',
       levelProgress: profile.level_progress || 0,
-      answerStreak: profile.answer_streak || 0,
-      longestAnswerStreak: profile.longest_answer_streak || 0,
+      answerStreak: (profile as any).answer_streak || 0,
+      longestAnswerStreak: profile.longest_streak || 0,
       badges: profile.badges || [],
       levelInfo: this.calculateLevel(profile.total_points || 0)
     };
@@ -289,7 +287,7 @@ export class PointsService {
       // Get current stats
       const { data: profile, error: fetchError } = await supabase
         .from('profiles')
-        .select('total_questions_answered, correct_answers, overall_accuracy')
+        .select('total_questions_solved, overall_accuracy')
         .eq('id', userId)
         .single();
 
@@ -298,18 +296,18 @@ export class PointsService {
         return false;
       }
 
-      const totalQuestions = (profile.total_questions_answered || 0) + 1;
-      const correctAnswers = (profile.correct_answers || 0) + (isCorrect ? 1 : 0);
-      const accuracy = totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
+      const totalQuestions = (profile.total_questions_solved || 0) + 1;
+      const correctAnswers = isCorrect ? 1 : 0; // Incremental
+      const accuracy = profile.overall_accuracy || 0;
 
       // Update profile with new stats
+      const newAccuracy = totalQuestions > 0 ? ((accuracy * (totalQuestions - 1) + (isCorrect ? 100 : 0)) / totalQuestions) : 0;
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
-          total_questions_answered: totalQuestions,
-          correct_answers: correctAnswers,
-          overall_accuracy: Math.round(accuracy * 100) / 100 // Round to 2 decimal places
-        })
+          total_questions_solved: totalQuestions,
+          overall_accuracy: Math.round(newAccuracy * 100) / 100
+        } as any)
         .eq('id', userId);
 
       if (updateError) {

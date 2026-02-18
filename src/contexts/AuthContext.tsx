@@ -159,7 +159,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             target_exam: null,
             grade: null,
             subjects: null,
-            goals_set: false,
+            selected_goal: null,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           });

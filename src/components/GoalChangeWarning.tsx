@@ -83,8 +83,7 @@ export const GoalChangeWarning: React.FC<GoalChangeWarningProps> = ({
         return;
       }
 
-      const result = data as any;
-      if (result?.success) {
+      if ((data as any)?.success) {
         toast.success('Goal changed successfully! Starting fresh 🎯');
         
         // Clear local storage
@@ -99,7 +98,7 @@ export const GoalChangeWarning: React.FC<GoalChangeWarningProps> = ({
         
         onClose();
       } else {
-        toast.error(result?.reason || 'Failed to change goal');
+        toast.error((data as any)?.reason || 'Failed to change goal');
       }
     } catch (error) {
       console.error('Error changing goal:', error);

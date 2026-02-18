@@ -47,12 +47,14 @@ const Leaderboard: React.FC = () => {
         // Fallback to profiles-only fetch if RPC fails (migration not applied)
         const { data: profiles, error: profileError } = await supabase
           .from('profiles')
-          .select('id, full_name, avatar_url, total_points, current_streak, total_questions_answered, overall_accuracy')
+          .select('id, full_name, avatar_url, total_points, current_streak, total_questions_answered, correct_answers, overall_accuracy')
           .order('total_points', { ascending: false })
           .limit(100);
 
         if (profileError || !profiles) {
           logger.error('Profile fetch error:', profileError);
+          setTopUsers([]);
+          setCurrentUser(null);
           setLoading(false);
           return;
         }
@@ -67,7 +69,7 @@ const Leaderboard: React.FC = () => {
               full_name: profile.full_name || 'Anonymous User',
               avatar_url: profile.avatar_url || undefined,
               total_questions: profile.total_questions_answered || 0,
-              accuracy: Math.round(profile.overall_accuracy || 0),
+              accuracy: profile.overall_accuracy ? Math.round(Number(profile.overall_accuracy)) : 0,
               total_points: profile.total_points || 0,
               streak: profile.current_streak || 0,
               rank: currentRank,
@@ -83,7 +85,7 @@ const Leaderboard: React.FC = () => {
         return;
       }
 
-      if (!leaderboardData || !Array.isArray(leaderboardData) || leaderboardData.length === 0) {
+      if (!leaderboardData || (leaderboardData as any[]).length === 0) {
         logger.info('No leaderboard data found');
         setTopUsers([]);
         setCurrentUser(null);
@@ -91,28 +93,30 @@ const Leaderboard: React.FC = () => {
         return;
       }
 
-      logger.info('Fetched leaderboard data', { count: (leaderboardData as any[]).length });
+      logger.info('Fetched leaderboard data', { count: (leaderboardData as any[]).length, sample: (leaderboardData as any[])[0] });
 
       // Build user stats from RPC result
-      const userStats: LeaderboardUser[] = (leaderboardData as any[]).map((entry: any, index: number) => {
-        const currentRank = index + 1;
-        // Calculate real rank change: previous_rank - current_rank
-        // Positive = moved up (was 5, now 3 = +2)
-        const rankChange = entry.previous_rank ? entry.previous_rank - currentRank : 0;
-        
-        return {
-          id: entry.id,
-          full_name: entry.full_name || 'Anonymous User',
-          avatar_url: entry.avatar_url || undefined,
-          total_questions: Number(entry.total_questions) || 0,
-          accuracy: Math.round(Number(entry.accuracy) || 0),
-          total_points: entry.total_points || 0,
-          streak: entry.current_streak || 0,
-          rank: currentRank,
-          rank_change: rankChange,
-          questions_today: 0
-        };
-      });
+      const userStats: LeaderboardUser[] = (leaderboardData as any[])
+        .filter((entry: any) => entry.id && ((entry.total_points || 0) > 0 || (entry.total_questions || 0) > 0))
+        .map((entry: any, index: number) => {
+          const currentRank = index + 1;
+          // Calculate real rank change: previous_rank - current_rank
+          // Positive = moved up (was 5, now 3 = +2)
+          const rankChange = entry.previous_rank ? entry.previous_rank - currentRank : 0;
+          
+          return {
+            id: entry.id,
+            full_name: entry.full_name || 'Anonymous User',
+            avatar_url: entry.avatar_url || undefined,
+            total_questions: Number(entry.total_questions) || 0,
+            accuracy: entry.accuracy ? Math.round(Number(entry.accuracy)) : 0,
+            total_points: entry.total_points || 0,
+            streak: entry.current_streak || 0,
+            rank: currentRank,
+            rank_change: rankChange,
+            questions_today: 0
+          };
+        });
 
       // Find current user
       const current = userStats.find(u => u.id === user?.id);
@@ -127,6 +131,8 @@ const Leaderboard: React.FC = () => {
 
     } catch (error) {
       logger.error('Error fetching leaderboard:', error);
+      setTopUsers([]);
+      setCurrentUser(null);
     } finally {
       if (showLoader) setLoading(false);
       else setIsRefreshing(false);
@@ -271,8 +277,39 @@ const Leaderboard: React.FC = () => {
 
       <CardContent className="p-4 space-y-3 max-h-[600px] overflow-y-auto">
         
-        {/* Current User Card */}
-        {currentUser && currentUser.rank > 10 && (
+        {/* Empty State */}
+        {topUsers.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+            <div className="bg-gradient-to-br from-orange-50 to-yellow-50 p-6 rounded-full mb-4">
+              <Trophy className="h-12 w-12 text-orange-400" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-900 mb-2">No Scores Yet</h3>
+            <p className="text-sm text-slate-600 mb-6 max-w-xs">
+              Start practicing questions to see yourself on the leaderboard. The more you practice, the higher you'll climb!
+            </p>
+            <div className="w-full space-y-2">
+              <p className="text-xs text-slate-500 font-medium">How to get on the board:</p>
+              <ul className="text-xs text-slate-600 space-y-1">
+                <li className="flex items-center justify-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-orange-400 rounded-full"></span>
+                  Practice questions from chapters
+                </li>
+                <li className="flex items-center justify-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-orange-400 rounded-full"></span>
+                  Answer correctly to earn points
+                </li>
+                <li className="flex items-center justify-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-orange-400 rounded-full"></span>
+                  Track your rank in real-time
+                </li>
+              </ul>
+            </div>
+          </div>
+        )}
+
+        
+        {/* Current User Card - Only show if we have leaderboard data */}
+        {topUsers.length > 0 && currentUser && currentUser.rank > 10 && (
           <div className="mb-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border-2 border-blue-300">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -337,20 +374,20 @@ const Leaderboard: React.FC = () => {
                           )}
                         </div>
                         
-                        <div className="flex items-center gap-3 text-xs text-slate-600 mt-1">
-                          <span className="flex items-center gap-1 font-bold text-indigo-600">
+                        <div className="flex items-center gap-3 text-xs text-slate-600 mt-1 flex-wrap">
+                          <span className="flex items-center gap-1 font-bold text-indigo-600 whitespace-nowrap">
                             <Zap className="h-3 w-3" />
                             {leaderUser.total_points} pts
                           </span>
-                          <span className="flex items-center gap-1">
+                          <span className="flex items-center gap-1 whitespace-nowrap">
                             <Target className="h-3 w-3" />
-                            {leaderUser.total_questions}Q
+                            {Number(leaderUser.total_questions) || 0}Q
                           </span>
-                          <span className={`font-semibold ${
-                            leaderUser.accuracy >= 80 ? 'text-green-600' :
-                            leaderUser.accuracy >= 60 ? 'text-yellow-600' : 'text-red-600'
+                          <span className={`font-semibold whitespace-nowrap ${
+                            Number(leaderUser.accuracy) >= 80 ? 'text-green-600' :
+                            Number(leaderUser.accuracy) >= 60 ? 'text-yellow-600' : 'text-red-600'
                           }`}>
-                            {leaderUser.accuracy}%
+                            {Math.round(Number(leaderUser.accuracy)) || 0}%
                           </span>
                         </div>
 

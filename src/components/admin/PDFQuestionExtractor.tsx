@@ -118,8 +118,24 @@ export function PDFQuestionExtractor() {
           return;
         }
       } else {
-        // JEE/NEET: only show chapters with null batch_id
-        query = query.is("batch_id", null);
+        // JEE/NEET: Find grade-specific batch
+        const examType = selectedExam === 'JEE' ? 'jee' : 'neet';
+        const { data: batchData } = await supabase
+          .from("batches")
+          .select("id")
+          .eq("exam_type", examType)
+          .eq("is_active", true)
+          .limit(1)
+          .single();
+        
+        if (batchData?.id) {
+          query = query.eq("batch_id", batchData.id);
+        } else {
+          // No JEE/NEET batch found - don't show any chapters
+          setChapters([]);
+          setLoadingChapters(false);
+          return;
+        }
       }
 
       const { data, error } = await query;

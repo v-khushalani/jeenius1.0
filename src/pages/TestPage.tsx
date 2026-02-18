@@ -109,8 +109,9 @@ const TestPage = () => {
         // Use intersection of allowed subjects (by target_exam) and batch subjects
         subjectsToShow = getFilteredSubjects(targetExam, batch.subjects);
       } else {
-        // For Foundation grades, require batch subscription - no fallback
+        // No batch found
         if (isFoundationGrade(userGrade)) {
+          // For Foundation grades, require batch subscription - no fallback
           logger.warn('Foundation batch not configured/purchased', {
             userId: user.id,
             userGrade,
@@ -121,20 +122,16 @@ const TestPage = () => {
           setLoading(false);
           return;
         } else {
-          // Fallback: Get subjects from chapters table
-          let chaptersQuery = supabase
-            .from('chapters')
-            .select('id, subject, chapter_name, chapter_number, batch_id')
-            .is('batch_id', null)
-            .order('chapter_number');
-
-          const { data: chaptersData, error: chaptersError } = await chaptersQuery;
-          
-          if (chaptersError) throw chaptersError;
-
-          // Filter subjects based on target exam
-          subjectsToShow = [...new Set(chaptersData?.map(c => c.subject) || [])]
-            .filter(subject => examSubjects.includes(subject));
+          // For JEE/NEET grades 11-12, batch is required (created in migration)
+          logger.error('JEE/NEET batch not found for grade', {
+            userId: user.id,
+            userGrade,
+            targetExam,
+          });
+          toast.error('JEE/NEET batch not configured for your grade');
+          setShowUpgradeModal(true);
+          setLoading(false);
+          return;
         }
       }
 
@@ -158,8 +155,17 @@ const TestPage = () => {
           return;
         }
       } else {
-        // For JEE/NEET etc: use global chapters only
-        chaptersQuery = chaptersQuery.is('batch_id', null);
+        // For JEE/NEET: now use grade-specific batch filtering instead of null
+        if (batch && batch.id) {
+          chaptersQuery = chaptersQuery.eq('batch_id', batch.id);
+        } else {
+          // Fallback: No batch found for JEE/NEET grade 11-12
+          logger.warn('No batch found for JEE/NEET student', { grade: userGrade, targetExam });
+          toast.error('JEE/NEET batch not configured');
+          setShowUpgradeModal(true);
+          setLoading(false);
+          return;
+        }
       }
 
       const { data: chaptersData, error: chaptersError } = await chaptersQuery;

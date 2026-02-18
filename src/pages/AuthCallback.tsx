@@ -53,7 +53,7 @@ const AuthCallback = () => {
         // Check if user profile exists and has goals set
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('goals_set, target_exam, grade')
+          .select('selected_goal, target_exam, grade')
           .eq('id', userId)
           .single();
 
@@ -65,7 +65,7 @@ const AuthCallback = () => {
         }
 
         // Check if goals are complete
-        if (profile?.goals_set && profile?.target_exam && profile?.grade) {
+        if (profile?.selected_goal && profile?.target_exam && profile?.grade) {
           logger.info('Profile complete, redirecting to dashboard');
           navigate('/dashboard', { replace: true });
         } else {
