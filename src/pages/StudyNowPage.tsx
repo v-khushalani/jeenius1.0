@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import Header from '@/components/Header';
-import ProgramSwitcher from '@/components/ProgramSwitcher';
+// ...existing code...
 import LoadingScreen from '@/components/ui/LoadingScreen';
 import PricingModal from '@/components/PricingModal';
 import { MathDisplay } from '@/components/admin/MathDisplay';
@@ -1050,12 +1050,7 @@ const handleAnswer = async (answer: string) => {
                 <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Study Now</h1>
                 <p className="text-xs sm:text-sm text-slate-500">Select a subject to practice</p>
               </div>
-              <ProgramSwitcher 
-                onProgramChange={() => {
-                  // Reload subjects when program changes
-                  fetchSubjects();
-                }}
-              />
+              {/* ProgramSwitcher removed */}
             </div>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
