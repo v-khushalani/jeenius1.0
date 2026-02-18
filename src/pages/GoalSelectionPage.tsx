@@ -54,11 +54,50 @@ const GoalSelectionPage = () => {
       try {
         redirectCheckedRef.current = true;
         
-        const { data: profile, error } = await supabase
-          .from('profiles')
-          .select('full_name, target_exam, grade, selected_goal')
-          .eq('id', user.id)
-          .maybeSingle();
+        // First, check localStorage cache
+        const cachedGoals = localStorage.getItem('userGoals');
+        if (cachedGoals) {
+          try {
+            const goals = JSON.parse(cachedGoals);
+            if (goals?.goal && goals?.grade) {
+              logger.info('Found cached goals, redirecting to dashboard');
+              setIsLoading(false);
+              navigate('/dashboard', { replace: true });
+              return;
+            }
+          } catch (e) {
+            logger.warn('Invalid cached goals');
+          }
+        }
+
+        // Then check database with retry logic
+        let profile = null;
+        let error = null;
+        let retries = 3;
+        
+        while (retries > 0) {
+          const result = await supabase
+            .from('profiles')
+            .select('full_name, target_exam, grade, selected_goal')
+            .eq('id', user.id)
+            .maybeSingle();
+          
+          profile = result.data;
+          error = result.error;
+          
+          // If we got data or a real error (not empty result), stop retrying
+          if (profile || (error && error.code !== 'PGRST116')) {
+            break;
+          }
+          
+          if (retries > 1) {
+            // Wait before retry
+            await new Promise(resolve => setTimeout(resolve, 300));
+            retries--;
+          } else {
+            retries--;
+          }
+        }
   
         if (error && error.code !== 'PGRST116') {
           logger.error('Profile check error:', error);

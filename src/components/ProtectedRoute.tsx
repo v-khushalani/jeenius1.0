@@ -24,6 +24,22 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
       }
 
       try {
+        // First check localStorage for cached goals
+        const cachedGoals = localStorage.getItem('userGoals');
+        if (cachedGoals) {
+          try {
+            const goals = JSON.parse(cachedGoals);
+            if (goals?.goal && goals?.grade) {
+              console.info('Found cached goals in localStorage');
+              setNeedsGoalSelection(false);
+              setGoalsChecked(true);
+              return;
+            }
+          } catch (e) {
+            console.warn('Invalid cached goals in localStorage');
+          }
+        }
+
         // Check if goal selection was just completed (within this session)
         const goalSelectionComplete = sessionStorage.getItem('goalSelectionComplete') === 'true';
         if (goalSelectionComplete) {
@@ -35,7 +51,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
         }
 
         // Check with a small delay to allow for database replication
-        await new Promise(resolve => setTimeout(resolve, 200));
+        await new Promise(resolve => setTimeout(resolve, 300));
         
         const { data: profile, error } = await supabase
           .from('profiles')
@@ -57,7 +73,16 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
           });
           setNeedsGoalSelection(true);
         } else {
-          // Profile is complete
+          // Profile is complete - save to localStorage for next visit
+          const userGoals = {
+            grade: profile.grade,
+            goal: profile.selected_goal,
+            subjects: [],
+            name: '',
+            daysRemaining: 0,
+            createdAt: new Date().toISOString()
+          };
+          localStorage.setItem('userGoals', JSON.stringify(userGoals));
           console.info('Profile complete - allowing dashboard access');
           setNeedsGoalSelection(false);
         }
