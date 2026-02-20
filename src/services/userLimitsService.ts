@@ -260,10 +260,10 @@ export class UserLimitsService {
       .select('*', { count: 'exact', head: true })
       .gte('shown_at', weekAgo.toISOString());
 
-    const { count: conversions } = await supabase
-      .from('conversion_prompts')
+    const { count: conversions } = await (supabase
+      .from('conversion_prompts') as any)
       .select('*', { count: 'exact', head: true })
-      .eq('action_taken', 'upgraded')
+      .eq('converted', true)
       .gte('shown_at', weekAgo.toISOString());
 
     const conversionRate = promptsShown && conversions 

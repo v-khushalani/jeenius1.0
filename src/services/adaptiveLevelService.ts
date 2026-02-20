@@ -34,7 +34,7 @@ class AdaptiveLevelService {
       }
 
       // Return current level (default to 1 if not set)
-      return data.current_level || 1;
+      return Number(data.current_level) || 1;
     } catch (error) {
       logger.error('Error getting topic level:', error);
       return 1; // Default to easy
@@ -104,21 +104,22 @@ class AdaptiveLevelService {
         .from('topic_mastery')
         .upsert({
           user_id: userId,
+          topic_id: null as any, // legacy: using subject/chapter/topic text fields
           subject,
           chapter,
           topic,
-          current_level: newLevel,
+          current_level: String(newLevel),
           accuracy: newAccuracy,
           questions_attempted: newQuestionsAttempted,
           last_practiced: new Date().toISOString(),
           updated_at: new Date().toISOString()
-        });
+        } as any);
 
       if (updateError) {
         logger.error('Error updating topic mastery:', updateError);
       }
 
-      return { newLevel, leveledUp, message };
+      return { newLevel: Number(newLevel), leveledUp, message };
     } catch (error) {
       logger.error('Error updating topic level:', error);
       return { newLevel: 1, leveledUp: false };
