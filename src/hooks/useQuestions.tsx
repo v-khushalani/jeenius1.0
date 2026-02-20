@@ -223,8 +223,8 @@ const getRandomQuestions = async (
       const { supabase } = await import('@/integrations/supabase/client');
       
       const { data, error } = await supabase.rpc('validate_question_answer', {
-        _question_id: questionId,
-        _user_answer: selectedAnswer
+        p_question_id: questionId,
+        p_selected_option: selectedAnswer
       });
 
       if (error) {

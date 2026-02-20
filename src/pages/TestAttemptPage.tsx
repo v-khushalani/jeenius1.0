@@ -214,8 +214,8 @@ const TestAttemptPage = () => {
 
           try {
             await supabase.rpc('validate_question_answer', {
-              _question_id: question.id,
-              _user_answer: userAnswer.selectedOption
+              p_question_id: question.id,
+              p_selected_option: userAnswer.selectedOption
             });
             
             // Update user question stats (total_questions_answered, accuracy) for leaderboard

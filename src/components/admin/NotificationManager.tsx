@@ -19,7 +19,7 @@ interface Notification {
   title: string;
   message: string;
   target_audience: string;
-  target_user_ids?: string[];
+  target_user_ids?: any;
   created_at: string;
   scheduled_at: string;
   status: string;
@@ -108,9 +108,11 @@ export const NotificationManager: React.FC = () => {
 
       // Create user notification records
       if (targetUserIds.length > 0) {
-        const userNotifications = targetUserIds.map(userId => ({
+      const userNotifications = targetUserIds.map(userId => ({
           user_id: userId,
-          notification_id: notificationData.id
+          notification_id: notificationData.id,
+          title: title,
+          message: message
         }));
 
         const { error: userNotifError } = await supabase

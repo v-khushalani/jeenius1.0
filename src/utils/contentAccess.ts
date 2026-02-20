@@ -141,6 +141,7 @@ export const trackQuestionAttempt = async (
     await supabase.from('user_content_access').insert([{
       user_id: userId,
       content_type: 'question',
+      content_id: questionId,
       content_identifier: questionId,
       subject: ''
     }]);
@@ -223,6 +224,7 @@ export const trackAIQuery = async (userId: string): Promise<void> => {
     await supabase.from('user_content_access').insert([{
       user_id: userId,
       content_type: 'ai_query',
+      content_id: crypto.randomUUID(),
       content_identifier: 'ai_query',
       subject: ''
     }]);

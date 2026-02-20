@@ -35,10 +35,12 @@ export class ReferralService {
 
       await supabase.from('referrals').insert({
         referrer_id: referrerId,
+        referred_id: referrerId, // placeholder, will be updated on signup
         referred_email: referredEmail,
+        referral_code: referrerId.substring(0, 8),
         status: 'pending',
         reward_granted: false
-      });
+      } as any);
 
       return true;
     } catch (error) {

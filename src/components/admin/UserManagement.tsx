@@ -132,7 +132,7 @@ const fetchUsers = async () => {
     // Insert new role
     const { error } = await supabase
       .from('user_roles')
-      .insert({ user_id: userId, role: newRole });
+      .insert([{ user_id: userId, role: newRole as 'admin' | 'student' | 'super_admin' }]);
 
     if (error) throw error;
 
