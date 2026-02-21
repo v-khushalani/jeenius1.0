@@ -105,30 +105,88 @@ const TestPage = () => {
       // Determine subjects to show
       let subjectsToShow: string[] = [];
       
+      if (!batch && user?.id) {
+        // Batch not found - try to create it automatically
+        logger.info('Batch not found, attempting auto-creation...', { targetExam, userGrade });
+        
+        try {
+          const examType = isFoundationGrade(userGrade) ? 'Foundation' : (targetExam?.includes('NEET') ? 'NEET' : 'JEE');
+          
+          // Subject map for batch creation
+          const subjectMap: { [key: string]: string[] } = {
+            'Foundation': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
+            'JEE': ['Physics', 'Chemistry', 'Mathematics'],
+            'NEET': ['Physics', 'Chemistry', 'Biology'],
+          };
+
+          // Try to create batch
+          const { data: newBatch } = await supabase
+            .from('batches')
+            .insert({
+              name: `Grade ${userGrade} - ${examType}`,
+              exam_type: examType,
+              grade: userGrade,
+              description: `Grade ${userGrade} - ${examType} Study Material`,
+              is_active: true,
+              is_free: true,
+              display_order: userGrade,
+            })
+            .select('id')
+            .single();
+
+          if (newBatch) {
+            // Add subjects
+            const subjects = subjectMap[examType] || [];
+            await supabase
+              .from('batch_subjects')
+              .insert(
+                subjects.map((subject, index) => ({
+                  batch_id: newBatch.id,
+                  subject,
+                  display_order: index + 1,
+                }))
+              );
+
+            batch = {
+              id: newBatch.id,
+              name: `Grade ${userGrade} - ${examType}`,
+              slug: `grade-${userGrade}-${examType.toLowerCase()}`,
+              grade: userGrade,
+              exam_type: examType,
+              subjects: subjects,
+            };
+
+            logger.info('✅ Batch created automatically:', newBatch.id);
+          }
+        } catch (error) {
+          logger.warn('Could not auto-create batch:', error);
+        }
+      }
+      
       if (batch && batch.subjects.length > 0) {
         // Use intersection of allowed subjects (by target_exam) and batch subjects
         subjectsToShow = getFilteredSubjects(targetExam, batch.subjects);
       } else {
-        // No batch found
+        // No batch found and couldn't create one
         if (isFoundationGrade(userGrade)) {
           // For Foundation grades, require batch subscription - no fallback
-          logger.warn('Foundation batch not configured/purchased', {
+          logger.error('Foundation batch not available', {
             userId: user.id,
             userGrade,
             targetExam,
           });
-          toast.error('Please purchase Foundation batch to access tests');
+          toast.error('Foundation batch is required for tests. Please complete your profile setup.');
           setShowUpgradeModal(true);
           setLoading(false);
           return;
         } else {
-          // For JEE/NEET grades 11-12, batch is required (created in migration)
+          // For JEE/NEET grades 11-12, batch is required
           logger.error('JEE/NEET batch not found for grade', {
             userId: user.id,
             userGrade,
             targetExam,
           });
-          toast.error('JEE/NEET batch not configured for your grade');
+          toast.error('Test batch not configured for your grade. Please contact support.');
           setShowUpgradeModal(true);
           setLoading(false);
           return;
@@ -146,16 +204,9 @@ const TestPage = () => {
       if (isFoundationGrade(userGrade)) {
         if (batch && batch.id) {
           chaptersQuery = chaptersQuery.eq('batch_id', batch.id);
-        } else {
-          // Foundation requires batch - should have returned above
-          // This is a safeguard
-          toast.error('Please purchase Foundation batch to access tests');
-          setShowUpgradeModal(true);
-          setLoading(false);
-          return;
         }
       } else {
-        // For JEE/NEET: now use grade-specific batch filtering instead of null
+        // For JEE/NEET: use grade-specific batch filtering
         if (batch && batch.id) {
           chaptersQuery = chaptersQuery.eq('batch_id', batch.id);
         } else {

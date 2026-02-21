@@ -10,7 +10,11 @@ const AuthCallback = () => {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
-        logger.log('🔄 Processing OAuth callback...');
+        logger.log('🔄 Processing OAuth/Email callback...', {
+          url: window.location.href,
+          hash: window.location.hash,
+          search: window.location.search,
+        });
         
         // Check for error in URL params first
         const urlParams = new URLSearchParams(window.location.search);
@@ -22,6 +26,10 @@ const AuthCallback = () => {
           navigate(`/login?error=${encodeURIComponent(errorDescription || errorParam)}`);
           return;
         }
+        
+        // Allow Supabase to process the callback (especially for email confirmations)
+        // This is important for email verification links
+        await new Promise(resolve => setTimeout(resolve, 1500));
         
         // Get session
         const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
@@ -36,50 +44,56 @@ const AuthCallback = () => {
         
         if (!user) {
           logger.warn('No session found yet after callback');
-          // Wait for session to establish
+          // Wait for session to establish - email confirmations might need extra time
           await new Promise(resolve => setTimeout(resolve, 2000));
           const { data: retryData } = await supabase.auth.getSession();
           
           if (!retryData.session?.user) {
             logger.error('Still no session after retry; redirecting to login');
-            navigate('/login');
+            navigate('/login?error=no_session');
             return;
           }
         }
 
         const userId = user?.id || sessionData.session?.user?.id;
-        logger.info('User authenticated', userId);
+        logger.info('✅ User authenticated', userId);
 
         // Check if user profile exists and has goals set
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('selected_goal, target_exam, grade')
+          .select('selected_goal, target_exam, grade, email_confirmed_at')
           .eq('id', userId)
           .single();
 
         if (profileError && profileError.code === 'PGRST116') {
           // Profile doesn't exist - AuthContext will create it, redirect to goal selection
-          logger.info('New user, redirecting to goal selection');
+          logger.info('🆕 New user - no profile found, redirecting to goal selection');
+          navigate('/goal-selection', { replace: true });
+          return;
+        }
+
+        if (profileError && profileError.code !== 'PGRST116') {
+          logger.error('❌ Error fetching profile:', profileError);
           navigate('/goal-selection', { replace: true });
           return;
         }
 
         // Check if goals are complete
         if (profile?.selected_goal && profile?.target_exam && profile?.grade) {
-          logger.info('Profile complete, redirecting to dashboard');
+          logger.info('✅ Profile complete - redirecting to dashboard');
           navigate('/dashboard', { replace: true });
         } else {
-          logger.info('Goals not set, redirecting to goal selection');
+          logger.info('⚠️  Goals not complete - redirecting to goal selection');
           navigate('/goal-selection', { replace: true });
         }
         
       } catch (error) {
-        logger.error('Callback handling error:', error);
+        logger.error('❌ Callback handling error:', error);
         navigate('/login?error=callback_failed');
       }
     };
 
-    // Small delay to ensure URL params are processed
+    // Small delay to ensure URL params and session are processed
     setTimeout(handleAuthCallback, 500);
   }, [navigate]);
 
@@ -92,7 +106,10 @@ const AuthCallback = () => {
             Completing sign-in...
           </h2>
           <p className="text-gray-600">
-            Please wait while we set up your account.
+            Verifying your email and setting up your account.
+          </p>
+          <p className="text-gray-500 text-xs mt-4">
+            This should take a few seconds. If you're stuck here, check your browser console for details.
           </p>
         </CardContent>
       </Card>

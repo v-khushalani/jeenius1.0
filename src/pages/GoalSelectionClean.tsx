@@ -61,14 +61,62 @@ const GoalSelectionClean = () => {
 
       const examType = goal === 'Foundation Course' ? 'Foundation' : goal;
 
-      // Find matching batch
-      const { data: batch } = await supabase
+      // Find or create matching batch
+      let { data: batch, error: batchError } = await supabase
         .from('batches')
         .select('id')
         .eq('grade', gradeNum)
         .eq('exam_type', examType)
         .eq('is_active', true)
         .single();
+
+      // If batch doesn't exist, create it
+      if (batchError && batchError.code === 'PGRST116') {
+        logger.log('Batch not found, attempting to create...');
+        
+        // Define subjects for each exam type
+        const subjectMap: { [key: string]: string[] } = {
+          'Foundation': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
+          'JEE': ['Physics', 'Chemistry', 'Mathematics'],
+          'NEET': ['Physics', 'Chemistry', 'Biology'],
+        };
+
+        // Try to create batch using a trigger/function (if exists) or flag system
+        const { data: newBatch, error: createError } = await supabase
+          .from('batches')
+          .insert({
+            name: `Grade ${gradeNum} - ${examType}`,
+            exam_type: examType,
+            grade: gradeNum,
+            description: `Grade ${gradeNum} - ${examType} Study Material`,
+            is_active: true,
+            is_free: true,
+            display_order: gradeNum,
+          })
+          .select('id')
+          .single();
+
+        if (!createError && newBatch) {
+          batch = newBatch;
+          
+          // Add subjects to the new batch
+          const subjects = subjectMap[examType] || [];
+          await supabase
+            .from('batch_subjects')
+            .insert(
+              subjects.map((subject, index) => ({
+                batch_id: newBatch.id,
+                subject,
+                display_order: index + 1,
+              }))
+            );
+
+          logger.log('✅ Batch created successfully:', newBatch.id);
+        } else if (createError) {
+          // If creation fails due to RLS, continue anyway - batch might exist via other means
+          logger.warn('Could not create batch (may already exist):', createError);
+        }
+      }
 
       // Update profile
       await supabase
@@ -80,7 +128,7 @@ const GoalSelectionClean = () => {
         })
         .eq('id', user.id);
 
-      logger.log('✅ Goal selection saved:', { grade: gradeNum, exam: targetExam });
+      logger.log('✅ Goal selection saved:', { grade: gradeNum, exam: targetExam, batchId: batch?.id });
       toast.success('Profile updated! Redirecting...');
       
       setTimeout(() => {
