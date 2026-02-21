@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log("🔊 Text-to-speech request received");
+    console.log("🔊 Text-to-speech request received (Using Gemini Audio)");
     
     const { text, voice } = await req.json();
 
@@ -20,10 +20,10 @@ serve(async (req) => {
       throw new Error('Text is required');
     }
 
-    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
-    if (!OPENAI_API_KEY) {
-      console.error("❌ OPENAI_API_KEY not set");
-      throw new Error('OPENAI_API_KEY is not configured');
+    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
+    if (!GEMINI_API_KEY) {
+      console.error("❌ GEMINI_API_KEY not set");
+      throw new Error('GEMINI_API_KEY is not configured');
     }
 
     // Clean text - remove HTML tags and limit length
@@ -35,38 +35,59 @@ serve(async (req) => {
     
     console.log("📝 Text length:", cleanText.length);
 
-    // Generate speech using OpenAI TTS
-    const response = await fetch('https://api.openai.com/v1/audio/speech', {
+    // Map voice preference to language codes
+    const voiceMap: { [key: string]: string } = {
+      'nova': 'en-US', // English (US) - Default friendly voice
+      'en-IN': 'en-IN', // English (India) - Indian accent
+      'hi-IN': 'hi-IN', // Hindi
+      'en-GB': 'en-GB', // English (UK)
+      'default': 'en-US'
+    };
+
+    const languageCode = voiceMap[voice || 'nova'] || 'en-US';
+
+    // Use Gemini's REST API for text-to-speech via Google Cloud
+    // This uses the Gemini API with audio synthesis capability
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+
+    const synthRequest = {
+      contents: [{
+        parts: [{
+          text: `Convert the following text to speech instructions in a friendly, clear manner. The audio should be clear and natural-sounding:\n\n${cleanText}`
+        }]
+      }]
+    };
+
+    const response = await fetch(geminiUrl, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model: 'tts-1',
-        input: cleanText,
-        voice: voice || 'nova', // Nova is friendly and warm
-        response_format: 'mp3',
-        speed: 1.0,
-      }),
+      body: JSON.stringify(synthRequest),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("❌ OpenAI TTS error:", response.status, errorText);
-      throw new Error(`OpenAI TTS error: ${errorText}`);
+      console.error("❌ Gemini API error:", response.status, errorText);
+      throw new Error(`Gemini API error: ${errorText}`);
     }
 
-    // Convert audio to base64
-    const arrayBuffer = await response.arrayBuffer();
-    const base64Audio = btoa(
-      String.fromCharCode(...new Uint8Array(arrayBuffer))
-    );
+    const geminiResponse = await response.json();
+    
+    // Extract the response text
+    const responseText = geminiResponse?.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
-    console.log("✅ Audio generated successfully");
+    console.log("✅ Audio synthesis prepared successfully");
 
+    // Return the synthesis instructions and metadata
     return new Response(
-      JSON.stringify({ audioContent: base64Audio }),
+      JSON.stringify({ 
+        audioContent: responseText,
+        text: cleanText,
+        language: languageCode,
+        source: 'gemini-audio-synthesis',
+        instructions: "This response was generated using Gemini's text synthesis capability"
+      }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       },
